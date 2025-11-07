@@ -1,0 +1,80 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyw
+*$py.class
+
+# --- Virtual environment ---
+venv/
+.env/
+.venv/
+.venv312/
+
+# --- PyInstaller / Build artifacts ---
+build/
+dist/
+*.spec
+
+# --- Logs, caches and temp files ---
+*.log
+*.tmp
+*.bak
+*.swp
+*.DS_Store
+Thumbs.db
+*.sqlite
+*.db
+*.cfg
+*.ini
+*.json~
+
+# --- User and local configs ---
+user_config.json
+config_backup.json
+
+# --- IDE and editor specific ---
+# PyCharm
+.idea/
+# VSCode
+.vscode/
+# Others
+*.sublime-project
+*.sublime-workspace
+
+# --- OS specific ---
+.DS_Store
+desktop.ini
+
+# --- Packaging and distributions ---
+*.egg-info/
+.eggs/
+MANIFEST
+*.manifest
+
+# --- PyTest and Coverage ---
+.cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# --- Reports ---
+reports/
+tests/__pycache__/
+
+# --- Custom resources (if generated dynamically) ---
+# Uncomment next lines if launcher writes runtime files
+# logs/
+# temp/
+# runtime/
+
+# --- Optional: ignore executable builds ---
+*.exe
+*.dll
+*.so
+
+
+# --- Optional: ignore images or assets you don’t want to push ---
+# screenshots/
+# assets/generated/

@@ -1,0 +1,362 @@
+import subprocess
+import socket
+import time
+import psutil
+import os
+import shutil
+import re
+import hashlib
+from datetime import datetime
+from config import (
+    COMFYUI_PORT,
+    CHECK_INTERVAL,
+    MAX_WAIT_TIME,
+    load_user_config,
+    save_user_config,
+)
+
+
+_comfy_process: subprocess.Popen | None = None
+
+
+def comfy_exists(path):
+    """Checks that the folder contains main.py"""
+    return os.path.exists(os.path.join(path, "main.py"))
+
+
+def is_port_open(port):
+    """Checks if the specified port is open"""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.settimeout(0.2)
+        return s.connect_ex(("127.0.0.1", port)) == 0
+
+
+def wait_for_server():
+    """Waiting for ComfyUI to load"""
+    start = time.time()
+    while time.time() - start < MAX_WAIT_TIME:
+        if is_port_open(COMFYUI_PORT):
+            print("ComfyUI started.")
+            return True
+        time.sleep(CHECK_INTERVAL)
+    print("Failed to connect to the server.")
+    return False
+
+
+def is_cuda_available():
+    """Checks for the presence of an NVIDIA GPU via nvidia-smi"""
+    # Checks that nvidia-smi even exists
+    if not shutil.which("nvidia-smi"):
+        return False
+
+    try:
+        result = subprocess.run(
+            ["nvidia-smi"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=5,  # таймаут на случай зависания
+        )
+        return result.returncode == 0
+    except Exception:
+        return False
+
+
+# =====================================================================
+# 🔹 Auxiliary functions
+# =====================================================================
+
+
+def get_file_hash(path: str) -> str:
+    """Returns a short MD5 hash of the file for change tracking."""
+    h = hashlib.md5()
+    try:
+        with open(path, "rb") as f:
+            while chunk := f.read(8192):
+                h.update(chunk)
+        return h.hexdigest()
+    except Exception:
+        return ""
+
+
+def disable_browser_auto_launch(comfy_path: str):
+    """
+    Checks main.py and comments out webbrowser.open(...) if it's not already commented out.
+    Returns (patched: bool, file_hash: str)
+    """
+    main_py = os.path.join(comfy_path, "main.py")
+    if not os.path.exists(main_py):
+        print("⚠️ main.py not found — skip browser patch.")
+        return False, ""
+
+    file_hash = get_file_hash(main_py)
+
+    try:
+        with open(main_py, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        if "# webbrowser.open(" in content:
+            print("🧩 Browser auto-launch already disabled.")
+            return True, file_hash
+
+        pattern = re.compile(r"^\s*webbrowser\.open\(.*\)$", re.MULTILINE)
+        if pattern.search(content):
+            patched = pattern.sub(r"# \g<0>  # patched by ComfyLauncher", content)
+            backup = main_py + ".bak"
+            if not os.path.exists(backup):
+                shutil.copy2(main_py, backup)
+            with open(main_py, "w", encoding="utf-8") as f:
+                f.write(patched)
+            print("🧩 Browser auto-launch disabled (via patch).")
+            return True, get_file_hash(main_py)
+        else:
+            print("ℹ️ No webbrowser.open() found — nothing to patch.")
+            return False, file_hash
+    except Exception as e:
+        print(f"❌ Failed to patch browser launch: {e}")
+        return False, file_hash
+
+
+def update_browser_patch_registry(comfy_path: str, patched: bool, file_hash: str):
+    """Saves the patch state in user_config.json."""
+    cfg = load_user_config()
+    registry = cfg.get("browser_patch_registry", {})
+
+    registry[comfy_path] = {
+        "patched": patched,
+        "file_hash": file_hash,
+        "timestamp": datetime.now().isoformat(timespec="seconds"),
+    }
+
+    cfg["browser_patch_registry"] = registry
+    save_user_config(cfg)
+
+
+def resolve_python_exe(base_dir: str) -> str:
+    """
+    Returns the path to the embedded Python inside the portable build, if present.
+    Supports both spellings: python_embeded / python_embedded.
+    Otherwise, it uses 'python' (the system interpreter).
+    """
+    cand = os.path.join(base_dir, "python_embeded", "python.exe")
+    if os.path.exists(cand):
+        return cand
+    cand = os.path.join(base_dir, "python_embedded", "python.exe")
+    if os.path.exists(cand):
+        return cand
+    return "python"
+
+
+def ensure_comfyui_running(comfy_path: str, port: int = 8188):
+    """
+    1) Checks if the server is running.
+    2) Checks if main.py is patched (auto-browser is disabled).
+    3) If necessary, patches and updates user_config.json.
+    4) Launches ComfyUI (via bat or directly).
+    """
+    global _comfy_process
+
+    # --- Browser Check and Patch -------------------------------------
+    main_py = os.path.join(comfy_path, "main.py")
+    file_hash = get_file_hash(main_py)
+    cfg = load_user_config()
+    registry = cfg.get("browser_patch_registry", {})
+    entry = registry.get(comfy_path, {})
+
+    # Let's check if a patch is needed
+    need_patch = (
+        not entry
+        or entry.get("file_hash") != file_hash
+        or not entry.get("patched", False)
+    )
+
+    if need_patch:
+        patched, new_hash = disable_browser_auto_launch(comfy_path)
+        update_browser_patch_registry(comfy_path, patched, new_hash)
+    else:
+        print("✅ Browser patch check skipped — already up to date.")
+
+    if _comfy_process and _comfy_process.poll() is None:
+        print("⚠️ ComfyUI process is already running, skip start.")
+        return
+
+    # --- Next comes the launch logic ----------------------------------------
+    if is_port_open(port):
+        print("✅ ComfyUI already launched.")
+        return
+
+    try:
+        cuda_available = is_cuda_available()
+    except Exception:
+        cuda_available = False
+
+    mode = "GPU" if cuda_available else "CPU"
+    print(f"🚀 Starting ComfyUI in {mode} mode...")
+
+    base_dir = os.path.dirname(comfy_path)
+    bat_name = "run_nvidia_gpu.bat" if cuda_available else "run_cpu.bat"
+    bat_file = os.path.join(base_dir, bat_name)
+
+    if os.path.exists(bat_file):
+        _comfy_process = subprocess.Popen(
+            ["cmd", "/c", bat_file],
+            cwd=base_dir,
+            # creationflags=subprocess.CREATE_NO_WINDOW,
+        )
+    else:
+        python_exe = os.path.join(base_dir, "python_embeded", "python.exe")
+        if not os.path.exists(python_exe):
+            python_exe = shutil.which("python") or "python"
+
+        args = [
+            python_exe,
+            os.path.join(comfy_path, "main.py"),
+            "--windows-standalone-build",
+        ]
+        if not cuda_available:
+            args.append("--cpu")
+
+        env = os.environ.copy()
+        env["PYTHONHOME"] = os.path.join(base_dir, "python_embeded")
+        env["PYTHONPATH"] = comfy_path
+        env["PATH"] = env["PYTHONHOME"] + ";" + env["PATH"]
+
+        _comfy_process = subprocess.Popen(
+            args,
+            cwd=comfy_path,
+            env=env,
+            # creationflags=subprocess.CREATE_NO_WINDOW,
+        )
+
+    print(f"🟢 ComfyUI started (PID {_comfy_process.pid}) in mode {mode}.")
+
+
+def kill_process_tree(pid):
+    """Kills the process and all its descendants"""
+    try:
+        parent = psutil.Process(pid)
+    except psutil.NoSuchProcess:
+        return
+    children = parent.children(recursive=True)
+    for child in children:
+        try:
+            print(f"💀 Killing child PID {child.pid}: {child.name()}")
+            child.kill()
+        except Exception:
+            pass
+    print(f"💀 Killing parent PID {pid}: {parent.name()}")
+    parent.kill()
+
+
+def stop_comfyui_hard(_grace_period=5):
+    """Completely completes ComfyUI (bat file + python descendants)."""
+    global _comfy_process
+    print("⏹ Completing ComfyUI...")
+
+    killed = False
+
+    # 1️⃣ Let's try to kill the running .bat
+    for proc in psutil.process_iter(["pid", "name", "cmdline"]):
+        try:
+            # safely get the command line
+            cmdline = proc.info.get("cmdline") or []
+            if not cmdline:
+                continue
+            cmdline_joined = " ".join(cmdline).lower()
+
+            if (
+                "run_cpu.bat" in cmdline_joined
+                or "run_nvidia_gpu.bat" in cmdline_joined
+            ):
+                print(
+                    f"💀 We are finishing the bat file and all its descendants (PID {proc.pid})"
+                )
+                time.sleep(1)
+                kill_process_tree(proc.pid)
+                # To be on the safe side, we'll additionally check for descendants after kill.
+                time.sleep(0.5)
+                for child in psutil.process_iter(["pid", "ppid", "name"]):
+                    if child.info["ppid"] == proc.pid:
+                        print(
+                            f"⚠️ Descendant {child.pid} ({child.info['name']}) still alive - kill directly"
+                        )
+                        child.kill()
+                killed = True
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            continue
+
+    # 2️⃣ If the batch file is not found, fallback: look for python main.py
+    if not killed:
+        for proc in psutil.process_iter(["pid", "name", "cmdline"]):
+            try:
+                cmd = " ".join(proc.info["cmdline"]).lower()
+                if "comfyui" in cmd or "main.py" in cmd:
+                    print(f"💀 Force quit ComfyUI (PID {proc.pid})")
+                    proc.kill()
+                    killed = True
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                continue
+
+    if killed:
+        # 3️⃣ Confirm state
+        if not is_port_open(COMFYUI_PORT):
+            print("🟢 Port 8188 closed — server fully stopped.")
+        else:
+            print("⚠️ Port still busy — possible residual process.")
+        print("✅ ComfyUI stopped completely.")
+    else:
+        print("⚠️ No ComfyUI process found to stop.")
+
+    _comfy_process = None
+
+
+# def stop_comfyui_soft(grace_period=5):
+#     """Softly terminates ComfyUI.
+#     If launched directly, it terminates via _comfy_process.
+#     If launched via .bat, it searches for python main.py and terminates only that.
+#     """
+#     global _comfy_process
+#     print("⏹ Soft stop ComfyUI...")
+#
+#     if _comfy_process and _comfy_process.poll() is None:
+#         try:
+#             _comfy_process.terminate()
+#             _comfy_process.wait(timeout=grace_period)
+#             print("✅ ComfyUI мягко остановлен (через _comfy_process).")
+#             return True
+#         except Exception as e:
+#             print(f"⚠️ Ошибка при остановке _comfy_process: {e}")
+#
+#     # If _comfy_process is not active, try to find python main.py
+#     print("🔍 Поиск python-процесса ComfyUI для мягкой остановки...")
+#     stopped = False
+#     for proc in psutil.process_iter(["pid", "name", "cmdline"]):
+#         try:
+#             cmd = " ".join(proc.info.get("cmdline") or []).lower()
+#             if "python" in proc.info["name"].lower() and (
+#                 "main.py" in cmd or "comfyui" in cmd
+#             ):
+#                 print(f"⏸️ Terminate python worker (PID {proc.pid})")
+#                 proc.terminate()
+#                 try:
+#                     proc.wait(timeout=grace_period)
+#                 except psutil.TimeoutExpired:
+#                     print(f"⚠️ Worker PID {proc.pid} не ответил — kill()")
+#                     proc.kill()
+#                 stopped = True
+#         except (psutil.NoSuchProcess, psutil.AccessDenied):
+#             continue
+#
+#     if stopped:
+#         print("✅ ComfyUI мягко остановлен (через psutil).")
+#     else:
+#         print("⚠️ Не найден процесс ComfyUI для мягкой остановки.")
+#     return stopped
+
+
+__all__ = [
+    "is_port_open",
+    "ensure_comfyui_running",
+    "stop_comfyui_hard",
+    "comfy_exists",
+    "kill_process_tree",
+]
