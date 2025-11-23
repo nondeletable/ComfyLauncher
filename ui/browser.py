@@ -13,11 +13,10 @@ from launcher import (
     stop_comfyui_hard,
     is_port_open,
 )
-from config import ICON_PATH, get_comfyui_path, COMFYUI_PORT, load_user_config
+from config import ICON_PATH, get_comfyui_path, COMFYUI_PORT, load_user_config, save_user_config
 from ui.error_page import ErrorPage
 from ui.settings.settings_window import SettingsWindow
 from ui.dialogs.messagebox import MessageBox as MB
-from config import COMFYUI_PATH
 
 
 class ComfyBrowser(QMainWindow):
@@ -170,7 +169,13 @@ class ComfyBrowser(QMainWindow):
 
     @staticmethod
     def open_output():
-        output_dir = os.path.join(COMFYUI_PATH, "output")
+        comfy_path = get_comfyui_path()
+        if not comfy_path:
+            print("⚠️ ComfyUI path is not set. Cannot open output folder.")
+            return
+
+        output_dir = os.path.join(comfy_path, "output")
+
         if os.path.exists(output_dir):
             os.startfile(output_dir)
         else:
@@ -222,30 +227,69 @@ class ComfyBrowser(QMainWindow):
 
     def closeEvent(self, event):
         """Reaction to closing depending on user settings"""
+
+        # If a duplicate closeEvent fires while we're already processing exit
+        if getattr(self, "_exit_in_progress", False):
+            print("⚠️ Duplicate closeEvent ignored.")
+            event.ignore()
+            return
+
+        self._exit_in_progress = True  # mark close sequence started
+
         user_config = load_user_config()
         ask = user_config.get("ask_on_exit", True)
         mode = user_config.get("exit_mode", "always_stop")
 
+        # ─────────────────────────────
+        # CASE 1 — Ask on exit (Yes / No / Cancel)
+        # ─────────────────────────────
         if ask:
-            reply = MB.ask_yes_no(
+            choice = MB.ask_exit(
                 self,
-                "Completion of work",
+                "Exit",
                 "Shut down ComfyUI server?",
             )
-            if reply:
+
+            # YES → stop server + exit
+            if choice == "yes":
+                print("🟥 User chose: YES — stopping ComfyUI and exiting.")
                 stop_comfyui_hard()
-                print("🟥 The server was stopped by the user on exit.")
-            else:
-                print("🟢 The server continues to run in the background.")
-            event.accept()
+
+                save_user_config(user_config)  # ← важно!
+                event.accept()
+                return
+
+            # NO → exit, but keep server running
+            elif choice == "no":
+                print("🟢 User chose: NO — exiting without stopping ComfyUI.")
+
+                save_user_config(user_config)  # ← важно!
+                event.accept()
+                return
+
+            # CANCEL → block closing
+            else:  # "cancel"
+                print("ℹ️ User cancelled exit.")
+                self._exit_in_progress = False  # allow new future attempts
+                event.ignore()
             return
 
-        # If Ask is disabled
+        # ─────────────────────────────
+        # CASE 2 — Ask is disabled (auto mode)
+        # ─────────────────────────────
         if mode == "always_stop":
+            print("🟥 Auto mode: always_stop — stopping ComfyUI.")
             stop_comfyui_hard()
-            print("🟥 Auto-stop ComfyUI (always_stop mode).")
+
         elif mode == "never_stop":
-            print("🟢 Auto-keep ComfyUI running (never_stop mode).")
+            print("🟢 Auto mode: never_stop — leaving ComfyUI running.")
+
+        else:
+            print(f"⚠️ Unknown exit mode: '{mode}' — defaulting to always_stop.")
+            stop_comfyui_hard()
+
+        # Save user config anyway (important!)
+        save_user_config(user_config)
 
         event.accept()
 

@@ -11,7 +11,6 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, QRectF
 from PyQt6.QtGui import QPainterPath, QRegion
 
-
 from ui.settings.page_build import BuildSettingsPage
 from ui.settings.page_behavior import BehaviorSettingsPage
 from ui.settings.page_colortheme import ColorThemesPage
@@ -38,6 +37,7 @@ class SettingsWindow(QWidget):
 
         # ─── Main frame ───────────────────────────────────
         main_frame = QFrame(self)
+        main_frame.setObjectName("settings_main_frame")
         main_frame.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
         )
@@ -47,6 +47,9 @@ class SettingsWindow(QWidget):
                 background-color: {self.colors['bg_header']};
                 color: {self.colors['text_primary']};
                 border-radius: 10px;
+            }}
+            QFrame#settings_main_frame {{
+                border: 1px solid {self.colors['border_color']};
             }}
         """
         )
@@ -63,7 +66,7 @@ class SettingsWindow(QWidget):
 
         # ─── Left menu panel ────────────────────────────────
         self.menu = QListWidget()
-        self.menu.addItems(["Build", "Exit behavior", "Color Themes", "Logs", "About"])
+        self.menu.addItems(["Paths", "Exit behavior", "Color Themes", "Launcher Logs", "About"])
         self.menu.setFixedWidth(200)
         self.menu.setStyleSheet(
             f"""
@@ -137,10 +140,9 @@ class SettingsWindow(QWidget):
         footer_layout.setAlignment(Qt.AlignmentFlag.AlignRight)
 
         self.btn_apply = QPushButton("Apply")
-        self.btn_reset = QPushButton("Reset")
         self.btn_close = QPushButton("Close")
 
-        for btn in (self.btn_apply, self.btn_reset, self.btn_close):
+        for btn in (self.btn_apply, self.btn_close):
             btn.setFixedSize(100, 36)
             btn.setStyleSheet(
                 f"""
@@ -188,10 +190,8 @@ class SettingsWindow(QWidget):
 
         self._dirty_any = False
         self.btn_apply.setEnabled(False)
-        self.btn_reset.setEnabled(False)
 
         self.btn_apply.clicked.connect(self._apply_current)  # type: ignore
-        self.btn_reset.clicked.connect(self._reset_current)  # type: ignore
         self.btn_close.clicked.connect(self.close)  # type: ignore
 
         # ─── Home page ───────────────────────────────
@@ -264,13 +264,11 @@ class SettingsWindow(QWidget):
             except Exception:
                 dirty = False
         self.btn_apply.setEnabled(dirty)
-        self.btn_reset.setEnabled(dirty)
         self._dirty_any = dirty
 
     def _on_dirty_changed(self, dirty: bool):
         """Reacting to the dirtyChanged signal from the current page"""
         self.btn_apply.setEnabled(dirty)
-        self.btn_reset.setEnabled(dirty)
         self._dirty_any = dirty
 
     def _apply_current(self):
@@ -284,16 +282,6 @@ class SettingsWindow(QWidget):
             ok = page.apply_changes()  # type: ignore
         if ok:
             self._sync_footer_by_page(page)
-
-    def _reset_current(self):
-        page = getattr(self, "_current_connected_page", None)
-        if not page:
-            return
-        if hasattr(page, "reset"):
-            page.reset()  # type: ignore
-        elif hasattr(page, "cancel_changes"):
-            page.cancel_changes()  # type: ignore
-        self._sync_footer_by_page(page)
 
     def closeEvent(self, e):
         if getattr(self, "_dirty_any", False):

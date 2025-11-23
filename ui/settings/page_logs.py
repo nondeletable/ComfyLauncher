@@ -8,9 +8,11 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
     QFrame,
 )
-from PyQt6.QtGui import QTextCursor
-from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QTextCursor, QIcon
+from PyQt6.QtCore import Qt, QSize
+from config import OTHER_ICONS
 from utils.logger import LOG_FILE, log_event
+from ui.header import colorize_svg
 from ui.theme.manager import THEME
 from ui.dialogs.messagebox import MessageBox as MB
 
@@ -27,7 +29,7 @@ class LogsSettingsPage(QWidget):
         layout.setSpacing(16)
 
         # ─── Title ────────────────────────────────────
-        title = QLabel("Application Logs")
+        title = QLabel("Launcher Logs")
         title.setStyleSheet("font-size: 20px; font-weight: 500;")
         layout.addWidget(title)
 
@@ -35,7 +37,11 @@ class LogsSettingsPage(QWidget):
         self.text_edit = QTextEdit()
         self.text_edit.setReadOnly(True)
         self.text_edit.setStyleSheet(self._build_textedit_style())
-        layout.addWidget(self.text_edit, stretch=1)
+        log_container = QHBoxLayout()
+        log_container.setContentsMargins(14, 0, 0, 0)  # ← твой идеальный отступ
+        log_container.addWidget(self.text_edit)
+
+        layout.addLayout(log_container, stretch=1)
 
         # ─── Divider ──────────────────────────────────
         divider = QFrame()
@@ -43,32 +49,61 @@ class LogsSettingsPage(QWidget):
         divider.setStyleSheet(f"color: {THEME.colors['border_color']};")
         layout.addWidget(divider)
 
-        # ─── Bottom buttons ────────────────────────────────
+        # ─── Bottom buttons with icons ─────────────────────────────
         btn_layout = QHBoxLayout()
         btn_layout.setAlignment(Qt.AlignmentFlag.AlignRight)
+        btn_layout.setSpacing(10)
 
-        self.btn_refresh = QPushButton("Refresh")
-        self.btn_clear = QPushButton("Clear log")
+        # Refresh button
+        self.btn_refresh = QPushButton()
+        self.btn_refresh.setIcon(
+            QIcon(
+                colorize_svg(
+                    OTHER_ICONS["refresh"],
+                    THEME.colors["icon_color_window"],
+                    QSize(18, 18),
+                )
+            )
+        )
+        self.btn_refresh.setIconSize(QSize(18, 18))
+        self.btn_refresh.setFixedSize(36, 36)
 
+        # Clear log button
+        self.btn_clear = QPushButton()
+        self.btn_clear.setIcon(
+            QIcon(
+                colorize_svg(
+                    OTHER_ICONS["clear-log"],
+                    THEME.colors["icon_color_window"],
+                    QSize(18, 18),
+                )
+            )
+        )
+        self.btn_clear.setIconSize(QSize(18, 18))
+        self.btn_clear.setFixedSize(36, 36)
+
+        # Apply common style
         for btn in (self.btn_refresh, self.btn_clear):
-            btn.setFixedSize(100, 36)
             btn.setStyleSheet(
                 f"""
                 QPushButton {{
                     background-color: transparent;
-                    color: {THEME.colors['text_secondary']};
                     border: 1px solid {THEME.colors['border_color']};
                     border-radius: 6px;
-                    transition: all 0.2s ease-in-out;
                 }}
                 QPushButton:hover {{
                     background-color: {THEME.colors['accent']};
-                    color: {THEME.colors['text_inverse']};
                     border-color: {THEME.colors['accent']};
                 }}
-            """
+                QPushButton:pressed {{
+                    background-color: {THEME.colors['accent_hover']};
+                }}
+                """
             )
             btn_layout.addWidget(btn)
+
+        self.btn_refresh.setToolTip("Refresh log")
+        self.btn_clear.setToolTip("Clear log")
 
         layout.addLayout(btn_layout)
 

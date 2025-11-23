@@ -6,7 +6,7 @@ from PyQt6.QtWidgets import QApplication, QToolTip, QDialog
 from PyQt6.QtCore import QTimer
 from PyQt6.QtGui import QFont
 
-from ui.splash import AnimatedSplash
+from ui.splash import LauncherSplash
 from ui.browser import ComfyBrowser
 from ui.dialogs.setup_window import SetupWindow
 from ui.theme.manager import THEME
@@ -32,11 +32,15 @@ def launch_app():
     """
     )
     comfy_path = get_comfyui_path()
+    first_launch = False
 
-    if not comfy_exists(comfy_path):
+    # ---------- FIRST SETUP ----------
+    if not comfy_path or not comfy_exists(comfy_path):
+        first_launch = True
         log_event(
             "🆕 [FIRST SETUP] ComfyUI not found or invalid — opening Setup Dialog."
         )
+
         setup = SetupWindow()
         if setup.exec() != QDialog.DialogCode.Accepted:
             log_event("🟥 [FIRST SETUP] Setup canceled — showing ErrorPage fallback.")
@@ -47,7 +51,8 @@ def launch_app():
         comfy_path = get_comfyui_path()
         log_event(f"✅ [FIRST SETUP] User selected path: {comfy_path}")
 
-    if not comfy_exists(comfy_path):
+    # ---------- VALIDATE AGAIN ----------
+    if not comfy_path or not comfy_exists(comfy_path):
         log_event(f"❌ ComfyUI not found even after setup: {comfy_path}")
         MB.error(
             None,
@@ -57,14 +62,23 @@ def launch_app():
         )
         return sys.exit(1)
 
+    # ---------- START BACKGROUND PROCESS ----------
+    threading.Thread(
+        target=ensure_comfyui_running, args=(get_comfyui_path(),), daemon=True
+    ).start()
+    log_event("🧠 Background thread started: ensure_comfyui_running()")
+
+    # ---------- SHOW SPLASH ----------
     log_event("💫 Splash screen shown. Launching ComfyUI server...")
-    splash = AnimatedSplash(SPLASH_PATH, "Launching ComfyUI...")
+    splash = LauncherSplash(SPLASH_PATH, "Launching ComfyUI...")
     splash.show()
 
+    # ---------- OPEN BROWSER ----------
     def open_browser(error=False):
-        splash.finish(None)
+        splash.finish()
         win = ComfyBrowser(poll_callback=poll_ready)
         app.window = win
+
         if error:
             log_event("🟥 Timeout reached — showing ErrorPage in browser.")
             win.show_error_page()
@@ -72,21 +86,24 @@ def launch_app():
             log_event("🟢 Browser opened successfully.")
             win.show()
 
+    # ---------- POLLING ----------
     def poll_ready(start=time.time()):
         elapsed = int(time.time() - start)
-        splash.update_message(elapsed, MAX_WAIT_TIME)
+        splash.update_message(elapsed)
+
+        # готово
         if is_port_open(COMFYUI_PORT):
             log_event(f"✅ ComfyUI server responded on port {COMFYUI_PORT}.")
             return open_browser()
-        if elapsed > MAX_WAIT_TIME:
+
+        # таймаут — только если не первый запуск
+        if not first_launch and elapsed > MAX_WAIT_TIME:
             log_event("⏰ Timeout: ComfyUI server did not respond in time.")
             return open_browser(error=True)
+
+        # первый запуск: ждём сколько нужно
         QTimer.singleShot(500, lambda: poll_ready(start))
 
-    threading.Thread(
-        target=ensure_comfyui_running, args=(get_comfyui_path(),), daemon=True
-    ).start()
-    log_event("🧠 Background thread started: ensure_comfyui_running()")
     poll_ready()
 
     log_event("🪄 Qt event loop started.")

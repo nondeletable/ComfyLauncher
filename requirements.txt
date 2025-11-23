@@ -1,9 +1,8 @@
-PyQt6~=6.9.1
-PyQt6-WebEngine==6.7.0
-requests~=2.32.5
-psutil~=7.1.0
 PyQt6==6.6.1
 PyQt6-Qt6==6.6.1
 PyQt6-WebEngine==6.6.0
 PyQt6-WebEngine-Qt6==6.6.1
+
+psutil==7.1.0
+requests==2.32.4
 PyInstaller==6.10.0

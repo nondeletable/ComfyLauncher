@@ -4,7 +4,7 @@ from PyQt6.QtWidgets import (
     QLabel,
     QPushButton,
     QSizePolicy,
-    QSpacerItem
+    QSpacerItem,
 )
 from PyQt6.QtCore import Qt, QPoint, pyqtSignal, QSize
 from PyQt6.QtGui import QIcon, QPainter, QPixmap, QColor
@@ -88,8 +88,9 @@ class HeaderBar(QWidget):
         self.btn_settings = QPushButton(colorize_svg(ICON_PATHS["settings"]), "")
         self.btn_folder = QPushButton(colorize_svg(ICON_PATHS["open_folder"]), "")
         self.btn_output = QPushButton(colorize_svg(ICON_PATHS["open_output"]), "")
+        self.btn_reload = QPushButton(colorize_svg(ICON_PATHS["refresh"]), "")
 
-        for btn in [self.btn_settings, self.btn_folder, self.btn_output]:
+        for btn in [self.btn_settings, self.btn_folder, self.btn_output, self.btn_reload]:
             btn.setIconSize(QSize(20, 20))
             layout.addWidget(btn)
 
@@ -166,6 +167,7 @@ class HeaderBar(QWidget):
         self.btn_settings.setToolTip("Settings")
         self.btn_folder.setToolTip("Open folder")
         self.btn_output.setToolTip("Open output")
+        self.btn_reload.setToolTip("Refresh UI")
 
         # ── Signals ───────────────────────────────────
         self.btn_restart.clicked.connect(self.restart_clicked.emit)  # type: ignore
@@ -173,6 +175,7 @@ class HeaderBar(QWidget):
         self.btn_folder.clicked.connect(self.folder_clicked.emit)  # type: ignore
         self.btn_settings.clicked.connect(self.settings_clicked.emit)  # type: ignore
         self.btn_output.clicked.connect(self.output_clicked.emit)  # type: ignore
+        self.btn_reload.clicked.connect(self.parent.browser.reload)  # type: ignore
 
         self.btn_min.clicked.connect(self.parent.showMinimized)  # type: ignore
         self.btn_max.clicked.connect(lambda: self.parent.showNormal() if self.parent.isMaximized() else self.parent.showMaximized())  # type: ignore
@@ -244,15 +247,20 @@ class HeaderBar(QWidget):
                 HEAD_ICON_PATHS["close"], c["icon_color_window"], QSize(20, 20)
             )
         )
-
         self.btn_restart.setIcon(
-            colorize_svg(ICON_PATHS["restart"], c["icon_color_window"], QSize(20, 20))
+            colorize_svg(
+                ICON_PATHS["restart"], c["icon_color_window"], QSize(20, 20)
+            )
         )
         self.btn_stop.setIcon(
-            colorize_svg(ICON_PATHS["stop"], c["icon_color_window"], QSize(20, 20))
+            colorize_svg(
+                ICON_PATHS["stop"], c["icon_color_window"], QSize(20, 20)
+            )
         )
         self.btn_settings.setIcon(
-            colorize_svg(ICON_PATHS["settings"], c["icon_color_window"], QSize(20, 20))
+            colorize_svg(
+                ICON_PATHS["settings"], c["icon_color_window"], QSize(20, 20)
+            )
         )
         self.btn_folder.setIcon(
             colorize_svg(
@@ -262,5 +270,10 @@ class HeaderBar(QWidget):
         self.btn_output.setIcon(
             colorize_svg(
                 ICON_PATHS["open_output"], c["icon_color_window"], QSize(20, 20)
+            )
+        )
+        self.btn_reload.setIcon(
+            colorize_svg(
+                ICON_PATHS["refresh"], c["icon_color_window"], QSize(20, 20)
             )
         )

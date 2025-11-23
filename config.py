@@ -6,10 +6,6 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ASSETS_DIR = os.path.join(BASE_DIR, "assets")
 ICONS_DIR = os.path.join(ASSETS_DIR, "icons")
 
-# ── Paths to ComfyUI ────────────────────────────
-COMFYUI_PATH = (
-    r"C:\Users\Administrator\ComfyUI_portable\ComfyUI_windows_portable\ComfyUI"
-)
 COMFYUI_PORT = 8188
 
 # ── Waiting parameters ────────────────────────
@@ -28,11 +24,12 @@ ICON_PATHS = {
     "open_browser": os.path.join(ICONS_DIR, "open_in_browser.svg"),
     "settings": os.path.join(ICONS_DIR, "settings.svg"),
     "open_output": os.path.join(ICONS_DIR, "output.svg"),
+    "refresh": os.path.join(ICONS_DIR, "reload.svg"),
 }
 
 # ── Saved builds ─────────────────────────────
 SAVED_BUILDS = {
-    "active": COMFYUI_PATH,
+    "active": "",
     "history": [],
 }
 
@@ -55,6 +52,18 @@ DONATION_ICONS = {
     "patreon": os.path.join(ICONS_DIR, "donations", "patreon.svg"),
     "kofi": os.path.join(ICONS_DIR, "donations", "ko-fi.svg"),
     "buymeacoffee": os.path.join(ICONS_DIR, "donations", "buy_me_a_coffee.svg"),
+}
+
+CONTACT_ICONS = {
+    "github": os.path.join(ICONS_DIR, "contacts", "github.png"),
+    "email": os.path.join(ICONS_DIR, "contacts", "email.png"),
+    "telegram": os.path.join(ICONS_DIR, "contacts", "telegram.png"),
+    "discord": os.path.join(ICONS_DIR, "contacts", "discord.png"),
+}
+
+OTHER_ICONS = {
+    "refresh": os.path.join(ICONS_DIR, "refresh.svg"),
+    "clear-log": os.path.join(ICONS_DIR, "clear-log.svg"),
 }
 
 USER_CONFIG_PATH = os.path.join(BASE_DIR, "user_config.json")
@@ -92,4 +101,4 @@ def save_user_config(data: dict):
 def get_comfyui_path() -> str:
     """Returns the current path to ComfyUI (from user_config.json or default)."""
     data = load_user_config()
-    return data.get("comfyui_path", COMFYUI_PATH)
+    return data.get("comfyui_path", "")

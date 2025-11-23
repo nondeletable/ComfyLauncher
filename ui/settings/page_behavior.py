@@ -7,6 +7,7 @@ from PyQt6.QtWidgets import (
     QRadioButton,
     QButtonGroup,
     QFrame,
+    QHBoxLayout,
 )
 from config import load_user_config, save_user_config
 from ui.theme.manager import THEME
@@ -33,8 +34,8 @@ class BehaviorSettingsPage(QWidget):
         layout.addWidget(title)
 
         desc = QLabel(
-            "Choose what happens when you close the launcher.\n"
-            "You can let it ask every time or define automatic behavior."
+            "Do you want to always confirm when exiting ComfyLauncher?\n"
+            "You can choose a default action."
         )
         desc.setWordWrap(True)
         desc.setStyleSheet(
@@ -69,7 +70,11 @@ class BehaviorSettingsPage(QWidget):
             }}
         """
         )
-        layout.addWidget(self.ask_checkbox)
+        cb_row = QHBoxLayout()
+        cb_row.setContentsMargins(14, 0, 0, 0)  # ← ваш идеальный отступ
+        cb_row.addWidget(self.ask_checkbox)
+
+        layout.addLayout(cb_row)
 
         self.radio_always = QRadioButton("Always stop server on exit")
         self.radio_never = QRadioButton("Never stop server on exit")
@@ -105,16 +110,18 @@ class BehaviorSettingsPage(QWidget):
                 }}
             """
             )
-            layout.addWidget(rb)
+            rb_row = QVBoxLayout()
+            rb_row.setContentsMargins(14, 0, 0, 0)
+            rb_row.addWidget(self.radio_always)
+            rb_row.addWidget(self.radio_never)
+
+            layout.addLayout(rb_row)
 
         div = QFrame()
         div.setFrameShape(QFrame.Shape.HLine)
         div.setStyleSheet("color:{THEME.colors['border_color']};")
         layout.addWidget(div)
 
-        hint = QLabel("You can always change this behavior here.")
-        hint.setStyleSheet("color:{THEME.colors['text_secondary']}; font-size:13px;")
-        layout.addWidget(hint)
         layout.addStretch()
 
         # ---- Loading saved values into the UI ----

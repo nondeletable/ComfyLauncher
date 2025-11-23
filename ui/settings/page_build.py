@@ -29,22 +29,30 @@ class BuildSettingsPage(QWidget):
         layout.setSpacing(16)
 
         # ─── Headline ───────────────────────────────
-        title = QLabel("Build configuration")
+        title = QLabel("Folder settings")
         title.setStyleSheet("font-size: 20px; font-weight: 500;")
         layout.addWidget(title)
 
+        desc = QLabel(
+            "Here you can specify which ComfyUI installation the launcher should use.\n"
+            "Select the folder that contains main.py (usually the ComfyUI folder)."
+        )
+        desc.setStyleSheet(f"color: {THEME.colors['text_secondary']}; font-size: 13px;")
+        desc.setWordWrap(True)
+        layout.addWidget(desc)
+
         # ─── Current path ────────────────────────────
         current_path = get_comfyui_path()
-        self.lbl_path = QLabel(f"Current build path:\n{current_path}")
+        self.lbl_path = QLabel(f"Current folder:\n{current_path}")
         self.lbl_path.setStyleSheet(
-            "color: {THEME.colors['text_secondary']}; font-size: 13px;"
+            f"color: {THEME.colors['text_secondary']}; font-size: 13px;"
         )
         layout.addWidget(self.lbl_path)
 
         # ─── Path selection field ─────────────────────────
         self.path_edit = QLineEdit()
         self.path_edit.textChanged.connect(self.on_path_changed)  # type: ignore
-        self.path_edit.setPlaceholderText("Select new ComfyUI build folder...")
+        self.path_edit.setPlaceholderText("Select new ComfyUI folder...")
         self.path_edit.setFixedHeight(38)
         self.path_edit.setStyleSheet(
             f"""
@@ -91,18 +99,17 @@ class BuildSettingsPage(QWidget):
 
         # ─── Horizontal container ─────────────────
         path_row = QHBoxLayout()
+        path_row.setSpacing(8)
         path_row.addWidget(self.path_edit)
         path_row.addWidget(btn_browse)
-        layout.addLayout(path_row)
+
+        path_container = QHBoxLayout()
+        path_container.setContentsMargins(14, 0, 0, 0)  # ← ровняем под QLabel
+        path_container.addLayout(path_row)
+
+        layout.addLayout(path_container)
 
         # ─── Apply button ─────────────────────────────
-        # ─── Text hint (environment type) ─────────
-        self.lbl_env = QLabel("Environment type: —")
-        self.lbl_env.setStyleSheet(
-            "color: {THEME.colors['text_secondary']}; font-size: 13px;"
-        )
-        layout.addWidget(self.lbl_env)
-
         # ─── Divider ─────────────────────────────────
         divider = QFrame()
         divider.setFrameShape(QFrame.Shape.HLine)
@@ -150,16 +157,13 @@ class BuildSettingsPage(QWidget):
 
     # ─── Processors ────────────────────────────────
     def select_build_directory(self):
-        directory = QFileDialog.getExistingDirectory(
-            self, "Select ComfyUI Build Folder"
-        )
+        directory = QFileDialog.getExistingDirectory(self, "Select ComfyUI Folder")
         if directory:
             self.path_edit.setText(directory)
 
     def on_path_changed(self, text: str):
         # check the path and update the UI
         if not text.strip():
-            self.lbl_env.setText("Environment type: —")
             self.btn_apply.setEnabled(False)
             self._sync_footer_buttons()
             return
@@ -178,23 +182,18 @@ class BuildSettingsPage(QWidget):
         # Apply at the bottom duplicates the Apply at the top.
         if hasattr(p, "btn_apply"):
             p.btn_apply.setEnabled(self.btn_apply.isEnabled())
-        # Reset at the bottom is active when there is something to reset (the field is not empty)
-        if hasattr(p, "btn_reset"):
-            p.btn_reset.setEnabled(bool(self.path_edit.text().strip()))
 
     # ──────────────────────────────────────────────────────
     # Checking the build structure
     def validate_build_path(self, path: str) -> bool:
         """Checks the structure of the ComfyUI build and updates the signature."""
         if not path or not os.path.isdir(path):
-            self.lbl_env.setText("Environment type: —")
             self.btn_apply.setEnabled(False)
             self._sync_footer_buttons()
             return False
 
         main_py = os.path.join(path, "main.py")
         if not os.path.exists(main_py):
-            self.lbl_env.setText("Environment type: —")
             self.btn_apply.setEnabled(False)
             self._sync_footer_buttons()
             return False
@@ -210,7 +209,6 @@ class BuildSettingsPage(QWidget):
                 else "Unknown (no Python found)"
             )
 
-        self.lbl_env.setText(f"Environment type: {env_type}")
         self.btn_apply.setEnabled(True)
         self._sync_footer_buttons()
         return True
@@ -219,7 +217,7 @@ class BuildSettingsPage(QWidget):
         new_path = self.path_edit.text().strip()
         if not self.validate_build_path(new_path):
             MB.warning(
-                self.window(), "Invalid build", "This folder doesn't contain main.py."
+                self.window(), "Invalid folder", "This folder doesn't contain main.py."
             )
             return False
 

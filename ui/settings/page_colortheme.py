@@ -2,13 +2,21 @@ from PyQt6.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QLabel,
+    QScrollArea,
     QGridLayout,
     QFrame,
     QSizePolicy,
     QHBoxLayout,
+    QFileDialog,
+    QPushButton,
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QTimer
 from ui.theme.manager import THEME, THEMES
+from ui.theme.theme_importer import ThemeImporter
+from ui.theme.theme_registry import REGISTRY
+import os
+import webbrowser
+import json
 
 
 class ColorThemesPage(QWidget):
@@ -27,27 +35,92 @@ class ColorThemesPage(QWidget):
 
         title = QLabel("Select color theme")
         title.setStyleSheet(
-            f""
             f"color: {THEME.colors['text_primary']}; "
             f"font-size: 20px; font-weight: 500;"
         )
         layout.addWidget(title)
 
-        grid = QGridLayout()
-        grid.setSpacing(20)
+        self.grid = QGridLayout()
+        self.grid.setSpacing(15)
+        self.grid.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        self.grid.setContentsMargins(14, 0, 0, 0)
 
         # create cards
         for i, name in enumerate(THEMES.keys()):
             card = self._create_theme_card(name)
-            row, col = divmod(i, 2)
-            grid.addWidget(card, row, col)
+            row, col = divmod(i, 4)
+            self.grid.addWidget(card, row, col)
             self.cards[name] = card
 
-        layout.addLayout(grid)
-        layout.addStretch(1)
         self._update_selection()
         self.selected_theme = THEME.name
         self._original_theme = THEME.name
+
+        grid_container = QWidget()
+        grid_container.setLayout(self.grid)
+
+        wrapper = QWidget()
+        wrapper_layout = QVBoxLayout(wrapper)
+        wrapper_layout.setContentsMargins(0, 0, 0, 0)
+        wrapper_layout.setSpacing(0)
+        wrapper_layout.addWidget(grid_container)
+        wrapper_layout.addStretch(1)
+
+        # scroll area
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        scroll.setFixedHeight(370)
+        scroll.setWidget(wrapper)
+
+        layout.addWidget(scroll)
+
+        desc = QLabel(
+            "Here you can select a launcher theme from a .json file.\n"
+            "Or download a theme from https://www.comfyui-themes.com."
+        )
+        desc.setStyleSheet(f"color: {THEME.colors['text_secondary']}; font-size: 13px;")
+        desc.setWordWrap(True)
+        layout.addWidget(desc)
+
+        btn_layout = QHBoxLayout()
+        btn_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        btn_layout.setContentsMargins(14, 0, 0, 0)
+        btn_layout.setSpacing(10)
+
+        self.btn_select = QPushButton("Select")
+        self.btn_select.setFixedSize(80, 35)
+        self.btn_select.clicked.connect(self._load_custom_theme)
+
+        self.btn_download = QPushButton("Download")
+        self.btn_download.setFixedSize(80, 35)
+        self.btn_download.clicked.connect(self._open_comfyui_themes)
+
+        for btn in (self.btn_select, self.btn_download):
+            btn.setStyleSheet(
+                f"""
+                       QPushButton {{
+                           background-color: transparent;
+                           border: 1px solid {THEME.colors['border_color']};
+                           border-radius: 6px;
+                       }}
+                       QPushButton:hover {{
+                           background-color: {THEME.colors['accent']};
+                           border-color: {THEME.colors['accent']};
+                       }}
+                       QPushButton:pressed {{
+                           background-color: {THEME.colors['accent_hover']};
+                       }}
+                       """
+            )
+            btn_layout.addWidget(btn)
+
+        self.btn_select.setToolTip("Select file")
+        self.btn_download.setToolTip("Download from the website")
+
+        layout.addLayout(btn_layout)
+        layout.addStretch(1)
 
     # ────────────────────────────────
     def _create_theme_card(self, name: str) -> QFrame:
@@ -148,6 +221,35 @@ class ColorThemesPage(QWidget):
         """Are there any unsaved changes"""
         return self.selected_theme != self._original_theme
 
+    def _load_custom_theme(self):
+        path, _ = QFileDialog.getOpenFileName(
+            self, "Select ComfyUI theme JSON", "", "JSON Files (*.json)"
+        )
+        if not path:
+            return
+
+        importer = ThemeImporter()
+        theme_dict = importer.load(path)
+
+        # avoid duplicates
+        existing = REGISTRY.theme_exists(theme_dict)
+        if existing:
+            name = existing
+        else:
+            base = os.path.splitext(os.path.basename(path))[0]
+            name = REGISTRY.add_custom(base.lower(), theme_dict)
+
+        # create card
+        card = self._create_theme_card(name)
+        row = (len(self.cards)) // 4
+        col = (len(self.cards)) % 4
+
+        self.grid.addWidget(card, row, col)
+        self.cards[name] = card
+
+        # select new theme
+        self._on_theme_selected(name)
+
     def apply(self):
         """Apply the selected theme"""
         try:
@@ -170,3 +272,6 @@ class ColorThemesPage(QWidget):
         self.selected_theme = self._original_theme
         self._update_selection()
         self.dirtyChanged.emit(False)  # type: ignore[attr-defined]
+
+    def _open_comfyui_themes(self):
+        webbrowser.open("https://www.comfyui-themes.com/")

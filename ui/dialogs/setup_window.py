@@ -33,16 +33,20 @@ class SetupWindow(QDialog):
         layout.setContentsMargins(30, 30, 30, 30)
         layout.setSpacing(16)
 
-        label = QLabel("Select your ComfyUI build folder:")
-        label.setStyleSheet("font-size: 14px; font-weight: 500;")
-        layout.addWidget(label)
-
-        # path field
-        self.path_edit = QLineEdit()
-        self.path_edit.setPlaceholderText("Choose ComfyUI folder...")
-        self.path_edit.setFixedHeight(36)
-        self.path_edit.textChanged.connect(self._on_path_changed)  # type: ignore
-        layout.addWidget(self.path_edit)
+        info = QLabel(
+            "Specify the folder where ComfyUI is located (folder with main.py).<br>"
+            "For example: <code>D:/Portable/ComfyUI</code>"
+        )
+        info.setStyleSheet(
+            f"""
+            QLabel {{
+                font-size: 14px;
+                color: {THEME.colors['text_secondary']};
+            }}
+        """
+        )
+        info.setWordWrap(True)
+        layout.addWidget(info)
 
         # browse button
         browse_btn = QPushButton()
@@ -55,9 +59,39 @@ class SetupWindow(QDialog):
                 )
             )
         )
-        browse_btn.setFixedSize(40, 36)
+        browse_btn.setFixedSize(38, 36)
+        browse_btn.setStyleSheet(
+            f"""
+            QPushButton {{
+                background-color: {THEME.colors['bg_input']};
+                border: 1px solid {THEME.colors['border_color']};
+                border-radius: 6px;
+            }}
+            QPushButton:hover {{
+                background-color: {THEME.colors['bg_hover']};
+            }}
+        """
+        )
         browse_btn.clicked.connect(self._browse)  # type: ignore
         row = QHBoxLayout()
+        row.setSpacing(8)
+
+        self.path_edit = QLineEdit()
+        self.path_edit.setPlaceholderText("Path to ComfyUI… (Folder with main.py)")
+        self.path_edit.setFixedHeight(36)
+        self.path_edit.setStyleSheet(
+            f"""
+            QLineEdit {{
+                background-color: {THEME.colors['bg_input']};
+                color: {THEME.colors['text_primary']};
+                border: 1px solid {THEME.colors['border_color']};
+                border-radius: 6px;
+                padding-left: 10px;
+            }}
+        """
+        )
+        self.path_edit.textChanged.connect(self._on_path_changed)
+
         row.addWidget(self.path_edit)
         row.addWidget(browse_btn)
         layout.addLayout(row)
@@ -69,14 +103,30 @@ class SetupWindow(QDialog):
         self.cancel_btn = QPushButton("Cancel")
         for btn in (self.ok_btn, self.cancel_btn):
             btn.setFixedSize(100, 34)
+            btn.setStyleSheet(
+                f"""
+                QPushButton {{
+                    background-color: transparent;
+                    color: {THEME.colors['text_secondary']};
+                    border: 1px solid {THEME.colors['border_color']};
+                    border-radius: 6px;
+                }}
+                QPushButton:hover {{
+                    background-color: {THEME.colors['accent']};
+                    color: {THEME.colors['text_inverse']};
+                    border-color: {THEME.colors['accent']};
+                }}
+            """
+            )
         self.ok_btn.setEnabled(False)
+        btn_row.setSpacing(8)
 
         self.ok_btn.clicked.connect(self._accept)  # type: ignore
         self.cancel_btn.clicked.connect(self.reject)  # type: ignore
         btn_row.addWidget(self.ok_btn)
         btn_row.addWidget(self.cancel_btn)
         layout.addLayout(btn_row)
-
+        self._round_corners(10)
         self.build_checker = BuildSettingsPage()  # for reuse validate_build_path()
 
     def _browse(self):
@@ -100,3 +150,13 @@ class SetupWindow(QDialog):
         data["comfyui_path"] = path
         save_user_config(data)
         self.accept()
+
+    def _round_corners(self, radius: int):
+        from PyQt6.QtGui import QPainterPath, QRegion
+        from PyQt6.QtCore import QRectF
+
+        path = QPainterPath()
+        rect = QRectF(self.rect())
+        path.addRoundedRect(rect, radius, radius)
+        region = QRegion(path.toFillPolygon().toPolygon())
+        self.setMask(region)
