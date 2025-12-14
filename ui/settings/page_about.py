@@ -5,12 +5,66 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
     QPushButton,
     QFrame,
+    QStackedLayout
 )
 from PyQt6.QtGui import QPixmap, QIcon
-from PyQt6.QtCore import Qt, QSize
+from PyQt6.QtCore import Qt, QSize, QUrl
+from PyQt6.QtMultimedia import QMediaPlayer
+from PyQt6.QtMultimediaWidgets import QVideoWidget
 from ui.theme.manager import THEME
-from config import ICON_PATH, DONATION_ICONS, CONTACT_ICONS
+from config import (
+    DONATION_ICONS,
+    CONTACT_ICONS,
+    ABOUT_LOGO_BG,
+    ABOUT_LOGO_ANIM,
+)
 import webbrowser
+
+
+class AnimatedLogo(QWidget):
+    SIZE = 100
+    VIDEO_SIZE = 60
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+        self.setFixedSize(self.SIZE, self.SIZE)
+
+        root = QStackedLayout(self)
+        root.setContentsMargins(0, 0, 0, 0)
+        root.setStackingMode(QStackedLayout.StackingMode.StackAll)
+
+        # ─── Background PNG ─────────────────────
+        bg = QLabel()
+        bg.setFixedSize(self.SIZE, self.SIZE)
+
+        bg.setPixmap(QPixmap(ABOUT_LOGO_BG))
+        bg.setScaledContents(True)
+
+        # ─── Centered video container ───────────
+        video_container = QWidget()
+        video_container.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+
+        video_layout = QVBoxLayout(video_container)
+        video_layout.setContentsMargins(0, 0, 0, 0)
+        video_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        self.video = QVideoWidget()
+        self.video.setFixedSize(self.VIDEO_SIZE, self.VIDEO_SIZE)
+
+        self.player = QMediaPlayer(self)
+        self.player.setVideoOutput(self.video)
+        self.player.setSource(
+            QUrl.fromLocalFile(ABOUT_LOGO_ANIM)
+        )
+        self.player.setLoops(QMediaPlayer.Loops.Infinite)
+        self.player.play()
+
+        video_layout.addWidget(self.video)
+
+        root.addWidget(bg)
+        root.addWidget(video_container)
 
 
 class AboutSettingsPage(QWidget):
@@ -24,17 +78,12 @@ class AboutSettingsPage(QWidget):
 
         # ─── LOGO + TITLE ────────────────────────────────
         header_layout = QHBoxLayout()
-        header_layout.setAlignment(Qt.AlignmentFlag.AlignHCenter)
+        header_layout.setAlignment(
+            Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignVCenter
+        )
         header_layout.setSpacing(8)
 
-        logo = QLabel()
-        pix = QPixmap(ICON_PATH).scaled(
-            40, 40,
-            Qt.AspectRatioMode.KeepAspectRatio,
-            Qt.TransformationMode.SmoothTransformation,
-        )
-        logo.setPixmap(pix)
-        logo.setAlignment(Qt.AlignmentFlag.AlignVCenter)
+        logo = AnimatedLogo()
 
         title = QLabel("ComfyLauncher")
         title.setAlignment(Qt.AlignmentFlag.AlignVCenter)
@@ -46,8 +95,10 @@ class AboutSettingsPage(QWidget):
         """
         )
 
+        header_layout.addStretch()
         header_layout.addWidget(logo)
         header_layout.addWidget(title)
+        header_layout.addStretch()
 
         layout.addLayout(header_layout)
 
@@ -70,13 +121,6 @@ class AboutSettingsPage(QWidget):
             f"color: {self.colors['text_primary']}; font-size: 14px;"
         )
         layout.addWidget(about_project)
-
-        div2 = QFrame()
-        div2.setFrameShape(QFrame.Shape.HLine)
-        div2.setStyleSheet(
-            f"color: {self.colors['border_color']}; margin-top: 10px; margin-bottom: 10px;"
-        )
-        layout.addWidget(div2)
 
         # ─── ABOUT THE DEVELOPER ─────────────────────────
         about_dev = QLabel(

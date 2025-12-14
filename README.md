@@ -1,3 +1,5 @@
+![CI](https://github.com/nondeletable/ComfyLauncher/actions/workflows/ci.yml/badge.svg)
+
 # 🚀 ComfyLauncher
 
 A desktop launcher for managing and running **ComfyUI** builds with ease.  
@@ -13,7 +15,7 @@ Built with **Python** and **PyQt6**, featuring a clean UI, system checks, and fl
 - 🪟 Modern interface — clean, minimal, and responsive PyQt6 UI with custom window frame and theme support.
 - 🎨 Themes system — light and dark modes with future support for user-created themes.
 - 🔧 Settings panel — manage paths, active theme, and interface preferences.
-- 💬 Integrated console output (planned) — view ComfyUI logs directly in the launcher without opening a terminal.
+- 💬 Integrated console output — view ComfyUI logs directly in the launcher without opening a terminal.
 - 🧠 Persistent configuration — saves user preferences and paths in user_config.json.
 - 🪄 User-friendly flow — the launcher starts ComfyUI seamlessly without exposing background console windows.
 ---
@@ -32,7 +34,7 @@ Built with **Python** and **PyQt6**, featuring a clean UI, system checks, and fl
 
 ### 1. Clone the repository
 ```bash
-git clone https://github.com/SkriptSparrow/ComfyUI-Launcher.git
+git clone https://github.com/nondeletable/ComfyLauncher.git
 cd ComfyLauncher
 ```
 
@@ -80,9 +82,9 @@ The output will appear in the dist/ folder.
 You can download the latest build from the Releases page.
 
 ## 📬 Contacts
-- Telegram: @codebird_dev
+- Telegram: @nondeletable
 
-- Email: codebirdstudio@gmail.com
+- Email: nondeletable@gmail.com
 
 Thanks for using ComfyLauncher!
 We hope it makes your ComfyUI experience smoother and more organized 🪄

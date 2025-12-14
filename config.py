@@ -6,6 +6,8 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ASSETS_DIR = os.path.join(BASE_DIR, "assets")
 ICONS_DIR = os.path.join(ASSETS_DIR, "icons")
 SPLASH_DIR = os.path.join(ASSETS_DIR, "splash")
+INTERFACE_DIR = os.path.join(ASSETS_DIR, "interface")
+
 
 COMFYUI_PORT = 8188
 
@@ -16,6 +18,8 @@ MAX_WAIT_TIME = 90
 # ── Shared resources ─────────────────────────────
 ICON_PATH = os.path.join(ICONS_DIR, "icon.png")
 SPLASH_PATH = os.path.join(SPLASH_DIR, "1618x616_qt.mp4")
+ABOUT_LOGO_BG = os.path.join(INTERFACE_DIR, "back.png")
+ABOUT_LOGO_ANIM = os.path.join(INTERFACE_DIR, "menu_anim.mp4")
 
 # ── Set of icons for toolbar ──────────────────
 ICON_PATHS = {
