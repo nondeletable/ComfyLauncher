@@ -11,13 +11,14 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt, QSize
 from PyQt6.QtGui import QIcon
-from config import load_user_config, save_user_config, get_comfyui_path, ICON_PATHS
+from config import load_user_config, save_user_config, get_comfyui_path, ICON_PATHS, OTHER_ICONS
 from ui.header import colorize_svg
 from ui.theme.manager import THEME
 from ui.dialogs.messagebox import MessageBox as MB
 
 import os
 import shutil
+import webbrowser
 
 
 class BuildSettingsPage(QWidget):
@@ -109,7 +110,6 @@ class BuildSettingsPage(QWidget):
 
         layout.addLayout(path_container)
 
-        # ─── Apply button ─────────────────────────────
         # ─── Divider ─────────────────────────────────
         divider = QFrame()
         divider.setFrameShape(QFrame.Shape.HLine)
@@ -149,6 +149,53 @@ class BuildSettingsPage(QWidget):
 
         layout.addLayout(btns_layout)
         layout.addStretch()
+
+        info_label = QLabel(
+            "Check for ComfyUI updates and download the new version:"
+        )
+        info_label.setStyleSheet(
+            f"color: {THEME.colors['text_secondary']}; font-size: 13px; margin-top: 14px;"
+        )
+        info_label.setWordWrap(True)
+        layout.addWidget(info_label)
+
+        btn_row = QHBoxLayout()
+        btn_row.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        btn_row.setContentsMargins(14, 0, 0, 0)
+        btn_row.setSpacing(0)
+
+        btn_download = QPushButton()
+        btn_download.setIconSize(QSize(60, 28))
+        btn_download.setFixedSize(100, 36)
+        btn_download.setIcon(
+            QIcon(
+                colorize_svg(
+                    OTHER_ICONS.get("comfyui"),
+                    THEME.colors["icon_color_window"],
+                    QSize(60, 28)
+                )
+            )
+        )
+        btn_download.setStyleSheet(
+            f"""
+            QPushButton {{
+                background-color: {THEME.colors['bg_input']};
+                border: 1px solid {THEME.colors['border_color']};
+                border-radius: 6px;
+            }}
+            QPushButton:hover {{
+                background-color: {THEME.colors['accent']};
+                border-color: {THEME.colors['accent']};
+            }}
+        """
+        )
+
+        btn_download.clicked.connect(
+            lambda: webbrowser.open("https://www.comfy.org/download")
+        )
+
+        btn_row.addWidget(btn_download)
+        layout.addLayout(btn_row)
 
         # ─── Button logic ───────────────────────────────
         self.btn_apply.clicked.connect(self.apply_changes)  # type: ignore
@@ -221,9 +268,9 @@ class BuildSettingsPage(QWidget):
             )
             return False
 
-        data = load_user_config()
-        data["comfyui_path"] = new_path
-        save_user_config(data)
+        cfg = load_user_config()
+        cfg["comfyui_path"] = new_path
+        save_user_config(cfg)
 
         MB.info(
             self.window(),

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none" stroke="currentColor" stroke-width="72" stroke-linecap="round" stroke-linejoin="round">
+
+  <!-- Arrow ">" -->
+  <polyline points="96,128 224,256 96,384"></polyline>
+
+  <!-- Underscore "_" -->
+  <line x1="288" y1="384" x2="448" y2="384"></line>
+
+</svg>

@@ -184,8 +184,8 @@ class MessageBox(QDialog):
     @staticmethod
     def ask_exit(parent, title: str, text: str) -> str:
         """
-        Специальный диалог выхода:
-        возвращает 'yes', 'no' или 'cancel'.
+        Special exit dialog:
+        returns 'yes', 'no', or 'cancel'.
         """
         dlg = MessageBox(title, text, "ask_yes_no", parent)
         dlg.body.setContentsMargins(14, 0, 0, 0)

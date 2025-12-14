@@ -1,6 +1,6 @@
 import json
 import re
-import os
+from typing import Optional
 
 from ui.theme.tokens import DARK_THEME
 
@@ -22,9 +22,10 @@ def _rgba_to_hex(rgba: str) -> str:
     return "#{:02X}{:02X}{:02X}".format(int(r), int(g), int(b))
 
 
-def _normalize_color(value: str) -> str:
+def _normalize_color(value: str) -> Optional[str]:
     """
-    Accepts "#hex" or "rgba(...)" and returns #hex
+    Accepts "#hex" or "rgba(...)".
+    Returns normalized "#hex" or None if value is invalid.
     """
     if not value:
         return None

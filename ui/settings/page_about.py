@@ -80,7 +80,7 @@ class AboutSettingsPage(QWidget):
 
         # ─── ABOUT THE DEVELOPER ─────────────────────────
         about_dev = QLabel(
-            "ComfyLauncher was developed by Alexandra 'CodeBird'. I am a programmer who creates complete, ready-to-use applications.\n"
+            "ComfyLauncher was developed by Alexandra 'nondeletable'. I am a programmer who creates complete, ready-to-use applications.\n"
             "In my projects, I focus not only on functionality but also on visual harmony, high usability, and a cohesive interface.\n"
             "I want every tool to work out of the box and bring a sense of ease and enjoyment to its users.\n\n"
             "I am a beginner developer, and if you have any ideas or need a Python developer to bring them to life, you can contact me.\n"
@@ -107,10 +107,10 @@ class AboutSettingsPage(QWidget):
             # ("Buy Me a Coffee", DONATION_ICONS["buymeacoffee"], "#"),
         ]
         contacts = [
-            ("GitHub", CONTACT_ICONS["github"], "https://github.com/SkriptSparrow"),
-            ("Email", CONTACT_ICONS["email"], "mailto:codebird.dev@gmail.com"),
-            ("Telegram", CONTACT_ICONS["telegram"], "https://t.me/Alex_Gicheva"),
-            ("Discord", CONTACT_ICONS["discord"], "https://discordapp.com/users/CodeBird#7231"),
+            ("GitHub", CONTACT_ICONS["github"], "https://github.com/nondeletable"),
+            ("Email", CONTACT_ICONS["email"], "mailto:nondeletable@gmail.com"),
+            ("Telegram", CONTACT_ICONS["telegram"], "https://t.me/nondeletable"),
+            ("Discord", CONTACT_ICONS["discord"], "https://discord.gg/nWXSXzYs"),
         ]
 
         for name, icon_path, url in donations:
@@ -164,7 +164,9 @@ class AboutSettingsPage(QWidget):
         layout.addSpacing(15)
 
         # ─── SIGNATURE BELOW ──────────────────────────
-        footer = QLabel("Developed by CodeBird · Version 1.0.0 · PyQt6 · 2025")
+        footer = QLabel(
+            "Developed by nondeletable · Version 1.2.1 · PyQt6 · 2025"
+        )
         footer.setAlignment(Qt.AlignmentFlag.AlignHCenter)
         footer.setStyleSheet(
             f"color: {self.colors['text_secondary']}; font-size: 12px; margin-top: 20px;"

@@ -3,7 +3,7 @@ from datetime import datetime
 
 
 def _get_log_dir():
-    """Возвращает путь к директории логов в профиле пользователя."""
+    """Returns the path to the log directory in the user profile."""
     base = os.getenv("APPDATA") or os.getenv("LOCALAPPDATA") or os.path.expanduser("~")
     log_dir = os.path.join(base, "ComfyLauncher", "logs")
     os.makedirs(log_dir, exist_ok=True)
@@ -15,7 +15,7 @@ LOG_FILE = os.path.join(LOG_DIR, "launcher.log")
 
 
 def log_event(message: str):
-    """Записывает событие в консоль и файл логов."""
+    """Writes an event to the console and log file."""
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     formatted = f"[{timestamp}] {message}"
     print(formatted)

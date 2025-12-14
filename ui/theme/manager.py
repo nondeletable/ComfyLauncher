@@ -4,9 +4,7 @@ from PyQt6.QtCore import QObject, pyqtSignal
 from PyQt6.QtWidgets import QApplication
 
 from ui.theme.tokens import THEMES
-
-
-CONFIG_PATH = os.path.join("data", "user_config.json")
+from config import USER_CONFIG_PATH as CONFIG_PATH
 
 
 class ThemeManager(QObject):
@@ -20,7 +18,7 @@ class ThemeManager(QObject):
         self._active_name = self._load_last_theme()
         self._colors = self._themes.get(self._active_name, self._themes["dark"])
 
-    # ─── Свойства ──────────────────────────────────────
+    # ─── Properties ──────────────────────────────────────
     @property
     def name(self) -> str:
         """Name of the active theme."""
@@ -31,7 +29,7 @@ class ThemeManager(QObject):
         """Active theme colors."""
         return self._colors
 
-    # ─── Основное применение темы ──────────────────────
+    # ─── The main application of the theme ────────────────
     def apply(self):
         """Applies a theme to QApplication via QSS."""
         app = QApplication.instance()

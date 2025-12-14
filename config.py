@@ -5,6 +5,7 @@ import os
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ASSETS_DIR = os.path.join(BASE_DIR, "assets")
 ICONS_DIR = os.path.join(ASSETS_DIR, "icons")
+SPLASH_DIR = os.path.join(ASSETS_DIR, "splash")
 
 COMFYUI_PORT = 8188
 
@@ -14,7 +15,7 @@ MAX_WAIT_TIME = 90
 
 # ── Shared resources ─────────────────────────────
 ICON_PATH = os.path.join(ICONS_DIR, "icon.png")
-SPLASH_PATH = os.path.join(ASSETS_DIR, "splash.gif")
+SPLASH_PATH = os.path.join(SPLASH_DIR, "1618x616_qt.mp4")
 
 # ── Set of icons for toolbar ──────────────────
 ICON_PATHS = {
@@ -25,6 +26,7 @@ ICON_PATHS = {
     "settings": os.path.join(ICONS_DIR, "settings.svg"),
     "open_output": os.path.join(ICONS_DIR, "output.svg"),
     "refresh": os.path.join(ICONS_DIR, "reload.svg"),
+    "terminal": os.path.join(ICONS_DIR, "terminal.svg")
 }
 
 # ── Saved builds ─────────────────────────────
@@ -64,6 +66,7 @@ CONTACT_ICONS = {
 OTHER_ICONS = {
     "refresh": os.path.join(ICONS_DIR, "refresh.svg"),
     "clear-log": os.path.join(ICONS_DIR, "clear-log.svg"),
+    "comfyui": os.path.join(ICONS_DIR, "comfyui-text.svg")
 }
 
 USER_CONFIG_PATH = os.path.join(BASE_DIR, "user_config.json")
@@ -72,7 +75,7 @@ USER_CONFIG_PATH = os.path.join(BASE_DIR, "user_config.json")
 DEFAULT_USER_CONFIG = {
     "ask_on_exit": True,
     "exit_mode": "always_stop",
-    "browser_patch_registry": {},  # добавлено
+    "browser_patch_registry": {},
 }
 
 

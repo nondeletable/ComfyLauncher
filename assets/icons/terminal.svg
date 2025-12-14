@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none" stroke="currentColor" stroke-width="60" stroke-linecap="round" stroke-linejoin="round">
+
+  <!-- Frame -->
+  <rect x="40" y="40" width="432" height="432" rx="40" ry="40"></rect>
+
+  <!-- Arrow ">" -->
+  <polyline points="120,160 240,256 120,352"></polyline>
+
+  <!-- Underscore -->
+  <line x1="280" y1="352" x2="392" y2="352"></line>
+</svg>

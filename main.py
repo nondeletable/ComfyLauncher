@@ -1,19 +1,21 @@
 import sys
-import threading
-import time
+import os
+
+os.environ["QSG_RHI_BACKEND"] = "software"
 
 from PyQt6.QtWidgets import QApplication, QToolTip, QDialog
-from PyQt6.QtCore import QTimer
+from PyQt6.QtCore import QThread
 from PyQt6.QtGui import QFont
 
-from ui.splash import LauncherSplash
+from workers.comfy_loader import ComfyLoaderWorker
+from ui.splash_video import LauncherSplashVideo
 from ui.browser import ComfyBrowser
 from ui.dialogs.setup_window import SetupWindow
 from ui.theme.manager import THEME
 from ui.dialogs.messagebox import MessageBox as MB
 from utils.logger import log_event
-from launcher import comfy_exists, ensure_comfyui_running, is_port_open
-from config import SPLASH_PATH, COMFYUI_PORT, MAX_WAIT_TIME, get_comfyui_path
+from launcher import comfy_exists
+from config import SPLASH_PATH, get_comfyui_path
 
 
 def launch_app():
@@ -62,51 +64,62 @@ def launch_app():
         )
         return sys.exit(1)
 
-    # ---------- START BACKGROUND PROCESS ----------
-    threading.Thread(
-        target=ensure_comfyui_running, args=(get_comfyui_path(),), daemon=True
-    ).start()
-    log_event("🧠 Background thread started: ensure_comfyui_running()")
 
     # ---------- SHOW SPLASH ----------
     log_event("💫 Splash screen shown. Launching ComfyUI server...")
-    splash = LauncherSplash(SPLASH_PATH, "Launching ComfyUI...")
+    splash = LauncherSplashVideo(
+        video_path=SPLASH_PATH,
+    )
     splash.show()
 
-    # ---------- OPEN BROWSER ----------
-    def open_browser(error=False):
+    # ---------- START WORKER ----------
+    thread = QThread()
+    worker = ComfyLoaderWorker(
+        comfy_path=comfy_path,
+        first_launch=first_launch,
+    )
+    worker.moveToThread(thread)
+
+    thread.started.connect(worker.run)
+
+    def on_ready():
         splash.finish()
-        win = ComfyBrowser(poll_callback=poll_ready)
+        win = ComfyBrowser()
         app.window = win
+        win.show()
 
-        if error:
-            log_event("🟥 Timeout reached — showing ErrorPage in browser.")
-            win.show_error_page()
-        else:
-            log_event("🟢 Browser opened successfully.")
-            win.show()
+        worker.stop()
+        thread.quit()
+        thread.wait()
 
-    # ---------- POLLING ----------
-    def poll_ready(start=time.time()):
-        elapsed = int(time.time() - start)
-        splash.update_message(elapsed)
+    def on_timeout():
+        splash.finish()
+        win = ComfyBrowser()
+        app.window = win
+        win.show_error_page()
 
-        # готово
-        if is_port_open(COMFYUI_PORT):
-            log_event(f"✅ ComfyUI server responded on port {COMFYUI_PORT}.")
-            return open_browser()
+        worker.stop()
+        thread.quit()
+        thread.wait()
 
-        # таймаут — только если не первый запуск
-        if not first_launch and elapsed > MAX_WAIT_TIME:
-            log_event("⏰ Timeout: ComfyUI server did not respond in time.")
-            return open_browser(error=True)
+    def on_error(msg):
+        log_event(f"❌ Worker error: {msg}")
+        splash.finish()
+        win = ComfyBrowser()
+        app.window = win
+        win.show_error_page()
 
-        # первый запуск: ждём сколько нужно
-        QTimer.singleShot(500, lambda: poll_ready(start))
+        worker.stop()
+        thread.quit()
+        thread.wait()
 
-    poll_ready()
+    worker.ready.connect(on_ready)
+    worker.timeout.connect(on_timeout)
+    worker.error.connect(on_error)
 
-    log_event("🪄 Qt event loop started.")
+    thread.start()
+
+    log_event("✨ Qt event loop started.")
     sys.exit(app.exec())
 
 

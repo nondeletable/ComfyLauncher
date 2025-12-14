@@ -6,7 +6,9 @@ import os
 import shutil
 import re
 import hashlib
+import threading
 from datetime import datetime
+from utils.console_buffer import ConsoleBuffer
 from config import (
     COMFYUI_PORT,
     CHECK_INTERVAL,
@@ -158,11 +160,14 @@ def ensure_comfyui_running(comfy_path: str, port: int = 8188):
     # --- Browser Check and Patch -------------------------------------
     main_py = os.path.join(comfy_path, "main.py")
     file_hash = get_file_hash(main_py)
+
     cfg = load_user_config()
+    show_cmd = cfg.get("show_cmd", True)
+    use_internal_console = not show_cmd
+
     registry = cfg.get("browser_patch_registry", {})
     entry = registry.get(comfy_path, {})
 
-    # Let's check if a patch is needed
     need_patch = (
         not entry
         or entry.get("file_hash") != file_hash
@@ -175,15 +180,17 @@ def ensure_comfyui_running(comfy_path: str, port: int = 8188):
     else:
         print("✅ Browser patch check skipped — already up to date.")
 
+    # Is there a live process already?
     if _comfy_process and _comfy_process.poll() is None:
         print("⚠️ ComfyUI process is already running, skip start.")
         return
 
-    # --- Next comes the launch logic ----------------------------------------
+    # Port busy - Comfy is already running
     if is_port_open(port):
         print("✅ ComfyUI already launched.")
         return
 
+    # --- GPU / CPU выбор ---------------------------------------------
     try:
         cuda_available = is_cuda_available()
     except Exception:
@@ -196,12 +203,32 @@ def ensure_comfyui_running(comfy_path: str, port: int = 8188):
     bat_name = "run_nvidia_gpu.bat" if cuda_available else "run_cpu.bat"
     bat_file = os.path.join(base_dir, bat_name)
 
+    # --- General Popen parameters ---------------------------------------
+    if use_internal_console:
+        creationflags = subprocess.CREATE_NO_WINDOW
+        popen_common = dict(
+            creationflags=creationflags,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            bufsize=1,
+        )
+    else:
+        # external mode: everything goes to the regular console / CMD
+        creationflags = 0
+        popen_common = dict(
+            creationflags=creationflags,
+        )
+
+    # --- BAT mode ----------------------------------------------------
     if os.path.exists(bat_file):
         _comfy_process = subprocess.Popen(
-            ["cmd", "/c", bat_file],
+            bat_file,
             cwd=base_dir,
-            # creationflags=subprocess.CREATE_NO_WINDOW,
+            shell=True,
+            **popen_common,
         )
+    # --- Python mode -------------------------------------------------
     else:
         python_exe = os.path.join(base_dir, "python_embeded", "python.exe")
         if not os.path.exists(python_exe):
@@ -224,8 +251,14 @@ def ensure_comfyui_running(comfy_path: str, port: int = 8188):
             args,
             cwd=comfy_path,
             env=env,
-            # creationflags=subprocess.CREATE_NO_WINDOW,
+            **popen_common,
         )
+
+    # We read the output ONLY in the built-in console mode
+    if use_internal_console and _comfy_process:
+        threading.Thread(
+            target=_read_process_output, args=(_comfy_process,), daemon=True
+        ).start()
 
     print(f"🟢 ComfyUI started (PID {_comfy_process.pid}) in mode {mode}.")
 
@@ -307,6 +340,18 @@ def stop_comfyui_hard(_grace_period=5):
         print("⚠️ No ComfyUI process found to stop.")
 
     _comfy_process = None
+
+def _read_process_output(proc: subprocess.Popen):
+    """Reads stdout/stderr of ComfyUI process and writes to ConsoleBuffer."""
+    try:
+        if proc.stdout:
+            for line in proc.stdout:
+                ConsoleBuffer.add(line)
+        if proc.stderr:
+            for line in proc.stderr:
+                ConsoleBuffer.add(line)
+    except Exception as e:
+        ConsoleBuffer.add(f"[Console reader error] {e}\n")
 
 
 # def stop_comfyui_soft(grace_period=5):

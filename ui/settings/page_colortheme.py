@@ -16,7 +16,6 @@ from ui.theme.theme_importer import ThemeImporter
 from ui.theme.theme_registry import REGISTRY
 import os
 import webbrowser
-import json
 
 
 class ColorThemesPage(QWidget):

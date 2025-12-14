@@ -16,6 +16,7 @@ from ui.settings.page_behavior import BehaviorSettingsPage
 from ui.settings.page_colortheme import ColorThemesPage
 from ui.settings.page_about import AboutSettingsPage
 from ui.settings.page_logs import LogsSettingsPage
+from ui.settings.page_startapp import StartAppSettingsPage
 from ui.theme.manager import THEME
 from ui.dialogs.messagebox import MessageBox as MB
 
@@ -66,7 +67,14 @@ class SettingsWindow(QWidget):
 
         # ─── Left menu panel ────────────────────────────────
         self.menu = QListWidget()
-        self.menu.addItems(["Paths", "Exit behavior", "Color Themes", "Launcher Logs", "About"])
+        self.menu.addItems([
+            "Paths",
+            "Start App",
+            "Exit behavior",
+            "Color Themes",
+            "Launcher Logs",
+            "About"
+        ])
         self.menu.setFixedWidth(200)
         self.menu.setStyleSheet(
             f"""
@@ -178,6 +186,7 @@ class SettingsWindow(QWidget):
 
         # ─── Adding pages ───────────────────────────────
         self.pages.addWidget(BuildSettingsPage(parent=self))
+        self.pages.addWidget(StartAppSettingsPage(parent=self))
         self.pages.addWidget(BehaviorSettingsPage(parent=self))
         self.pages.addWidget(ColorThemesPage(parent=self))
         self.pages.addWidget(LogsSettingsPage(parent=self))
@@ -298,7 +307,7 @@ class SettingsWindow(QWidget):
     def _round_corners(self, radius: int):
         """Software Window Rounding - Eliminates White Corners on Windows."""
         path = QPainterPath()
-        rect = QRectF(self.rect())  # ← конвертируем QRect → QRectF
+        rect = QRectF(self.rect())  # ← convert QRect → QRectF
         path.addRoundedRect(rect, radius, radius)
         region = QRegion(path.toFillPolygon().toPolygon())
         self.setMask(region)

@@ -156,7 +156,9 @@ class BehaviorSettingsPage(QWidget):
             "ask_on_exit": ask,
             "exit_mode": "always_stop" if always else "never_stop",
         }
-        save_user_config(data)
+        cfg = load_user_config()
+        cfg.update(data)
+        save_user_config(cfg)
         self._saved = data
         self._set_dirty(False)
 

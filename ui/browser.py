@@ -7,16 +7,17 @@ import threading
 import os
 import time
 
+from config import ICON_PATH, get_comfyui_path, COMFYUI_PORT, load_user_config, save_user_config
 from ui.header import HeaderBar
+from ui.error_page import ErrorPage
+from ui.settings.settings_window import SettingsWindow
+from ui.dialogs.messagebox import MessageBox as MB
+from ui.dialogs.console_window import ConsoleWindow
 from launcher import (
     ensure_comfyui_running,
     stop_comfyui_hard,
     is_port_open,
 )
-from config import ICON_PATH, get_comfyui_path, COMFYUI_PORT, load_user_config, save_user_config
-from ui.error_page import ErrorPage
-from ui.settings.settings_window import SettingsWindow
-from ui.dialogs.messagebox import MessageBox as MB
 
 
 class ComfyBrowser(QMainWindow):
@@ -60,6 +61,7 @@ class ComfyBrowser(QMainWindow):
         QTimer.singleShot(100, lambda: self._round_corners(10))
 
         # ── Binding signals to methods ───────────────────
+        self.header.console_clicked.connect(self.open_console_logs)
         self.header.restart_clicked.connect(self.restart_comfy)
         self.header.stop_clicked.connect(self.stop_comfy)
         self.header.folder_clicked.connect(self.open_folder)
@@ -76,25 +78,25 @@ class ComfyBrowser(QMainWindow):
         self._restart_in_progress = True
         print("🔄 Restarting ComfyUI...")
 
-        # 🔒 Блокируем кнопку Restart, чтобы не нажали снова
+        # We block the Restart button so that it cannot be pressed again.
         try:
             self.header.btn_restart.setEnabled(False)
         except Exception:
             pass
 
-        # 🔶 Статус и оформление
+        # Status and design
         self.status_label.setText("🟠 Restarting...")
         self.status_label.setStyleSheet("color: orange; font-weight: bold;")
 
         def do_restart():
-            # 1️⃣ Если сервер запущен — мягко останавливаем
+            # If the server is running, we soft-stop it.
             if is_port_open(COMFYUI_PORT):
                 print("🟢 Server detected — performing soft stop.")
                 stop_comfyui_hard()
             else:
                 print("🔴 Server not running — starting fresh.")
 
-            # 2️⃣ Ждём, пока порт точно освободится (до 5 сек)
+            # We wait until the port is definitely free (up to 5 seconds)
             print("⏳ Waiting for port to close...")
             for i in range(10):
                 if not is_port_open(COMFYUI_PORT):
@@ -104,10 +106,10 @@ class ComfyBrowser(QMainWindow):
             else:
                 print("⚠️ Port still busy after 5 sec, forcing restart anyway.")
 
-            # 3️⃣ Запускаем сервер заново
+            # Let's restart the server
             ensure_comfyui_running(self.comfyui_path)
 
-            # 4️⃣ Проверяем, когда сервер поднимется (до 15 сек)
+            # We check when the server will go up (up to 15 seconds)
             print("⏳ Waiting for server to respond...")
             for i in range(30):
                 time.sleep(0.5)
@@ -118,7 +120,7 @@ class ComfyBrowser(QMainWindow):
             else:
                 print("⚠️ ComfyUI did not respond after restart.")
 
-            # 5️⃣ Возвращаем статус и разблокируем кнопку
+            # We return the status and unlock the button
             QTimer.singleShot(0, lambda: self.status_label.setText("🟢 Online"))
             QTimer.singleShot(
                 0,
@@ -182,10 +184,10 @@ class ComfyBrowser(QMainWindow):
             print(f"⚠️ Output folder not found: {output_dir}")
 
     def check_server_status(self):
-        """Периодически проверяет, жив ли сервер."""
+        """Periodically checks if the server is alive."""
         try:
             if getattr(self, "_restart_in_progress", False):
-                # 🔄 во время рестарта не трогаем статус
+                # Don't touch the status during the restart.
                 return
 
             if is_port_open(COMFYUI_PORT):
@@ -202,9 +204,9 @@ class ComfyBrowser(QMainWindow):
         self.browser.load(url)
 
     def on_load_finished(self, ok):
-        """Обработчик успешной/неудачной загрузки страницы."""
+        """Handler for successful/failed page loading."""
         if not ok:
-            # 🚫 Если идёт рестарт — не показываем error_page
+            # If there is a restart, do not show the error_page
             if getattr(self, "_restart_in_progress", False):
                 print("⏳ Restart in progress — skipping error page.")
                 return
@@ -292,6 +294,17 @@ class ComfyBrowser(QMainWindow):
         save_user_config(user_config)
 
         event.accept()
+
+    def open_console_logs(self):
+        """Open (or raise) the ComfyUI console log window."""
+        try:
+            if not hasattr(self, "console_window") or self.console_window is None:
+                self.console_window = ConsoleWindow(self)
+            self.console_window.show()
+            self.console_window.raise_()
+            self.console_window.activateWindow()
+        except Exception as e:
+            print(f"⚠️ Failed to open console window: {e}")
 
     def _round_corners(self, radius: int):
         path = QPainterPath()

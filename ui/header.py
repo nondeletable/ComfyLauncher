@@ -9,7 +9,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, QPoint, pyqtSignal, QSize
 from PyQt6.QtGui import QIcon, QPainter, QPixmap, QColor
 
-from config import ICON_PATH, ICON_PATHS, HEAD_ICON_PATHS
+from config import ICON_PATH, ICON_PATHS, HEAD_ICON_PATHS, load_user_config
 from ui.theme.manager import THEME
 
 
@@ -32,6 +32,7 @@ class HeaderBar(QWidget):
     """Custom window header that combines toolbar and control buttons."""
 
     # signals from the toolbar
+    console_clicked = pyqtSignal()
     restart_clicked = pyqtSignal()
     stop_clicked = pyqtSignal()
     folder_clicked = pyqtSignal()
@@ -45,6 +46,10 @@ class HeaderBar(QWidget):
         self.setObjectName("HeaderBar")
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.setFixedHeight(46)
+
+        cfg = load_user_config()
+        show_cmd = cfg.get("show_cmd", True)
+        self.use_internal_console = not show_cmd
 
         self.setStyleSheet(
             f"""
@@ -116,10 +121,13 @@ class HeaderBar(QWidget):
         )
 
         # Stop and Restart buttons are located right behind the indicator
+        self.btn_console = QPushButton(colorize_svg(ICON_PATHS["terminal"]), "")
         self.btn_restart = QPushButton(colorize_svg(ICON_PATHS["restart"]), "")
         self.btn_stop = QPushButton(colorize_svg(ICON_PATHS["stop"]), "")
 
-        for btn in [self.btn_restart, self.btn_stop]:
+        self.btn_console.setVisible(self.use_internal_console)
+
+        for btn in [self.btn_console, self.btn_restart, self.btn_stop]:
             btn.setIconSize(QSize(20, 20))
             layout.addWidget(btn)
 
@@ -162,12 +170,13 @@ class HeaderBar(QWidget):
             )
             layout.addWidget(btn)
 
-        self.btn_restart.setToolTip("Restart")
-        self.btn_stop.setToolTip("Stop")
+        self.btn_restart.setToolTip("Restart ComfyUI")
+        self.btn_stop.setToolTip("Stop ComfyUI")
         self.btn_settings.setToolTip("Settings")
         self.btn_folder.setToolTip("Open folder")
         self.btn_output.setToolTip("Open output")
         self.btn_reload.setToolTip("Refresh UI")
+        self.btn_console.setToolTip("Command Prompt")
 
         # ── Signals ───────────────────────────────────
         self.btn_restart.clicked.connect(self.restart_clicked.emit)  # type: ignore
@@ -176,6 +185,8 @@ class HeaderBar(QWidget):
         self.btn_settings.clicked.connect(self.settings_clicked.emit)  # type: ignore
         self.btn_output.clicked.connect(self.output_clicked.emit)  # type: ignore
         self.btn_reload.clicked.connect(self.parent.browser.reload)  # type: ignore
+        if hasattr(self, "btn_console"):
+            self.btn_console.clicked.connect(self.console_clicked.emit)
 
         self.btn_min.clicked.connect(self.parent.showMinimized)  # type: ignore
         self.btn_max.clicked.connect(lambda: self.parent.showNormal() if self.parent.isMaximized() else self.parent.showMaximized())  # type: ignore
@@ -231,7 +242,7 @@ class HeaderBar(QWidget):
         """
         )
 
-        # 🔹 Re-creating icons for a new theme
+        # Re-creating icons for a new theme
         self.btn_min.setIcon(
             colorize_svg(
                 HEAD_ICON_PATHS["minimize"], c["icon_color_window"], QSize(20, 20)
