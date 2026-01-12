@@ -5,6 +5,7 @@ from PyQt6.QtWidgets import QApplication
 
 from ui.theme.tokens import THEMES
 from config import USER_CONFIG_PATH as CONFIG_PATH
+from utils.logger import log_event
 
 
 class ThemeManager(QObject):
@@ -113,7 +114,7 @@ class ThemeManager(QObject):
     def switch(self, name: str):
         """Changes the active theme and applies it."""
         if name not in self._themes:
-            print(f"⚠️ Theme '{name}' not found. Using current: {self._active_name}")
+            log_event(f"⚠️ Theme '{name}' not found. Using current: {self._active_name}")
             return
 
         if name == self._active_name:
@@ -123,7 +124,7 @@ class ThemeManager(QObject):
         self._colors = self._themes[name]
         self._save_last_theme()
         self.apply()
-        print(f"🎨 Theme switched to: {name}")
+        log_event(f"🎨 Theme switched to: {name}")
 
         # 🔹 Force refresh of all widgets
         app = QApplication.instance()

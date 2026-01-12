@@ -2,6 +2,7 @@ from PyQt6.QtCore import Qt, QUrl, QTimer
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QApplication
 from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput
 from PyQt6.QtMultimediaWidgets import QVideoWidget
+from utils.logger import log_event
 
 
 class LauncherSplashVideo(QWidget):
@@ -17,8 +18,7 @@ class LauncherSplashVideo(QWidget):
 
         # ─── Window flags ─────────────────────────────
         self.setWindowFlags(
-            Qt.WindowType.FramelessWindowHint
-            | Qt.WindowType.WindowStaysOnTopHint
+            Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint
         )
 
         # ─── Layout ──────────────────────────────────
@@ -31,7 +31,6 @@ class LauncherSplashVideo(QWidget):
         self.video_widget.setStyleSheet("background-color: transparent;")
         self.video_widget.setAspectRatioMode(Qt.AspectRatioMode.IgnoreAspectRatio)
         layout.addWidget(self.video_widget, stretch=1)
-
 
         # ─── Media player ────────────────────────────
         self.player = QMediaPlayer(self)
@@ -61,14 +60,14 @@ class LauncherSplashVideo(QWidget):
     def _load_and_play(self, video_path: str):
         """Downloads and plays videos"""
         url = QUrl.fromLocalFile(video_path)
-        print(f"Loading video from: {url.toString()}")
+        log_event(f"Loading video from: {url.toString()}")
         self.player.setSource(url)
         self.player.play()
 
     def _on_error(self, error, error_string):
         """Media player error handler"""
-        print(f"Media player error: {error}")
-        print(f"Error string: {error_string}")
+        log_event(f"Media player error: {error}")
+        log_event(f"Error string: {error_string}")
 
     # ────────────────────────────────────────────────
     def resize_for_screen(self):

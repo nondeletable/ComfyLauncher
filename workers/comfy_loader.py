@@ -44,10 +44,7 @@ class ComfyLoaderWorker(QObject):
                     return
 
                 # We use timeout ONLY if this is not the first launch.
-                if (
-                    not self.first_launch
-                    and time.time() - start_time > MAX_WAIT_TIME
-                ):
+                if not self.first_launch and time.time() - start_time > MAX_WAIT_TIME:
                     self.timeout.emit()
                     return
 

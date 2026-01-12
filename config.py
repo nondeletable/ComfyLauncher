@@ -1,6 +1,8 @@
 import json
 import os
 
+from utils.logger import log_event
+
 # ── Base paths ──────────────────────────────
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ASSETS_DIR = os.path.join(BASE_DIR, "assets")
@@ -30,7 +32,7 @@ ICON_PATHS = {
     "settings": os.path.join(ICONS_DIR, "settings.svg"),
     "open_output": os.path.join(ICONS_DIR, "output.svg"),
     "refresh": os.path.join(ICONS_DIR, "reload.svg"),
-    "terminal": os.path.join(ICONS_DIR, "terminal.svg")
+    "terminal": os.path.join(ICONS_DIR, "terminal.svg"),
 }
 
 # ── Saved builds ─────────────────────────────
@@ -70,7 +72,7 @@ CONTACT_ICONS = {
 OTHER_ICONS = {
     "refresh": os.path.join(ICONS_DIR, "refresh.svg"),
     "clear-log": os.path.join(ICONS_DIR, "clear-log.svg"),
-    "comfyui": os.path.join(ICONS_DIR, "comfyui-text.svg")
+    "comfyui": os.path.join(ICONS_DIR, "comfyui-text.svg"),
 }
 
 USER_CONFIG_PATH = os.path.join(BASE_DIR, "user_config.json")
@@ -103,6 +105,7 @@ def save_user_config(data: dict):
             json.dump(data, f, indent=4, ensure_ascii=False)
     except Exception as e:
         print(f"⚠️ Failed to save config: {e}")
+        log_event(f"⚠️ Failed to save config: {e}")
 
 
 def get_comfyui_path() -> str:

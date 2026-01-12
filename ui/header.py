@@ -95,7 +95,12 @@ class HeaderBar(QWidget):
         self.btn_output = QPushButton(colorize_svg(ICON_PATHS["open_output"]), "")
         self.btn_reload = QPushButton(colorize_svg(ICON_PATHS["refresh"]), "")
 
-        for btn in [self.btn_settings, self.btn_folder, self.btn_output, self.btn_reload]:
+        for btn in [
+            self.btn_settings,
+            self.btn_folder,
+            self.btn_output,
+            self.btn_reload,
+        ]:
             btn.setIconSize(QSize(20, 20))
             layout.addWidget(btn)
 
@@ -184,7 +189,7 @@ class HeaderBar(QWidget):
         self.btn_folder.clicked.connect(self.folder_clicked.emit)  # type: ignore
         self.btn_settings.clicked.connect(self.settings_clicked.emit)  # type: ignore
         self.btn_output.clicked.connect(self.output_clicked.emit)  # type: ignore
-        self.btn_reload.clicked.connect(self.parent.browser.reload)  # type: ignore
+        self.btn_reload.clicked.connect(self._on_reload_clicked)  # type: ignore
         if hasattr(self, "btn_console"):
             self.btn_console.clicked.connect(self.console_clicked.emit)
 
@@ -194,6 +199,10 @@ class HeaderBar(QWidget):
 
         self._apply_theme()
         THEME.themeChanged.connect(self._apply_theme)
+
+    def _on_reload_clicked(self):
+        if hasattr(self.parent, "browser") and self.parent.browser:
+            self.parent.browser.reload()
 
     # ── Dragging a window ───────────────────────────
     def mousePressEvent(self, event):
@@ -259,19 +268,13 @@ class HeaderBar(QWidget):
             )
         )
         self.btn_restart.setIcon(
-            colorize_svg(
-                ICON_PATHS["restart"], c["icon_color_window"], QSize(20, 20)
-            )
+            colorize_svg(ICON_PATHS["restart"], c["icon_color_window"], QSize(20, 20))
         )
         self.btn_stop.setIcon(
-            colorize_svg(
-                ICON_PATHS["stop"], c["icon_color_window"], QSize(20, 20)
-            )
+            colorize_svg(ICON_PATHS["stop"], c["icon_color_window"], QSize(20, 20))
         )
         self.btn_settings.setIcon(
-            colorize_svg(
-                ICON_PATHS["settings"], c["icon_color_window"], QSize(20, 20)
-            )
+            colorize_svg(ICON_PATHS["settings"], c["icon_color_window"], QSize(20, 20))
         )
         self.btn_folder.setIcon(
             colorize_svg(
@@ -284,7 +287,5 @@ class HeaderBar(QWidget):
             )
         )
         self.btn_reload.setIcon(
-            colorize_svg(
-                ICON_PATHS["refresh"], c["icon_color_window"], QSize(20, 20)
-            )
+            colorize_svg(ICON_PATHS["refresh"], c["icon_color_window"], QSize(20, 20))
         )

@@ -1,6 +1,7 @@
 import os
 import json
 from ui.theme.tokens import THEMES
+from utils.logger import log_event
 
 
 class ThemeRegistry:
@@ -69,7 +70,7 @@ class ThemeRegistry:
                     THEMES[name] = theme_dict
 
             except Exception as e:
-                print(f"Failed to load theme {filename}: {e}")
+                log_event(f"Failed to load theme {filename}: {e}")
 
 
 REGISTRY = ThemeRegistry()
