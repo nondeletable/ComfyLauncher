@@ -1,23 +1,47 @@
 from PyQt6.QtWebEngineWidgets import QWebEngineView
-from PyQt6.QtWidgets import QMainWindow, QWidget, QVBoxLayout
+from PyQt6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QLabel
 from PyQt6.QtGui import QIcon, QPainterPath, QRegion
-from PyQt6.QtCore import Qt, QTimer, QUrl, QRectF
+from PyQt6.QtCore import Qt, QTimer, QUrl, QRectF, QThread
 
 import threading
 import os
 import time
 
-from config import ICON_PATH, get_comfyui_path, COMFYUI_PORT, load_user_config, save_user_config
 from ui.header import HeaderBar
-from ui.error_page import ErrorPage
+from workers.comfy_loader import ComfyLoaderWorker
 from ui.settings.settings_window import SettingsWindow
 from ui.dialogs.messagebox import MessageBox as MB
 from ui.dialogs.console_window import ConsoleWindow
+from ui.error_page import ErrorWidget, ErrorScreen
+from core.errors import ERRORS
+from ui.splash_video import LauncherSplashVideo
+from utils.logger import log_event
 from launcher import (
     ensure_comfyui_running,
     stop_comfyui_hard,
     is_port_open,
 )
+from config import (
+    ICON_PATH,
+    get_comfyui_path,
+    COMFYUI_PORT,
+    load_user_config,
+    save_user_config,
+    SPLASH_PATH
+)
+
+
+class StartingWidget(QWidget):
+    def __init__(self):
+        super().__init__()
+        layout = QVBoxLayout(self)
+        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        label = QLabel("🚀 Запуск ComfyUI…")
+        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        label.setStyleSheet("font-size: 18px; color: #cccccc;")
+
+        layout.addWidget(label)
 
 
 class ComfyBrowser(QMainWindow):
@@ -30,13 +54,7 @@ class ComfyBrowser(QMainWindow):
         self.comfyui_path = get_comfyui_path()
 
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
-        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-
-        # The central widget is a built-in browser.
-        self.browser = QWebEngineView()
-        self.setCentralWidget(self.browser)
-        self.browser.loadFinished.connect(self.on_load_finished)
-        self.load_comfy()
+        # self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
 
         # Status check timer
         self.status_timer = QTimer(self)
@@ -45,17 +63,25 @@ class ComfyBrowser(QMainWindow):
 
         # header
         self.header = HeaderBar(self)
+        self.starting_widget = StartingWidget()
 
         # central container
         central = QWidget(self)
+        central.setObjectName("CentralContainer")
+        central.setStyleSheet("""
+            QWidget#CentralContainer {
+                background-color: #353535;
+            }
+        """)
         vbox = QVBoxLayout(central)
         vbox.setContentsMargins(0, 0, 0, 0)
         vbox.setSpacing(0)
 
         vbox.addWidget(self.header)  # header on top
-        vbox.addWidget(self.browser)
+        vbox.addStretch(1)
 
         self.setCentralWidget(central)
+
         self.status_label = self.header.status_label
         self.showMaximized()
         QTimer.singleShot(100, lambda: self._round_corners(10))
@@ -68,15 +94,18 @@ class ComfyBrowser(QMainWindow):
         self.header.settings_clicked.connect(self.open_settings)
         self.header.output_clicked.connect(self.open_output)
 
+        self.ui_state = "STARTING_COMFY"
+        self._start_comfyui()
+
     # ──────────────────────────────────────────────
     def restart_comfy(self):
         """Restart ComfyUI: if running — soft stop, then restart; if stopped — start fresh."""
         if getattr(self, "_restart_in_progress", False):
-            print("⏳ Restart already in progress — ignored.")
+            log_event("⏳ Restart already in progress — ignored.")
             return
 
         self._restart_in_progress = True
-        print("🔄 Restarting ComfyUI...")
+        log_event("🔄 Restarting ComfyUI...")
 
         # We block the Restart button so that it cannot be pressed again.
         try:
@@ -91,34 +120,34 @@ class ComfyBrowser(QMainWindow):
         def do_restart():
             # If the server is running, we soft-stop it.
             if is_port_open(COMFYUI_PORT):
-                print("🟢 Server detected — performing soft stop.")
+                log_event("🟢 Server detected — performing soft stop.")
                 stop_comfyui_hard()
             else:
-                print("🔴 Server not running — starting fresh.")
+                log_event("🔴 Server not running — starting fresh.")
 
             # We wait until the port is definitely free (up to 5 seconds)
-            print("⏳ Waiting for port to close...")
+            log_event("⏳ Waiting for port to close...")
             for i in range(10):
                 if not is_port_open(COMFYUI_PORT):
-                    print("🟢 Port closed, continuing restart.")
+                    log_event("🟢 Port closed, continuing restart.")
                     break
                 time.sleep(0.5)
             else:
-                print("⚠️ Port still busy after 5 sec, forcing restart anyway.")
+                log_event("⚠️ Port still busy after 5 sec, forcing restart anyway.")
 
             # Let's restart the server
             ensure_comfyui_running(self.comfyui_path)
 
             # We check when the server will go up (up to 15 seconds)
-            print("⏳ Waiting for server to respond...")
+            log_event("⏳ Waiting for server to respond...")
             for i in range(30):
                 time.sleep(0.5)
                 if is_port_open(COMFYUI_PORT):
-                    print("✅ ComfyUI is back online.")
+                    log_event("✅ ComfyUI is back online.")
                     break
 
             else:
-                print("⚠️ ComfyUI did not respond after restart.")
+                log_event("⚠️ ComfyUI did not respond after restart.")
 
             # We return the status and unlock the button
             QTimer.singleShot(0, lambda: self.status_label.setText("🟢 Online"))
@@ -135,7 +164,7 @@ class ComfyBrowser(QMainWindow):
                 pass
 
             self._restart_in_progress = False
-            print("✅ Restart complete.")
+            log_event("✅ Restart complete.")
 
         threading.Thread(target=do_restart, daemon=True).start()
 
@@ -151,29 +180,29 @@ class ComfyBrowser(QMainWindow):
         stop_comfyui_hard()
         self.header.status_label.setText("Offline")
         self.header.status_label.setStyleSheet("color: red; font-weight: bold;")
-        print("🟥 ComfyUI completely stopped by the user.")
+        log_event("🟥 ComfyUI completely stopped by the user.")
 
     def open_folder(self):
         os.startfile(self.comfyui_path)
 
     def open_settings(self):
-        print("🧩 Opening settings window...")
+        log_event("🧩 Opening settings window...")
         try:
             self.settings_window = SettingsWindow(None)
             self.settings_window.show()
-            print("✅ Settings window opened successfully.")
+            log_event("✅ Settings window opened successfully.")
         except Exception as e:
             import traceback
 
-            print("❌ Settings window failed to open:")
+            log_event("❌ Settings window failed to open:")
             traceback.print_exc()
-            print(f"❌ Exception type: {type(e).__name__}, message: {e}")
+            log_event(f"❌ Exception type: {type(e).__name__}, message: {e}")
 
     @staticmethod
     def open_output():
         comfy_path = get_comfyui_path()
         if not comfy_path:
-            print("⚠️ ComfyUI path is not set. Cannot open output folder.")
+            log_event("⚠️ ComfyUI path is not set. Cannot open output folder.")
             return
 
         output_dir = os.path.join(comfy_path, "output")
@@ -181,7 +210,7 @@ class ComfyBrowser(QMainWindow):
         if os.path.exists(output_dir):
             os.startfile(output_dir)
         else:
-            print(f"⚠️ Output folder not found: {output_dir}")
+            log_event(f"⚠️ Output folder not found: {output_dir}")
 
     def check_server_status(self):
         """Periodically checks if the server is alive."""
@@ -197,31 +226,20 @@ class ComfyBrowser(QMainWindow):
                 self.status_label.setText("🔴 Offline")
                 self.status_label.setStyleSheet("color: red; font-weight: bold;")
         except Exception as e:
-            print(f"⚠️ Error in check_server_status: {e}")
+            log_event(f"⚠️ Error in check_server_status: {e}")
 
     def load_comfy(self):
         url = QUrl(f"http://127.0.0.1:{COMFYUI_PORT}")
-        self.browser.load(url)
+        # self.browser.load(url)
 
     def on_load_finished(self, ok):
-        """Handler for successful/failed page loading."""
         if not ok:
-            # If there is a restart, do not show the error_page
-            if getattr(self, "_restart_in_progress", False):
-                print("⏳ Restart in progress — skipping error page.")
-                return
-
-            print("⚠️ Error loading page — showing error page.")
-            self.show_error_page()
+            log_event("⚠️ Page not ready yet (server probably still starting).")
         else:
-            print("✅ Page loaded successfully.")
-
-    def show_error_page(self):
-        self.error_widget = ErrorPage(self.reload_comfy)
-        self.setCentralWidget(self.error_widget)
+            log_event("✅ Page loaded successfully.")
 
     def reload_comfy(self):
-        self.setCentralWidget(self.browser)
+        # self.setCentralWidget(self.browser)
         self.load_comfy()
         threading.Thread(target=ensure_comfyui_running, daemon=True).start()
         if self.poll_callback:
@@ -232,7 +250,7 @@ class ComfyBrowser(QMainWindow):
 
         # If a duplicate closeEvent fires while we're already processing exit
         if getattr(self, "_exit_in_progress", False):
-            print("⚠️ Duplicate closeEvent ignored.")
+            log_event("⚠️ Duplicate closeEvent ignored.")
             event.ignore()
             return
 
@@ -254,7 +272,7 @@ class ComfyBrowser(QMainWindow):
 
             # YES → stop server + exit
             if choice == "yes":
-                print("🟥 User chose: YES — stopping ComfyUI and exiting.")
+                log_event("🟥 User chose: YES — stopping ComfyUI and exiting.")
                 stop_comfyui_hard()
 
                 save_user_config(user_config)  # ← важно!
@@ -263,7 +281,7 @@ class ComfyBrowser(QMainWindow):
 
             # NO → exit, but keep server running
             elif choice == "no":
-                print("🟢 User chose: NO — exiting without stopping ComfyUI.")
+                log_event("🟢 User chose: NO — exiting without stopping ComfyUI.")
 
                 save_user_config(user_config)  # ← важно!
                 event.accept()
@@ -271,7 +289,7 @@ class ComfyBrowser(QMainWindow):
 
             # CANCEL → block closing
             else:  # "cancel"
-                print("ℹ️ User cancelled exit.")
+                log_event("ℹ️ User cancelled exit.")
                 self._exit_in_progress = False  # allow new future attempts
                 event.ignore()
             return
@@ -280,14 +298,14 @@ class ComfyBrowser(QMainWindow):
         # CASE 2 — Ask is disabled (auto mode)
         # ─────────────────────────────
         if mode == "always_stop":
-            print("🟥 Auto mode: always_stop — stopping ComfyUI.")
+            log_event("🟥 Auto mode: always_stop — stopping ComfyUI.")
             stop_comfyui_hard()
 
         elif mode == "never_stop":
-            print("🟢 Auto mode: never_stop — leaving ComfyUI running.")
+            log_event("🟢 Auto mode: never_stop — leaving ComfyUI running.")
 
         else:
-            print(f"⚠️ Unknown exit mode: '{mode}' — defaulting to always_stop.")
+            log_event(f"⚠️ Unknown exit mode: '{mode}' — defaulting to always_stop.")
             stop_comfyui_hard()
 
         # Save user config anyway (important!)
@@ -304,7 +322,7 @@ class ComfyBrowser(QMainWindow):
             self.console_window.raise_()
             self.console_window.activateWindow()
         except Exception as e:
-            print(f"⚠️ Failed to open console window: {e}")
+            log_event(f"⚠️ Failed to open console window: {e}")
 
     def _round_corners(self, radius: int):
         path = QPainterPath()
@@ -318,3 +336,100 @@ class ComfyBrowser(QMainWindow):
         # recalculate the mask only if the window is already visible
         if self.isVisible():
             self._round_corners(10)
+
+
+    def _start_comfyui(self):
+        self.ui_state = "STARTING_COMFY"
+
+        # ── ПОКАЗЫВАЕМ SPLASH ─────────────────────
+        if not hasattr(self, "splash") or self.splash is None:
+            self.splash = LauncherSplashVideo(SPLASH_PATH)
+            self.splash.show()
+        self.thread = QThread()
+        self.worker = ComfyLoaderWorker(self.comfyui_path)
+
+        self.worker.moveToThread(self.thread)
+        self.thread.started.connect(self.worker.run)
+
+        self.worker.ready.connect(self._on_comfy_ready)
+        self.worker.error.connect(self._on_comfy_error)
+        self.worker.timeout.connect(self._on_comfy_timeout)
+
+        self.thread.start()
+
+
+    def _on_comfy_ready(self):
+        self.ui_state = "RUNNING"
+
+        if hasattr(self, "splash") and self.splash:
+            self.splash.finish()
+            self.splash = None
+
+        # создаём браузер ТОЛЬКО СЕЙЧАС
+        self.browser = QWebEngineView()
+        self.browser.loadFinished.connect(self.on_load_finished)
+        self.browser.load(QUrl(f"http://127.0.0.1:{COMFYUI_PORT}"))
+
+        # заменяем прелоадер на браузер
+        central = QWidget(self)
+        vbox = QVBoxLayout(central)
+        vbox.setContentsMargins(0, 0, 0, 0)
+        vbox.setSpacing(0)
+
+        vbox.addWidget(self.header)
+        vbox.addWidget(self.browser, 1)
+
+        self.setCentralWidget(central)
+
+        # аккуратно завершаем worker
+        self.worker.stop()
+        self.thread.quit()
+        self.thread.wait()
+
+    def _enter_error_state(self, error_code: str):
+        self.ui_state = "ERROR_STARTUP"
+
+        # закрываем splash
+        if hasattr(self, "splash") and self.splash:
+            self.splash.finish()
+            self.splash = None
+
+        error = ERRORS[error_code]
+
+        error_widget = ErrorWidget(
+            title=error.title,
+            message=error.message,
+            hint=error.hint,
+        )
+
+        error_screen = ErrorScreen(error_widget)
+
+        central = QWidget(self)
+        central.setObjectName("CentralContainer")
+        central.setStyleSheet("""
+            QWidget#CentralContainer {
+                background-color: #353535;
+            }
+        """)
+
+        vbox = QVBoxLayout(central)
+        vbox.setContentsMargins(0, 0, 0, 0)
+        vbox.setSpacing(0)
+
+        vbox.addWidget(self.header)
+        vbox.addWidget(error_screen, 1)
+
+        self.setCentralWidget(central)
+
+        # аккуратно останавливаем worker
+        if hasattr(self, "worker"):
+            self.worker.stop()
+        if hasattr(self, "thread"):
+            self.thread.quit()
+            self.thread.wait()
+
+    def _on_comfy_error(self, message: str):
+        self._enter_error_state("PROCESS_START_FAILED")
+
+    def _on_comfy_timeout(self):
+        self._enter_error_state("COMFY_START_TIMEOUT")

@@ -5,7 +5,7 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
     QPushButton,
     QFrame,
-    QStackedLayout
+    QStackedLayout,
 )
 from PyQt6.QtGui import QPixmap, QIcon
 from PyQt6.QtCore import Qt, QSize, QUrl
@@ -55,9 +55,7 @@ class AnimatedLogo(QWidget):
 
         self.player = QMediaPlayer(self)
         self.player.setVideoOutput(self.video)
-        self.player.setSource(
-            QUrl.fromLocalFile(ABOUT_LOGO_ANIM)
-        )
+        self.player.setSource(QUrl.fromLocalFile(ABOUT_LOGO_ANIM))
         self.player.setLoops(QMediaPlayer.Loops.Infinite)
         self.player.play()
 
@@ -208,9 +206,7 @@ class AboutSettingsPage(QWidget):
         layout.addSpacing(15)
 
         # ─── SIGNATURE BELOW ──────────────────────────
-        footer = QLabel(
-            "Developed by nondeletable · Version 1.2.1 · PyQt6 · 2025"
-        )
+        footer = QLabel("Developed by nondeletable · Version 1.2.1 · PyQt6 · 2025")
         footer.setAlignment(Qt.AlignmentFlag.AlignHCenter)
         footer.setStyleSheet(
             f"color: {self.colors['text_secondary']}; font-size: 12px; margin-top: 20px;"

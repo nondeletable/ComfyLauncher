@@ -210,7 +210,11 @@ class MessageBox(QDialog):
             dlg._answer = "cancel"
             dlg.reject()
 
-        for text_label, handler in (("Yes", on_yes), ("No", on_no), ("Cancel", on_cancel)):
+        for text_label, handler in (
+            ("Yes", on_yes),
+            ("No", on_no),
+            ("Cancel", on_cancel),
+        ):
             btn = QPushButton(text_label)
             btn.clicked.connect(handler)  # type: ignore
             dlg._buttons.addWidget(btn)
@@ -222,7 +226,6 @@ class MessageBox(QDialog):
 
         dlg.exec()
         return dlg._answer
-
 
     def _apply_theme(self, *args):
         c = THEME.colors
@@ -281,7 +284,6 @@ class MessageBox(QDialog):
         if badge:
             icon = colorize_svg(icon_path, badge_color, QSize(22, 22))
             badge.setPixmap(icon.pixmap(QSize(22, 22)))
-
 
     def showEvent(self, event):
         super().showEvent(event)

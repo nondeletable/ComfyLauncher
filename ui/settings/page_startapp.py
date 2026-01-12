@@ -26,9 +26,7 @@ class StartAppSettingsPage(QWidget):
             "If disabled, ComfyUI starts without a CMD window."
         )
         desc.setWordWrap(True)
-        desc.setStyleSheet(
-            f"color: {THEME.colors['text_secondary']}; font-size: 13px;"
-        )
+        desc.setStyleSheet(f"color: {THEME.colors['text_secondary']}; font-size: 13px;")
         layout.addWidget(desc)
 
         # ─── Checkbox ──────────────────────────────

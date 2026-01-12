@@ -2,7 +2,7 @@
 
 # 🚀 ComfyLauncher
 
-A desktop launcher for managing and running **ComfyUI** builds with ease.  
+Desktop launcher for easy management and launch of portable **ComfyUI**. 
 Built with **Python** and **PyQt6**, featuring a clean UI, system checks, and flexible configuration management.
 
 ---
@@ -43,7 +43,7 @@ cd ComfyLauncher
 python -m venv venv
 # Windows:
 venv\Scripts\activate
-# macOS/Linux:
+# Linux:
 source venv/bin/activate
 ```
 
@@ -64,19 +64,6 @@ Main window:
 Settings page:
 
 
-## 📦 Build Executable
-To create a standalone .exe build:
-
-```bash
-pyinstaller launcher.spec --noconfirm
-```
-
-or manually:
-
-```bash
-pyinstaller --onefile --noconsole main.py
-```
-The output will appear in the dist/ folder.
 
 ## ⬇️ Download
 You can download the latest build from the Releases page.

@@ -9,6 +9,7 @@ import hashlib
 import threading
 from datetime import datetime
 from utils.console_buffer import ConsoleBuffer
+from utils.logger import log_event
 from config import (
     COMFYUI_PORT,
     CHECK_INTERVAL,
@@ -38,10 +39,10 @@ def wait_for_server():
     start = time.time()
     while time.time() - start < MAX_WAIT_TIME:
         if is_port_open(COMFYUI_PORT):
-            print("ComfyUI started.")
+            log_event("ComfyUI started.")
             return True
         time.sleep(CHECK_INTERVAL)
-    print("Failed to connect to the server.")
+    log_event("Failed to connect to the server.")
     return False
 
 
@@ -87,7 +88,7 @@ def disable_browser_auto_launch(comfy_path: str):
     """
     main_py = os.path.join(comfy_path, "main.py")
     if not os.path.exists(main_py):
-        print("⚠️ main.py not found — skip browser patch.")
+        log_event("⚠️ main.py not found — skip browser patch.")
         return False, ""
 
     file_hash = get_file_hash(main_py)
@@ -97,7 +98,7 @@ def disable_browser_auto_launch(comfy_path: str):
             content = f.read()
 
         if "# webbrowser.open(" in content:
-            print("🧩 Browser auto-launch already disabled.")
+            log_event("🧩 Browser auto-launch already disabled.")
             return True, file_hash
 
         pattern = re.compile(r"^\s*webbrowser\.open\(.*\)$", re.MULTILINE)
@@ -108,13 +109,13 @@ def disable_browser_auto_launch(comfy_path: str):
                 shutil.copy2(main_py, backup)
             with open(main_py, "w", encoding="utf-8") as f:
                 f.write(patched)
-            print("🧩 Browser auto-launch disabled (via patch).")
+            log_event("🧩 Browser auto-launch disabled (via patch).")
             return True, get_file_hash(main_py)
         else:
-            print("ℹ️ No webbrowser.open() found — nothing to patch.")
+            log_event("ℹ️ No webbrowser.open() found — nothing to patch.")
             return False, file_hash
     except Exception as e:
-        print(f"❌ Failed to patch browser launch: {e}")
+        log_event(f"❌ Failed to patch browser launch: {e}")
         return False, file_hash
 
 
@@ -178,16 +179,16 @@ def ensure_comfyui_running(comfy_path: str, port: int = 8188):
         patched, new_hash = disable_browser_auto_launch(comfy_path)
         update_browser_patch_registry(comfy_path, patched, new_hash)
     else:
-        print("✅ Browser patch check skipped — already up to date.")
+        log_event("✅ Browser patch check skipped — already up to date.")
 
     # Is there a live process already?
     if _comfy_process and _comfy_process.poll() is None:
-        print("⚠️ ComfyUI process is already running, skip start.")
+        log_event("⚠️ ComfyUI process is already running, skip start.")
         return
 
     # Port busy - Comfy is already running
     if is_port_open(port):
-        print("✅ ComfyUI already launched.")
+        log_event("✅ ComfyUI already launched.")
         return
 
     # --- GPU / CPU выбор ---------------------------------------------
@@ -197,7 +198,7 @@ def ensure_comfyui_running(comfy_path: str, port: int = 8188):
         cuda_available = False
 
     mode = "GPU" if cuda_available else "CPU"
-    print(f"🚀 Starting ComfyUI in {mode} mode...")
+    log_event(f"🚀 Starting ComfyUI in {mode} mode...")
 
     base_dir = os.path.dirname(comfy_path)
     bat_name = "run_nvidia_gpu.bat" if cuda_available else "run_cpu.bat"
@@ -215,19 +216,33 @@ def ensure_comfyui_running(comfy_path: str, port: int = 8188):
         )
     else:
         # external mode: everything goes to the regular console / CMD
-        creationflags = 0
         popen_common = dict(
-            creationflags=creationflags,
+            creationflags=subprocess.CREATE_NEW_CONSOLE,
         )
 
     # --- BAT mode ----------------------------------------------------
     if os.path.exists(bat_file):
-        _comfy_process = subprocess.Popen(
-            bat_file,
-            cwd=base_dir,
-            shell=True,
-            **popen_common,
-        )
+
+        if show_cmd:
+            # 🔹 MODE: SHOW CMD (REAL)
+            _comfy_process = subprocess.Popen(
+                ["cmd.exe", "/k", bat_file],
+                cwd=base_dir,
+                creationflags=subprocess.CREATE_NEW_CONSOLE,
+            )
+
+        else:
+            # 🔹 MODE: HIDDEN CONSOLE (PIPE)
+            _comfy_process = subprocess.Popen(
+                bat_file,
+                cwd=base_dir,
+                creationflags=subprocess.CREATE_NO_WINDOW,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                bufsize=1,
+            )
+
     # --- Python mode -------------------------------------------------
     else:
         python_exe = os.path.join(base_dir, "python_embeded", "python.exe")
@@ -247,12 +262,24 @@ def ensure_comfyui_running(comfy_path: str, port: int = 8188):
         env["PYTHONPATH"] = comfy_path
         env["PATH"] = env["PYTHONHOME"] + ";" + env["PATH"]
 
-        _comfy_process = subprocess.Popen(
-            args,
-            cwd=comfy_path,
-            env=env,
-            **popen_common,
-        )
+        if show_cmd:
+            _comfy_process = subprocess.Popen(
+                ["cmd.exe", "/k"] + args,
+                cwd=comfy_path,
+                env=env,
+                creationflags=subprocess.CREATE_NEW_CONSOLE,
+            )
+        else:
+            _comfy_process = subprocess.Popen(
+                args,
+                cwd=comfy_path,
+                env=env,
+                creationflags=subprocess.CREATE_NO_WINDOW,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                bufsize=1,
+            )
 
     # We read the output ONLY in the built-in console mode
     if use_internal_console and _comfy_process:
@@ -260,7 +287,7 @@ def ensure_comfyui_running(comfy_path: str, port: int = 8188):
             target=_read_process_output, args=(_comfy_process,), daemon=True
         ).start()
 
-    print(f"🟢 ComfyUI started (PID {_comfy_process.pid}) in mode {mode}.")
+    log_event(f"🟢 ComfyUI started (PID {_comfy_process.pid}) in mode {mode}.")
 
 
 def kill_process_tree(pid):
@@ -272,18 +299,18 @@ def kill_process_tree(pid):
     children = parent.children(recursive=True)
     for child in children:
         try:
-            print(f"💀 Killing child PID {child.pid}: {child.name()}")
+            log_event(f"💀 Killing child PID {child.pid}: {child.name()}")
             child.kill()
         except Exception:
             pass
-    print(f"💀 Killing parent PID {pid}: {parent.name()}")
+    log_event(f"💀 Killing parent PID {pid}: {parent.name()}")
     parent.kill()
 
 
 def stop_comfyui_hard(_grace_period=5):
     """Completely completes ComfyUI (bat file + python descendants)."""
     global _comfy_process
-    print("⏹ Completing ComfyUI...")
+    log_event("⏹ Completing ComfyUI...")
 
     killed = False
 
@@ -300,18 +327,14 @@ def stop_comfyui_hard(_grace_period=5):
                 "run_cpu.bat" in cmdline_joined
                 or "run_nvidia_gpu.bat" in cmdline_joined
             ):
-                print(
-                    f"💀 We are finishing the bat file and all its descendants (PID {proc.pid})"
-                )
+                log_event(f"💀 We are finishing the bat file and all its descendants (PID {proc.pid})")
                 time.sleep(1)
                 kill_process_tree(proc.pid)
                 # To be on the safe side, we'll additionally check for descendants after kill.
                 time.sleep(0.5)
                 for child in psutil.process_iter(["pid", "ppid", "name"]):
                     if child.info["ppid"] == proc.pid:
-                        print(
-                            f"⚠️ Descendant {child.pid} ({child.info['name']}) still alive - kill directly"
-                        )
+                        log_event(f"⚠️ Descendant {child.pid} ({child.info['name']}) still alive - kill directly")
                         child.kill()
                 killed = True
         except (psutil.NoSuchProcess, psutil.AccessDenied):
@@ -323,7 +346,7 @@ def stop_comfyui_hard(_grace_period=5):
             try:
                 cmd = " ".join(proc.info["cmdline"]).lower()
                 if "comfyui" in cmd or "main.py" in cmd:
-                    print(f"💀 Force quit ComfyUI (PID {proc.pid})")
+                    log_event(f"💀 Force quit ComfyUI (PID {proc.pid})")
                     proc.kill()
                     killed = True
             except (psutil.NoSuchProcess, psutil.AccessDenied):
@@ -332,14 +355,15 @@ def stop_comfyui_hard(_grace_period=5):
     if killed:
         # 3️⃣ Confirm state
         if not is_port_open(COMFYUI_PORT):
-            print("🟢 Port 8188 closed — server fully stopped.")
+            log_event("🟢 Port 8188 closed — server fully stopped.")
         else:
-            print("⚠️ Port still busy — possible residual process.")
-        print("✅ ComfyUI stopped completely.")
+            log_event("⚠️ Port still busy — possible residual process.")
+        log_event("✅ ComfyUI stopped completely.")
     else:
-        print("⚠️ No ComfyUI process found to stop.")
+        log_event("⚠️ No ComfyUI process found to stop.")
 
     _comfy_process = None
+
 
 def _read_process_output(proc: subprocess.Popen):
     """Reads stdout/stderr of ComfyUI process and writes to ConsoleBuffer."""
@@ -352,50 +376,6 @@ def _read_process_output(proc: subprocess.Popen):
                 ConsoleBuffer.add(line)
     except Exception as e:
         ConsoleBuffer.add(f"[Console reader error] {e}\n")
-
-
-# def stop_comfyui_soft(grace_period=5):
-#     """Softly terminates ComfyUI.
-#     If launched directly, it terminates via _comfy_process.
-#     If launched via .bat, it searches for python main.py and terminates only that.
-#     """
-#     global _comfy_process
-#     print("⏹ Soft stop ComfyUI...")
-#
-#     if _comfy_process and _comfy_process.poll() is None:
-#         try:
-#             _comfy_process.terminate()
-#             _comfy_process.wait(timeout=grace_period)
-#             print("✅ ComfyUI мягко остановлен (через _comfy_process).")
-#             return True
-#         except Exception as e:
-#             print(f"⚠️ Ошибка при остановке _comfy_process: {e}")
-#
-#     # If _comfy_process is not active, try to find python main.py
-#     print("🔍 Поиск python-процесса ComfyUI для мягкой остановки...")
-#     stopped = False
-#     for proc in psutil.process_iter(["pid", "name", "cmdline"]):
-#         try:
-#             cmd = " ".join(proc.info.get("cmdline") or []).lower()
-#             if "python" in proc.info["name"].lower() and (
-#                 "main.py" in cmd or "comfyui" in cmd
-#             ):
-#                 print(f"⏸️ Terminate python worker (PID {proc.pid})")
-#                 proc.terminate()
-#                 try:
-#                     proc.wait(timeout=grace_period)
-#                 except psutil.TimeoutExpired:
-#                     print(f"⚠️ Worker PID {proc.pid} не ответил — kill()")
-#                     proc.kill()
-#                 stopped = True
-#         except (psutil.NoSuchProcess, psutil.AccessDenied):
-#             continue
-#
-#     if stopped:
-#         print("✅ ComfyUI мягко остановлен (через psutil).")
-#     else:
-#         print("⚠️ Не найден процесс ComfyUI для мягкой остановки.")
-#     return stopped
 
 
 __all__ = [

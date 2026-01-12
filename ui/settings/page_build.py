@@ -11,13 +11,18 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt, QSize
 from PyQt6.QtGui import QIcon
-from config import load_user_config, save_user_config, get_comfyui_path, ICON_PATHS, OTHER_ICONS
+from config import (
+    load_user_config,
+    save_user_config,
+    get_comfyui_path,
+    ICON_PATHS,
+    OTHER_ICONS,
+)
 from ui.header import colorize_svg
 from ui.theme.manager import THEME
 from ui.dialogs.messagebox import MessageBox as MB
 
 import os
-import shutil
 import webbrowser
 
 
@@ -150,9 +155,7 @@ class BuildSettingsPage(QWidget):
         layout.addLayout(btns_layout)
         layout.addStretch()
 
-        info_label = QLabel(
-            "Check for ComfyUI updates and download the new version:"
-        )
+        info_label = QLabel("Check for ComfyUI updates and download the new version:")
         info_label.setStyleSheet(
             f"color: {THEME.colors['text_secondary']}; font-size: 13px; margin-top: 14px;"
         )
@@ -172,7 +175,7 @@ class BuildSettingsPage(QWidget):
                 colorize_svg(
                     OTHER_ICONS.get("comfyui"),
                     THEME.colors["icon_color_window"],
-                    QSize(60, 28)
+                    QSize(60, 28),
                 )
             )
         )
@@ -246,15 +249,15 @@ class BuildSettingsPage(QWidget):
             return False
 
         # ✅ main.py found - determine environment type
-        embed_path = os.path.join(os.path.dirname(path), "python_embeded")
-        if os.path.exists(embed_path):
-            env_type = "Portable (embedded Python detected)"
-        else:
-            env_type = (
-                "System (using system Python)"
-                if shutil.which("python")
-                else "Unknown (no Python found)"
-            )
+        # embed_path = os.path.join(os.path.dirname(path), "python_embeded")
+        # if os.path.exists(embed_path):
+        #     env_type = "Portable (embedded Python detected)"
+        # else:
+        #     env_type = (
+        #         "System (using system Python)"
+        #         if shutil.which("python")
+        #         else "Unknown (no Python found)"
+        #     )
 
         self.btn_apply.setEnabled(True)
         self._sync_footer_buttons()

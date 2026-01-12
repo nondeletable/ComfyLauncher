@@ -67,14 +67,16 @@ class SettingsWindow(QWidget):
 
         # ─── Left menu panel ────────────────────────────────
         self.menu = QListWidget()
-        self.menu.addItems([
-            "Paths",
-            "Start App",
-            "Exit behavior",
-            "Color Themes",
-            "Launcher Logs",
-            "About"
-        ])
+        self.menu.addItems(
+            [
+                "Paths",
+                "Start App",
+                "Exit behavior",
+                "Color Themes",
+                "Launcher Logs",
+                "About",
+            ]
+        )
         self.menu.setFixedWidth(200)
         self.menu.setStyleSheet(
             f"""

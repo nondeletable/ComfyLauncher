@@ -14,6 +14,7 @@ from PyQt6.QtCore import Qt, pyqtSignal, QTimer
 from ui.theme.manager import THEME, THEMES
 from ui.theme.theme_importer import ThemeImporter
 from ui.theme.theme_registry import REGISTRY
+from utils.logger import log_event
 import os
 import webbrowser
 
@@ -263,7 +264,7 @@ class ColorThemesPage(QWidget):
             return True
 
         except Exception as e:
-            print(f"Theme switch failed: {e}")
+            log_event(f"Theme switch failed: {e}")
             return False
 
     def reset(self):

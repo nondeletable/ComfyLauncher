@@ -25,9 +25,9 @@ class ConsoleWindow(QWidget):
         self.setWindowTitle("ComfyUI Console")
         self.setFixedSize(900, 600)
         self.setWindowFlags(
-            Qt.WindowType.Window |
-            Qt.WindowType.FramelessWindowHint |
-            Qt.WindowType.WindowSystemMenuHint
+            Qt.WindowType.Window
+            | Qt.WindowType.FramelessWindowHint
+            | Qt.WindowType.WindowSystemMenuHint
         )
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, False)
 
@@ -81,10 +81,14 @@ class ConsoleWindow(QWidget):
         btn_close = QPushButton()
 
         btn_close.setFixedSize(24, 24)
-        btn_close.setIcon(colorize_svg(HEAD_ICON_PATHS["close"], c["icon_color_window"]))
-        btn_close.setStyleSheet("""
+        btn_close.setIcon(
+            colorize_svg(HEAD_ICON_PATHS["close"], c["icon_color_window"])
+        )
+        btn_close.setStyleSheet(
+            """
             QPushButton { border: none; background: transparent; }
-        """)
+        """
+        )
 
         hbox.addWidget(btn_close)
 
@@ -171,7 +175,9 @@ class ConsoleWindow(QWidget):
 
     def mousePressEvent(self, event):
         if event.button() == Qt.MouseButton.LeftButton:
-            self._drag_pos = event.globalPosition().toPoint() - self.frameGeometry().topLeft()
+            self._drag_pos = (
+                event.globalPosition().toPoint() - self.frameGeometry().topLeft()
+            )
             event.accept()
 
     def mouseMoveEvent(self, event):
