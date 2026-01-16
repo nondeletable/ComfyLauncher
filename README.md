@@ -22,7 +22,7 @@ Built with **Python** and **PyQt6**, featuring a clean UI, system checks, and fl
 
 ## 🧠 Technologies
 
-- **Python 3.12+**
+- **Python 3.11+**
 - **PyQt6** — for desktop UI  
 - **Subprocess** — to handle ComfyUI execution  
 - **JSON** — to store user preferences  
@@ -62,7 +62,6 @@ Main window:
 
 
 Settings page:
-
 
 
 ## ⬇️ Download
