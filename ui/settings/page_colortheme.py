@@ -33,7 +33,7 @@ class ColorThemesPage(QWidget):
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(24)
 
-        title = QLabel("Select color theme")
+        title = QLabel("Color Themes")
         title.setStyleSheet(
             f"color: {THEME.colors['text_primary']}; "
             f"font-size: 20px; font-weight: 500;"
@@ -142,10 +142,10 @@ class ColorThemesPage(QWidget):
                 border-radius: 8px;
             }}
             QFrame#{name}[selected="true"] {{
-                border: 1px solid {colors['accent']};
+                border: 3px solid {colors['accent']};
             }}
             QFrame#{name}:hover {{
-                border: 1px solid {colors['accent_hover']};
+                border: 3px solid {colors['accent_hover']};
             }}
         """
         )

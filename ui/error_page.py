@@ -12,11 +12,13 @@ class ErrorScreen(QWidget):
 
         self.setObjectName("ErrorScreen")
         self.setAutoFillBackground(True)
-        self.setStyleSheet("""
+        self.setStyleSheet(
+            """
             QWidget#ErrorScreen {
                 background-color: #353535;
             }
-        """)
+        """
+        )
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -103,12 +105,14 @@ class ErrorWidget(QWidget):
             card_layout.addWidget(hint_label)
 
         # Card style (inline, no theme)
-        card.setStyleSheet("""
+        card.setStyleSheet(
+            """
         QWidget#ErrorCard {
             background-color: #353535;
             border-radius: 12px;
 
         }
-        """)
+        """
+        )
 
         root.addWidget(card)

@@ -11,7 +11,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, QSize
 from PyQt6.QtGui import QIcon
 
-from config import load_user_config, save_user_config, ICON_PATHS
+from config import load_user_config, save_user_config, ICON_PATH, ICON_PATHS
 from ui.header import colorize_svg
 from ui.theme.manager import THEME
 from ui.settings.page_build import BuildSettingsPage
@@ -23,6 +23,7 @@ class SetupWindow(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("ComfyLauncher Setup")
+        self.setWindowIcon(QIcon(ICON_PATH))
         self.setModal(True)
         self.setFixedSize(500, 220)
         self.setStyleSheet(
