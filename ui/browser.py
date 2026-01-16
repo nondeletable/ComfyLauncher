@@ -27,7 +27,7 @@ from config import (
     COMFYUI_PORT,
     load_user_config,
     save_user_config,
-    SPLASH_PATH
+    SPLASH_PATH,
 )
 
 
@@ -52,6 +52,7 @@ class ComfyBrowser(QMainWindow):
         self.setWindowTitle("ComfyLauncher")
         self.setWindowIcon(QIcon(ICON_PATH))
         self.comfyui_path = get_comfyui_path()
+        self.settings_window = None
 
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
         # self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
@@ -68,11 +69,13 @@ class ComfyBrowser(QMainWindow):
         # central container
         central = QWidget(self)
         central.setObjectName("CentralContainer")
-        central.setStyleSheet("""
+        central.setStyleSheet(
+            """
             QWidget#CentralContainer {
                 background-color: #353535;
             }
-        """)
+        """
+        )
         vbox = QVBoxLayout(central)
         vbox.setContentsMargins(0, 0, 0, 0)
         vbox.setSpacing(0)
@@ -83,7 +86,7 @@ class ComfyBrowser(QMainWindow):
         self.setCentralWidget(central)
 
         self.status_label = self.header.status_label
-        self.showMaximized()
+        # self.showMaximized()
         QTimer.singleShot(100, lambda: self._round_corners(10))
 
         # ── Binding signals to methods ───────────────────
@@ -170,7 +173,7 @@ class ComfyBrowser(QMainWindow):
 
     def stop_comfy(self):
         reply = MB.ask_yes_no(
-            self,
+            self.window(),
             "Stop confirmation",
             "Completely stop ComfyUI and terminate the process?",
         )
@@ -187,16 +190,36 @@ class ComfyBrowser(QMainWindow):
 
     def open_settings(self):
         log_event("🧩 Opening settings window...")
-        try:
-            self.settings_window = SettingsWindow(None)
-            self.settings_window.show()
-            log_event("✅ Settings window opened successfully.")
-        except Exception as e:
-            import traceback
 
-            log_event("❌ Settings window failed to open:")
-            traceback.print_exc()
-            log_event(f"❌ Exception type: {type(e).__name__}, message: {e}")
+        # если ссылка есть, но QWidget уже уничтожен
+        try:
+            if self.settings_window is not None:
+                _ = self.settings_window.isVisible()
+        except RuntimeError:
+            self.settings_window = None
+
+        if self.settings_window is not None:
+            self.settings_window.show()
+
+            # развернуть из трея/минимайза
+            if self.settings_window.windowState() & Qt.WindowState.WindowMinimized:
+                self.settings_window.setWindowState(
+                    self.settings_window.windowState() & ~Qt.WindowState.WindowMinimized
+                )
+
+            self.settings_window.raise_()
+            self.settings_window.activateWindow()
+            log_event("✅ Settings window restored/activated.")
+            return
+
+        self.settings_window = SettingsWindow(
+            self
+        )  # или None, если хочешь отдельный таскбар-айтем
+        self.settings_window.destroyed.connect(
+            lambda: setattr(self, "settings_window", None)
+        )
+        self.settings_window.show()
+        log_event("✅ Settings window opened successfully.")
 
     @staticmethod
     def open_output():
@@ -229,8 +252,8 @@ class ComfyBrowser(QMainWindow):
             log_event(f"⚠️ Error in check_server_status: {e}")
 
     def load_comfy(self):
-        url = QUrl(f"http://127.0.0.1:{COMFYUI_PORT}")
-        # self.browser.load(url)
+        """Reserved for future browser loading logic."""
+        pass
 
     def on_load_finished(self, ok):
         if not ok:
@@ -247,7 +270,6 @@ class ComfyBrowser(QMainWindow):
 
     def closeEvent(self, event):
         """Reaction to closing depending on user settings"""
-
         # If a duplicate closeEvent fires while we're already processing exit
         if getattr(self, "_exit_in_progress", False):
             log_event("⚠️ Duplicate closeEvent ignored.")
@@ -310,7 +332,6 @@ class ComfyBrowser(QMainWindow):
 
         # Save user config anyway (important!)
         save_user_config(user_config)
-
         event.accept()
 
     def open_console_logs(self):
@@ -337,7 +358,6 @@ class ComfyBrowser(QMainWindow):
         if self.isVisible():
             self._round_corners(10)
 
-
     def _start_comfyui(self):
         self.ui_state = "STARTING_COMFY"
 
@@ -357,10 +377,9 @@ class ComfyBrowser(QMainWindow):
 
         self.thread.start()
 
-
     def _on_comfy_ready(self):
         self.ui_state = "RUNNING"
-
+        self.showMaximized()
         if hasattr(self, "splash") and self.splash:
             self.splash.finish()
             self.splash = None
@@ -388,7 +407,7 @@ class ComfyBrowser(QMainWindow):
 
     def _enter_error_state(self, error_code: str):
         self.ui_state = "ERROR_STARTUP"
-
+        self.showMaximized()
         # закрываем splash
         if hasattr(self, "splash") and self.splash:
             self.splash.finish()
@@ -406,11 +425,13 @@ class ComfyBrowser(QMainWindow):
 
         central = QWidget(self)
         central.setObjectName("CentralContainer")
-        central.setStyleSheet("""
+        central.setStyleSheet(
+            """
             QWidget#CentralContainer {
                 background-color: #353535;
             }
-        """)
+        """
+        )
 
         vbox = QVBoxLayout(central)
         vbox.setContentsMargins(0, 0, 0, 0)

@@ -17,7 +17,7 @@ class StartAppSettingsPage(QWidget):
         layout.setContentsMargins(30, 30, 30, 30)
         layout.setSpacing(16)
 
-        title = QLabel("Start App")
+        title = QLabel("CMD Window")
         title.setStyleSheet("font-size: 20px; font-weight: 500;")
         layout.addWidget(title)
 
@@ -76,7 +76,7 @@ class StartAppSettingsPage(QWidget):
         self._saved.update(data)
         self._set_dirty(False)
 
-        MB.info(self, "Saved", "To apply this setting, restart the launcher.")
+        MB.info(self.window(), "Saved", "To apply this setting, restart the launcher.")
         return True
 
     def reset(self):

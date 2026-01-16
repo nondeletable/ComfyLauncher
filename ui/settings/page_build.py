@@ -35,7 +35,7 @@ class BuildSettingsPage(QWidget):
         layout.setSpacing(16)
 
         # ─── Headline ───────────────────────────────
-        title = QLabel("Folder settings")
+        title = QLabel("Comfy Folder")
         title.setStyleSheet("font-size: 20px; font-weight: 500;")
         layout.addWidget(title)
 

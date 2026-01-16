@@ -178,7 +178,7 @@ class HeaderBar(QWidget):
         self.btn_restart.setToolTip("Restart ComfyUI")
         self.btn_stop.setToolTip("Stop ComfyUI")
         self.btn_settings.setToolTip("Settings")
-        self.btn_folder.setToolTip("Open folder")
+        self.btn_folder.setToolTip("Open ComfyUI folder")
         self.btn_output.setToolTip("Open output")
         self.btn_reload.setToolTip("Refresh UI")
         self.btn_console.setToolTip("Command Prompt")

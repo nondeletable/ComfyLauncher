@@ -50,7 +50,7 @@ class SettingsWindow(QWidget):
                 border-radius: 10px;
             }}
             QFrame#settings_main_frame {{
-                border: 1px solid {self.colors['border_color']};
+                border: 2px solid {self.colors['border_color']};
             }}
         """
         )
@@ -69,9 +69,9 @@ class SettingsWindow(QWidget):
         self.menu = QListWidget()
         self.menu.addItems(
             [
-                "Paths",
-                "Start App",
-                "Exit behavior",
+                "Comfy Folder",
+                "CMD Window",
+                "Exit Options",
                 "Color Themes",
                 "Launcher Logs",
                 "About",
@@ -167,6 +167,10 @@ class SettingsWindow(QWidget):
                     background-color: {self.colors['accent']};
                     color: #fff;
                     border-color: {self.colors['accent']};
+                }}
+                QPushButton:disabled {{
+                    color: #555555;
+                    border: 1px solid #555555;
                 }}
             """
             )
@@ -297,7 +301,7 @@ class SettingsWindow(QWidget):
     def closeEvent(self, e):
         if getattr(self, "_dirty_any", False):
             reply = MB.ask_yes_no(
-                self,
+                self.window(),
                 "Unsaved changes",
                 "Discard unsaved changes and close Settings?",
             )

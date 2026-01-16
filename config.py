@@ -10,7 +10,6 @@ ICONS_DIR = os.path.join(ASSETS_DIR, "icons")
 SPLASH_DIR = os.path.join(ASSETS_DIR, "splash")
 INTERFACE_DIR = os.path.join(ASSETS_DIR, "interface")
 
-
 COMFYUI_PORT = 8188
 
 # ── Waiting parameters ────────────────────────

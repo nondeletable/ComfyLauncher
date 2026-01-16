@@ -39,7 +39,7 @@ def launch_app():
     # ─── MAIN UI (ВСЕГДА) ────────────────────────────────────
     win = ComfyBrowser()
     app.window = win
-    win.show()
+    # win.show()
 
     # ─── EVENT LOOP ─────────────────────────────────────────
     sys.exit(app.exec())

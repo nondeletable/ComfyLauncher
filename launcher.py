@@ -1,4 +1,5 @@
 import subprocess
+from subprocess import TimeoutExpired
 import socket
 import time
 import psutil
@@ -60,7 +61,7 @@ def is_cuda_available():
             timeout=5,  # таймаут на случай зависания
         )
         return result.returncode == 0
-    except Exception:
+    except (OSError, TimeoutExpired):
         return False
 
 
@@ -77,7 +78,7 @@ def get_file_hash(path: str) -> str:
             while chunk := f.read(8192):
                 h.update(chunk)
         return h.hexdigest()
-    except Exception:
+    except (OSError, IOError):
         return ""
 
 
@@ -206,9 +207,8 @@ def ensure_comfyui_running(comfy_path: str, port: int = 8188):
 
     # --- General Popen parameters ---------------------------------------
     if use_internal_console:
-        creationflags = subprocess.CREATE_NO_WINDOW
-        popen_common = dict(
-            creationflags=creationflags,
+        popen_common = dict(  # noqa: F841
+            creationflags=subprocess.CREATE_NO_WINDOW,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
@@ -216,7 +216,7 @@ def ensure_comfyui_running(comfy_path: str, port: int = 8188):
         )
     else:
         # external mode: everything goes to the regular console / CMD
-        popen_common = dict(
+        popen_common = dict(  # noqa: F841
             creationflags=subprocess.CREATE_NEW_CONSOLE,
         )
 
@@ -296,15 +296,19 @@ def kill_process_tree(pid):
         parent = psutil.Process(pid)
     except psutil.NoSuchProcess:
         return
-    children = parent.children(recursive=True)
-    for child in children:
+
+    for child in parent.children(recursive=True):
         try:
             log_event(f"💀 Killing child PID {child.pid}: {child.name()}")
             child.kill()
-        except Exception:
+        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
             pass
+
     log_event(f"💀 Killing parent PID {pid}: {parent.name()}")
-    parent.kill()
+    try:
+        parent.kill()
+    except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+        pass
 
 
 def stop_comfyui_hard(_grace_period=5):
@@ -327,14 +331,18 @@ def stop_comfyui_hard(_grace_period=5):
                 "run_cpu.bat" in cmdline_joined
                 or "run_nvidia_gpu.bat" in cmdline_joined
             ):
-                log_event(f"💀 We are finishing the bat file and all its descendants (PID {proc.pid})")
+                log_event(
+                    f"💀 We are finishing the bat file and all its descendants (PID {proc.pid})"
+                )
                 time.sleep(1)
                 kill_process_tree(proc.pid)
                 # To be on the safe side, we'll additionally check for descendants after kill.
                 time.sleep(0.5)
                 for child in psutil.process_iter(["pid", "ppid", "name"]):
                     if child.info["ppid"] == proc.pid:
-                        log_event(f"⚠️ Descendant {child.pid} ({child.info['name']}) still alive - kill directly")
+                        log_event(
+                            f"⚠️ Descendant {child.pid} ({child.info['name']}) still alive - kill directly"
+                        )
                         child.kill()
                 killed = True
         except (psutil.NoSuchProcess, psutil.AccessDenied):

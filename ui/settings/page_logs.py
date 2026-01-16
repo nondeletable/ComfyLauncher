@@ -174,12 +174,12 @@ class LogsSettingsPage(QWidget):
             self.text_edit.moveCursor(QTextCursor.MoveOperation.End)
             log_event("📖 Logs page refreshed.")
         except Exception as e:
-            MB.error(self, "Error", f"Failed to read log file:\n{e}")
+            MB.error(self.window(), "Error", f"Failed to read log file:\n{e}")
 
     def clear_logs(self):
         """Clears the log with confirmation."""
         if not MB.ask_yes_no(
-            self, "Clear logs", "Are you sure you want to clear the log file?"
+            self.window(), "Clear logs", "Are you sure you want to clear the log file?"
         ):
             return
         try:
@@ -187,4 +187,4 @@ class LogsSettingsPage(QWidget):
             log_event("🧹 Log file cleared by user.")
             self.text_edit.setPlainText("Log cleared.")
         except Exception as e:
-            MB.error(self, "Error", f"Failed to clear logs:\n{e}")
+            MB.error(self.window(), "Error", f"Failed to clear logs:\n{e}")
