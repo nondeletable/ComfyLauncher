@@ -1,4 +1,4 @@
-![CI](https://github.com/nondeletable/ComfyLauncher/actions/workflows/ci.yml/badge.svg)
+![CI](https://github.com/nondeletable/ComfyLauncher/actions/workflows/ci.yaml/badge.svg)
 
 # 🚀 ComfyLauncher
 
