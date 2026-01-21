@@ -5,7 +5,7 @@ os.environ["QT_MEDIA_BACKEND"] = "ffmpeg"
 os.environ["QT_FFMPEG_HWACCEL"] = "none"
 os.environ["QSG_RHI_BACKEND"] = "software"
 
-from PyQt6.QtWidgets import QApplication, QToolTip
+from PyQt6.QtWidgets import QApplication, QToolTip, QDialog
 from PyQt6.QtGui import QFont
 from ui.browser import ComfyBrowser
 from ui.dialogs.setup_window import SetupWindow
@@ -30,11 +30,21 @@ def launch_app():
         """
     )
 
-    # ─── FIRST SETUP (оставляем) ─────────────────────────────
+    # ── FIRST SETUP ─────────────────────────────
     comfy_path = get_comfyui_path()
     if not comfy_path or not comfy_exists(comfy_path):
         setup = SetupWindow()
-        setup.exec()  # пользователь либо выберет путь, либо закроет
+        result = setup.exec()
+
+        # Cancel / крестик -> это выход из программы
+        if result != QDialog.DialogCode.Accepted:
+            sys.exit(0)
+
+        # пользователь мог выбрать путь — перечитываем заново
+        comfy_path = get_comfyui_path()
+        if not comfy_path or not comfy_exists(comfy_path):
+            # на всякий случай: если окно закрылось "ОК", но путь так и не появился
+            sys.exit(0)
 
     # ─── MAIN UI (ВСЕГДА) ────────────────────────────────────
     win = ComfyBrowser()
