@@ -47,6 +47,18 @@ def wait_for_server():
     return False
 
 
+def get_listening_pids(port: int) -> set[int]:
+    pids: set[int] = set()
+    try:
+        for c in psutil.net_connections(kind="inet"):
+            if c.laddr and c.laddr.port == port and c.status == psutil.CONN_LISTEN:
+                if c.pid:
+                    pids.add(c.pid)
+    except Exception:
+        pass
+    return pids
+
+
 def is_cuda_available():
     """Checks for the presence of an NVIDIA GPU via nvidia-smi"""
     # Checks that nvidia-smi even exists
@@ -205,23 +217,12 @@ def ensure_comfyui_running(comfy_path: str, port: int = 8188):
     bat_name = "run_nvidia_gpu.bat" if cuda_available else "run_cpu.bat"
     bat_file = os.path.join(base_dir, bat_name)
 
-    # --- General Popen parameters ---------------------------------------
-    if use_internal_console:
-        popen_common = dict(  # noqa: F841
-            creationflags=subprocess.CREATE_NO_WINDOW,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            bufsize=1,
-        )
-    else:
-        # external mode: everything goes to the regular console / CMD
-        popen_common = dict(  # noqa: F841
-            creationflags=subprocess.CREATE_NEW_CONSOLE,
-        )
-
     # --- BAT mode ----------------------------------------------------
     if os.path.exists(bat_file):
+
+        env = os.environ.copy()
+        env["PYTHONUNBUFFERED"] = "1"
+        env["PYTHONIOENCODING"] = "utf-8"
 
         if show_cmd:
             # 🔹 MODE: SHOW CMD (REAL)
@@ -234,11 +235,12 @@ def ensure_comfyui_running(comfy_path: str, port: int = 8188):
         else:
             # 🔹 MODE: HIDDEN CONSOLE (PIPE)
             _comfy_process = subprocess.Popen(
-                bat_file,
+                ["cmd.exe", "/d", "/c", bat_file],  # бат выполняем через cmd корректно
                 cwd=base_dir,
+                env=env,
                 creationflags=subprocess.CREATE_NO_WINDOW,
                 stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                stderr=subprocess.STDOUT,  # один поток → без зависаний/пачек
                 text=True,
                 bufsize=1,
             )
@@ -251,6 +253,7 @@ def ensure_comfyui_running(comfy_path: str, port: int = 8188):
 
         args = [
             python_exe,
+            "-u",  # realtime
             os.path.join(comfy_path, "main.py"),
             "--windows-standalone-build",
         ]
@@ -258,9 +261,11 @@ def ensure_comfyui_running(comfy_path: str, port: int = 8188):
             args.append("--cpu")
 
         env = os.environ.copy()
+        env["PYTHONUNBUFFERED"] = "1"
         env["PYTHONHOME"] = os.path.join(base_dir, "python_embeded")
         env["PYTHONPATH"] = comfy_path
         env["PATH"] = env["PYTHONHOME"] + ";" + env["PATH"]
+        env["PYTHONIOENCODING"] = "utf-8"
 
         if show_cmd:
             _comfy_process = subprocess.Popen(
@@ -276,7 +281,7 @@ def ensure_comfyui_running(comfy_path: str, port: int = 8188):
                 env=env,
                 creationflags=subprocess.CREATE_NO_WINDOW,
                 stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
                 text=True,
                 bufsize=1,
             )
@@ -370,17 +375,32 @@ def stop_comfyui_hard(_grace_period=5):
     else:
         log_event("⚠️ No ComfyUI process found to stop.")
 
+    deadline = time.time() + _grace_period
+    while time.time() < deadline and is_port_open(COMFYUI_PORT):
+        pids = get_listening_pids(COMFYUI_PORT)
+        if not pids:
+            time.sleep(0.2)
+            continue
+
+        for pid in pids:
+            log_event(f"💀 Killing listener on port {COMFYUI_PORT}: PID {pid}")
+            kill_process_tree(pid)
+
+        time.sleep(0.3)
+
+    if not is_port_open(COMFYUI_PORT):
+        log_event("🟢 Port 8188 closed — server fully stopped.")
+    else:
+        log_event("⚠️ Port still busy — residual process remains.")
+
     _comfy_process = None
 
 
 def _read_process_output(proc: subprocess.Popen):
-    """Reads stdout/stderr of ComfyUI process and writes to ConsoleBuffer."""
+    """Reads stdout of ComfyUI process and writes to ConsoleBuffer."""
     try:
         if proc.stdout:
             for line in proc.stdout:
-                ConsoleBuffer.add(line)
-        if proc.stderr:
-            for line in proc.stderr:
                 ConsoleBuffer.add(line)
     except Exception as e:
         ConsoleBuffer.add(f"[Console reader error] {e}\n")
