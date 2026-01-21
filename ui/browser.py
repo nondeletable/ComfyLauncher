@@ -191,35 +191,49 @@ class ComfyBrowser(QMainWindow):
     def open_settings(self):
         log_event("🧩 Opening settings window...")
 
-        # если ссылка есть, но QWidget уже уничтожен
         try:
+            # Если уже есть — поднять
             if self.settings_window is not None:
-                _ = self.settings_window.isVisible()
-        except RuntimeError:
-            self.settings_window = None
+                try:
+                    # если объект уже удалён (WA_DeleteOnClose), тут может быть RuntimeError
+                    if self.settings_window.isVisible():
+                        self.settings_window.raise_()
+                        self.settings_window.activateWindow()
+                        log_event("✅ Settings window already open — raised.")
+                        return
+                except RuntimeError:
+                    # "wrapped C/C++ object has been deleted"
+                    self.settings_window = None
 
-        if self.settings_window is not None:
+            # Создаём самостоятельное окно (parent=None)
+            self.settings_window = SettingsWindow(None)
+
+            # Когда окно реально уничтожено — сбросить ссылку
+            self.settings_window.destroyed.connect(self._on_settings_destroyed)
+
             self.settings_window.show()
-
-            # развернуть из трея/минимайза
-            if self.settings_window.windowState() & Qt.WindowState.WindowMinimized:
-                self.settings_window.setWindowState(
-                    self.settings_window.windowState() & ~Qt.WindowState.WindowMinimized
-                )
-
             self.settings_window.raise_()
             self.settings_window.activateWindow()
-            log_event("✅ Settings window restored/activated.")
-            return
 
-        self.settings_window = SettingsWindow(
-            self
-        )  # или None, если хочешь отдельный таскбар-айтем
-        self.settings_window.destroyed.connect(
-            lambda: setattr(self, "settings_window", None)
-        )
-        self.settings_window.show()
-        log_event("✅ Settings window opened successfully.")
+            log_event("✅ Settings window opened successfully.")
+
+        except Exception as e:
+            import traceback
+
+            log_event("❌ Settings window failed to open:")
+            traceback.print_exc()
+            log_event(f"❌ Exception type: {type(e).__name__}, message: {e}")
+
+    def _on_settings_destroyed(self, *args):
+        self.settings_window = None
+
+    def _close_settings_if_open(self):
+        if self.settings_window is not None:
+            try:
+                self.settings_window.close()
+            except RuntimeError:
+                pass
+            self.settings_window = None
 
     @staticmethod
     def open_output():
@@ -296,15 +310,15 @@ class ComfyBrowser(QMainWindow):
             if choice == "yes":
                 log_event("🟥 User chose: YES — stopping ComfyUI and exiting.")
                 stop_comfyui_hard()
-
-                save_user_config(user_config)  # ← важно!
+                self._close_settings_if_open()
+                save_user_config(user_config)
                 event.accept()
                 return
 
             # NO → exit, but keep server running
             elif choice == "no":
                 log_event("🟢 User chose: NO — exiting without stopping ComfyUI.")
-
+                self._close_settings_if_open()
                 save_user_config(user_config)  # ← важно!
                 event.accept()
                 return
@@ -332,6 +346,7 @@ class ComfyBrowser(QMainWindow):
 
         # Save user config anyway (important!)
         save_user_config(user_config)
+        self._close_settings_if_open()
         event.accept()
 
     def open_console_logs(self):
