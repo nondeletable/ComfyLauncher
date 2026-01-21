@@ -4,8 +4,12 @@ from PyQt6.QtCore import QObject, pyqtSignal
 from PyQt6.QtWidgets import QApplication
 
 from ui.theme.tokens import THEMES
+from ui.theme.theme_registry import REGISTRY
 from config import USER_CONFIG_PATH as CONFIG_PATH
 from utils.logger import log_event
+
+
+_ = REGISTRY
 
 
 class ThemeManager(QObject):

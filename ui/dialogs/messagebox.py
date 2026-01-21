@@ -59,7 +59,7 @@ class MessageBox(QDialog):
             QDialog {{
                 background-color: {c['popup_bg']};
                 color: {c['popup_text']};
-                border: 1px solid {c['popup_border']};
+                border: 2px solid {c['popup_border']};
                 border-radius: 10px;
                 padding: 12px;
             }}
