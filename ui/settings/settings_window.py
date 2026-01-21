@@ -9,7 +9,7 @@ from PyQt6.QtWidgets import (
     QSizePolicy,
 )
 from PyQt6.QtCore import Qt, QRectF
-from PyQt6.QtGui import QPainterPath, QRegion, QIcon
+from PyQt6.QtGui import QPainterPath, QRegion
 
 from ui.settings.page_build import BuildSettingsPage
 from ui.settings.page_behavior import BehaviorSettingsPage
@@ -19,7 +19,6 @@ from ui.settings.page_logs import LogsSettingsPage
 from ui.settings.page_startapp import StartAppSettingsPage
 from ui.theme.manager import THEME
 from ui.dialogs.messagebox import MessageBox as MB
-from config import ICON_PATH
 
 
 # ──────────────────────────────────────────────
@@ -31,7 +30,6 @@ class SettingsWindow(QWidget):
 
         # ─── Basic window parameters ─────────────────────────
         self.setWindowTitle("Settings")
-        self.setWindowIcon(QIcon(ICON_PATH))
         self.setFixedSize(1200, 700)
         self.setWindowFlag(Qt.WindowType.FramelessWindowHint)
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)

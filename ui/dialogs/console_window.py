@@ -42,7 +42,7 @@ class ConsoleWindow(QWidget):
                 background-color: {c['bg_header']};
                 color: {c['text_primary']};
                 border-radius: 10px;
-                border: 2px solid {c['border_color']};
+                border: 1px solid {c['border_color']};
             }}
         """
         )

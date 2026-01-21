@@ -1,10 +1,8 @@
 from PyQt6.QtCore import Qt, QUrl, QTimer
-from PyQt6.QtGui import QIcon
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QApplication
 from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput
 from PyQt6.QtMultimediaWidgets import QVideoWidget
 from utils.logger import log_event
-from config import ICON_PATH
 
 
 class LauncherSplashVideo(QWidget):
@@ -17,8 +15,6 @@ class LauncherSplashVideo(QWidget):
 
     def __init__(self, video_path: str):
         super().__init__()
-
-        self.setWindowIcon(QIcon(ICON_PATH))
 
         # ─── Window flags ─────────────────────────────
         self.setWindowFlags(
