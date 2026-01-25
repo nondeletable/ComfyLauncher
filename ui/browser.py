@@ -1,5 +1,5 @@
 from PyQt6.QtWebEngineWidgets import QWebEngineView
-from PyQt6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QLabel
+from PyQt6.QtWidgets import QMainWindow, QWidget, QVBoxLayout
 from PyQt6.QtGui import QIcon, QPainterPath, QRegion
 from PyQt6.QtCore import Qt, QTimer, QUrl, QRectF, QThread
 
@@ -31,19 +31,6 @@ from config import (
 )
 
 
-class StartingWidget(QWidget):
-    def __init__(self):
-        super().__init__()
-        layout = QVBoxLayout(self)
-        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        label = QLabel("🚀 Запуск ComfyUI…")
-        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        label.setStyleSheet("font-size: 18px; color: #cccccc;")
-
-        layout.addWidget(label)
-
-
 class ComfyBrowser(QMainWindow):
     def __init__(self, poll_callback=None):
         super().__init__()
@@ -55,7 +42,6 @@ class ComfyBrowser(QMainWindow):
         self.settings_window = None
 
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
-        # self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
 
         # Status check timer
         self.status_timer = QTimer(self)
@@ -64,7 +50,6 @@ class ComfyBrowser(QMainWindow):
 
         # header
         self.header = HeaderBar(self)
-        self.starting_widget = StartingWidget()
 
         # central container
         central = QWidget(self)
@@ -80,13 +65,12 @@ class ComfyBrowser(QMainWindow):
         vbox.setContentsMargins(0, 0, 0, 0)
         vbox.setSpacing(0)
 
-        vbox.addWidget(self.header)  # header on top
+        vbox.addWidget(self.header)
         vbox.addStretch(1)
 
         self.setCentralWidget(central)
 
         self.status_label = self.header.status_label
-        # self.showMaximized()
         QTimer.singleShot(100, lambda: self._round_corners(10))
 
         # ── Binding signals to methods ───────────────────
@@ -192,7 +176,7 @@ class ComfyBrowser(QMainWindow):
         log_event("🧩 Opening settings window...")
 
         try:
-            # Если уже есть — поднять
+            # If you already have it, raise it.
             if self.settings_window is not None:
                 try:
                     # если объект уже удалён (WA_DeleteOnClose), тут может быть RuntimeError
@@ -399,12 +383,10 @@ class ComfyBrowser(QMainWindow):
             self.splash.finish()
             self.splash = None
 
-        # создаём браузер ТОЛЬКО СЕЙЧАС
         self.browser = QWebEngineView()
         self.browser.loadFinished.connect(self.on_load_finished)
         self.browser.load(QUrl(f"http://127.0.0.1:{COMFYUI_PORT}"))
 
-        # заменяем прелоадер на браузер
         central = QWidget(self)
         vbox = QVBoxLayout(central)
         vbox.setContentsMargins(0, 0, 0, 0)
