@@ -3,7 +3,7 @@ import os
 
 os.environ["QT_MEDIA_BACKEND"] = "ffmpeg"
 os.environ["QT_FFMPEG_HWACCEL"] = "none"
-os.environ["QSG_RHI_BACKEND"] = "software"
+# os.environ["QSG_RHI_BACKEND"] = "software"
 
 from PyQt6.QtWidgets import QApplication, QToolTip, QDialog
 from PyQt6.QtGui import QFont
