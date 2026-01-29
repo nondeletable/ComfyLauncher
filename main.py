@@ -3,19 +3,19 @@ import os
 
 os.environ["QT_MEDIA_BACKEND"] = "ffmpeg"
 os.environ["QT_FFMPEG_HWACCEL"] = "none"
-os.environ["QSG_RHI_BACKEND"] = "software"
 
 from PyQt6.QtWidgets import QApplication, QToolTip, QDialog
-from PyQt6.QtGui import QFont
+from PyQt6.QtGui import QFont, QIcon
 from ui.browser import ComfyBrowser
 from ui.dialogs.setup_window import SetupWindow
 from ui.theme.manager import THEME
 from launcher import comfy_exists
-from config import get_comfyui_path
+from config import get_comfyui_path, ICON_PATH
 
 
 def launch_app():
     app = QApplication(sys.argv)
+    app.setWindowIcon(QIcon(ICON_PATH))
     THEME.apply()
 
     QToolTip.setFont(QFont("Segoe UI", 9))

@@ -43,8 +43,8 @@ class SetupWindow(QDialog):
         layout.setContentsMargins(24, 20, 24, 18)  # твои текущие отступы перенеси сюда
         layout.setSpacing(14)
 
-        r = 9  # радиус
-        b = 2  # толщина обводки
+        r = 9  # radius
+        b = 3  # border
 
         self.main_frame.setStyleSheet(
             f"""
@@ -55,10 +55,6 @@ class SetupWindow(QDialog):
         }}
         """
         )
-
-        # layout = QVBoxLayout(self)
-        # layout.setContentsMargins(30, 30, 30, 30)
-        # layout.setSpacing(16)
 
         info = QLabel(
             "Specify the folder where ComfyUI is located (folder with main.py).<br>"
@@ -178,15 +174,15 @@ class SetupWindow(QDialog):
         save_user_config(data)
         self.accept()
 
-    # def _round_corners(self, radius: int):
-    #     from PyQt6.QtGui import QPainterPath, QRegion
-    #     from PyQt6.QtCore import QRectF
-    #
-    #     path = QPainterPath()
-    #     rect = QRectF(self.rect())
-    #     path.addRoundedRect(rect, radius, radius)
-    #     region = QRegion(path.toFillPolygon().toPolygon())
-    #     self.setMask(region)
+    def _round_corners(self, radius: int):
+        from PyQt6.QtGui import QPainterPath, QRegion
+        from PyQt6.QtCore import QRectF
+
+        path = QPainterPath()
+        rect = QRectF(self.rect())
+        path.addRoundedRect(rect, radius, radius)
+        region = QRegion(path.toFillPolygon().toPolygon())
+        self.setMask(region)
 
     def showEvent(self, event):
         super().showEvent(event)
