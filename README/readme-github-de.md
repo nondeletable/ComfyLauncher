@@ -11,8 +11,7 @@
     <a href="https://github.com/nondeletable/ComfyLauncher/tree/master/README/readme-github-ru.md">Русский </a>
     <br>
     <br>
-    <img src="/README/screenshots/06-main%20window.png" alt="ComfyLauncher UI" width="46%"/>
-    <img src="/README/screenshots/13-themes.png" alt="ComfyLauncher Themes" width="46%"/>
+    <img src="/README/screenshots/render.png" alt="ComfyLauncher UI" width="96%"/>
     <br>
     <br>
   </p>
@@ -197,6 +196,10 @@ Wenn etwas kaputtgeht, kannst du mich auf [Discord kontaktieren](https://discord
 &nbsp;
 
 - Leider wird aufgrund der Besonderheiten einer rahmenlosen UI das Ändern der Fenstergröße noch nicht unterstützt, поэтому läuft die App im Vollbildmodus. Du kannst das Fenster ziehen, aber aktuell nicht skalieren. Windows „Snap“ (Andocken an Bildschirmränder) funktioniert momentan auch nicht. Ich werde in Zukunft nach einer Lösung suchen — und wenn du weißt, wie man das umsetzt, freue ich mich, wenn du es teilst!
+
+- Wenn nach dem Start von ComfyLauncher anstelle von ComfyUI ein weißer Bildschirm angezeigt wird, ist die WebView2-Runtime höchstwahrscheinlich auf Ihrem System nicht vorhanden oder beschädigt. Laden Sie in diesem Fall den [Evergreen Bootstrapper](https://developer.microsoft.com/en-us/microsoft-edge/webview2) von der offiziellen Microsoft-Website herunter und installieren oder deinstallieren Sie ihn.
+
+    Wir sind bei Tests unter Windows 10 22H2 auf dieses Problem gestoßen. Die WebView2-Runtime war zwar installiert, aber aus unbekannten Gründen defekt, vermutlich nach der Verwendung eines Systemoptimierungsprogramms. Das Problem ließ sich durch Entfernen der fehlerhaften Runtime und Neuinstallation beheben. 
 &nbsp;
 &nbsp;
 
