@@ -65,6 +65,7 @@ Comfy 的 Standalone 版本自带 Launcher，用起来非常舒服。所以我�
 - 前往 **Releases** 区域并下载最新版本。
 - 将压缩包解压到你喜欢的文件夹。
 - 运行 ".exe"，尽情使用！
+- 请确保您已安装 Microsoft WebView2 运行时。如果没有，请下载并安装 [Evergreen Bootstrapper](https://developer.microsoft.com/en-us/microsoft-edge/webview2)。
 &nbsp;
 &nbsp;
 

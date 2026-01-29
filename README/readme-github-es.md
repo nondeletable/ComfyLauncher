@@ -65,6 +65,7 @@ Así que decidí crear un launcher dedicado que sea práctico para el uso real. 
 - Ve a la sección **Releases** y descarga la última versión.
 - Extrae (unzip) el archivo en una carpeta de tu elección.
 - Ejecuta el ".exe" ¡y listo!
+- Asegúrese de tener instalado Microsoft WebView2 Runtime. De lo contrario, descargue e instale [Evergreen Bootstrapper](https://developer.microsoft.com/en-us/microsoft-edge/webview2).
 &nbsp;
 &nbsp;
 
