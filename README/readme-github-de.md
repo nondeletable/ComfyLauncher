@@ -65,6 +65,7 @@ Also habe ich entschieden, einen dedizierten Launcher zu bauen, der im echten Al
 - Gehe zum Bereich **Releases** und lade das neueste Release herunter.
 - Entpacke (unzip) das Archiv in einen Ordner deiner Wahl.
 - Starte die ".exe" und viel Spaß!
+- Stellen Sie sicher, dass Microsoft WebView2 Runtime installiert ist. Falls nicht, laden Sie bitte den [Evergreen Bootstrapper](https://developer.microsoft.com/en-us/microsoft-edge/webview2) herunter und installieren Sie ihn.
 &nbsp;
 &nbsp;
 
