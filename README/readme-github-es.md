@@ -11,8 +11,7 @@
     <a href="https://github.com/nondeletable/ComfyLauncher/tree/master/README/readme-github-ru.md">Русский </a>
     <br>
     <br>
-    <img src="/README/screenshots/06-main%20window.png" alt="ComfyLauncher UI" width="46%"/>
-    <img src="/README/screenshots/13-themes.png" alt="ComfyLauncher Themes" width="46%"/>
+    <img src="/README/screenshots/render.png" alt="ComfyLauncher UI" width="96%"/>
     <br>
     <br>
   </p>
@@ -193,10 +192,13 @@ Nuestro pequeño equipo hizo todo lo posible por probar la app a fondo, detectar
 
 Si algo se rompe, puedes contactarme en [Discord](https://discord.com/invite/6nvXwXp78u). Es la forma más rápida de reportar un problema. Así que si te encuentras con un bug, ¡te agradecería mucho que me lo hicieras saber!
 
-- En la versión actual de Comfy Launcher, la selección manual del directorio `python-embedded` (necesario para ComfyUI) aún no está implementada. La app asume que `python-embedded` está en la ubicación predeterminada — junto a la carpeta principal de ComfyUI.  
-&nbsp;
+- En la versión actual de Comfy Launcher, la selección manual del directorio `python-embedded` (necesario para ComfyUI) aún no está implementada. La app asume que `python-embedded` está en la ubicación predeterminada — junto a la carpeta principal de ComfyUI.
  
 - Lamentablemente, debido a las particularidades de una UI sin marco, el cambio de tamaño de la ventana todavía no está soportado, así que la app se ejecuta en modo pantalla completa. Puedes mover la ventana, pero por ahora no puedes redimensionarla. El “snap” de Windows (acoplar a los bordes de la pantalla) tampoco funciona en este momento. Buscaré una solución en el futuro — y si sabes cómo implementarlo, ¡me encantaría que lo compartieras!
+
+- Si ve una pantalla blanca en lugar de ComfyUI después de iniciar ComfyLauncher, es muy probable que WebView2 Runtime no esté instalado o esté dañado en su sistema. En ese caso, intente descargar [Evergreen Bootstrapper](https://developer.microsoft.com/en-us/microsoft-edge/webview2) del sitio web oficial de Microsoft e instálelo o reinstálelo.
+
+    Nos encontramos con esta situación durante las pruebas en Windows 10 22H2. WebView2 Runtime estaba instalado en el sistema, pero por alguna razón falló, probablemente después de usar una de las utilidades de optimización del sistema. El problema se resolvió eliminando el runtime defectuoso e instalando uno nuevo. 
 &nbsp;
 &nbsp;
 
