@@ -20,6 +20,7 @@ def _wv2_userdata_dir(app_name: str = "ComfyLauncher") -> str:
     p.mkdir(parents=True, exist_ok=True)
     return str(p)
 
+
 class WebView2Widget(QWidget):
     loaded = pyqtSignal(bool)
 
@@ -97,7 +98,9 @@ class WebView2Widget(QWidget):
             from Microsoft.Web.WebView2.WinForms import CoreWebView2CreationProperties  # type: ignore
             from pathlib import Path
 
-            base = os.environ.get("LOCALAPPDATA") or str(Path.home() / "AppData" / "Local")
+            base = os.environ.get("LOCALAPPDATA") or str(
+                Path.home() / "AppData" / "Local"
+            )
             user_data = str(Path(base) / "ComfyLauncher" / "webview2")
             Path(user_data).mkdir(parents=True, exist_ok=True)
 
