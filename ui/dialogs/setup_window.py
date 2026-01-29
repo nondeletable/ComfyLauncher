@@ -7,9 +7,10 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
     QFileDialog,
     QMessageBox,
+    QFrame,
 )
-from PyQt6.QtCore import Qt, QSize
-from PyQt6.QtGui import QIcon
+from PyQt6.QtCore import Qt, QSize, QRectF
+from PyQt6.QtGui import QIcon, QPainterPath, QRegion
 
 from config import load_user_config, save_user_config, ICON_PATH, ICON_PATHS
 from ui.header import colorize_svg
@@ -26,13 +27,34 @@ class SetupWindow(QDialog):
         self.setWindowIcon(QIcon(ICON_PATH))
         self.setModal(True)
         self.setFixedSize(500, 220)
-        self.setStyleSheet(
-            f"background-color: {THEME.colors['bg_header']}; color: {THEME.colors['text_primary']};"
-        )
+        self.setObjectName("SetupWindow")
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
 
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(30, 30, 30, 30)
-        layout.setSpacing(16)
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.setSpacing(0)
+
+        self.main_frame = QFrame(self)
+        self.main_frame.setObjectName("setup_main_frame")
+
+        outer.addWidget(self.main_frame)
+
+        layout = QVBoxLayout(self.main_frame)
+        layout.setContentsMargins(24, 20, 24, 18)  # твои текущие отступы перенеси сюда
+        layout.setSpacing(14)
+
+        r = 9  # radius
+        b = 3  # border
+
+        self.main_frame.setStyleSheet(
+            f"""
+        QFrame#setup_main_frame {{
+            background-color: {THEME.colors['bg_header']};
+            border: {b}px solid {THEME.colors['border_color']};
+            border-radius: {r}px;
+        }}
+        """
+        )
 
         info = QLabel(
             "Specify the folder where ComfyUI is located (folder with main.py).<br>"
@@ -127,7 +149,7 @@ class SetupWindow(QDialog):
         btn_row.addWidget(self.ok_btn)
         btn_row.addWidget(self.cancel_btn)
         layout.addLayout(btn_row)
-        self._round_corners(10)
+        # self._round_corners(10)
         self.build_checker = BuildSettingsPage()  # for reuse validate_build_path()
 
     def _browse(self):
@@ -161,3 +183,18 @@ class SetupWindow(QDialog):
         path.addRoundedRect(rect, radius, radius)
         region = QRegion(path.toFillPolygon().toPolygon())
         self.setMask(region)
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        self._apply_rounded_mask()
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._apply_rounded_mask()
+
+    def _apply_rounded_mask(self):
+        r = 10
+        rect = QRectF(self.rect()).adjusted(1.0, 1.0, -1.0, -1.0)
+        path = QPainterPath()
+        path.addRoundedRect(rect, r, r)
+        self.setMask(QRegion(path.toFillPolygon().toPolygon()))
