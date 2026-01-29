@@ -181,7 +181,7 @@ class AboutSettingsPage(QWidget):
             donate_layout.addWidget(btn)
 
         # ─── SIGNATURE BELOW ──────────────────────────
-        footer = QLabel("Developed by nondeletable · v1.3.6 beta · PyQt6 · 2025")
+        footer = QLabel("Developed by nondeletable · v1.3.8 Beta · PyQt6 · 2025")
         footer.setAlignment(Qt.AlignmentFlag.AlignHCenter)
         footer.setStyleSheet(
             f"color: {self.colors['text_secondary']}; font-size: 12px;"

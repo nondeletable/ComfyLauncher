@@ -8,7 +8,6 @@ from ui.theme.theme_registry import REGISTRY
 from config import USER_CONFIG_PATH as CONFIG_PATH
 from utils.logger import log_event
 
-
 _ = REGISTRY
 
 
@@ -51,7 +50,7 @@ class ThemeManager(QObject):
         QFrame {{
             background-color: {t['bg_header']};
         }}
-    
+
         QListWidget {{
             background-color: {t['bg_menu']};
             color: {t['text_secondary']};
@@ -64,7 +63,7 @@ class ThemeManager(QObject):
         QListWidget::item:hover {{
             background-color: {t['bg_hover']};
         }}
-    
+
         QStackedWidget {{
             background-color: {t['bg_header']};
         }}
