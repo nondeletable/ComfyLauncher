@@ -27,7 +27,7 @@ class BehaviorSettingsPage(QWidget):
         layout.setSpacing(16)
 
         title = QLabel("Exit Options")
-        title.setStyleSheet("font-size: 20px; font-weight: 500;")
+        title.setStyleSheet("font-size: 20px; font-weight: 600;")
         layout.addWidget(title)
 
         desc = QLabel(
@@ -35,13 +35,11 @@ class BehaviorSettingsPage(QWidget):
             "You can choose a default action."
         )
         desc.setWordWrap(True)
-        desc.setStyleSheet(
-            f"""
+        desc.setStyleSheet(f"""
             color: {THEME.colors['text_secondary']};
             font-size: 13px;
             margin-bottom: 10px;
-            """
-        )
+            """)
         layout.addWidget(desc)
 
         # --- 3 exclusive options (radio group) ---

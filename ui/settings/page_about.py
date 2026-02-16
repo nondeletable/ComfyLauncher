@@ -7,10 +7,11 @@ from PyQt6.QtWidgets import (
     QStackedLayout,
 )
 from PyQt6.QtGui import QPixmap, QIcon
-from PyQt6.QtCore import Qt, QSize, QUrl
+from PyQt6.QtCore import Qt, QSize, QUrl, QThread
 from PyQt6.QtMultimedia import QMediaPlayer
 from PyQt6.QtMultimediaWidgets import QVideoWidget
 from ui.theme.manager import THEME
+from version import __version__
 from config import (
     DONATION_ICONS,
     CONTACT_ICONS,
@@ -18,6 +19,7 @@ from config import (
     ABOUT_LOGO_ANIM,
 )
 import webbrowser
+from utils.update_checker import UpdateService
 
 
 class AnimatedLogo(QWidget):
@@ -138,8 +140,7 @@ class AboutSettingsPage(QWidget):
             btn.setIconSize(QSize(40, 40))
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
             btn.setToolTip(f"{name}")
-            btn.setStyleSheet(
-                f"""
+            btn.setStyleSheet(f"""
                 QPushButton {{
                     background-color: transparent;
                     border: 1px solid transparent;
@@ -151,8 +152,7 @@ class AboutSettingsPage(QWidget):
                     border-color: {self.colors['accent']};
                     transform: scale(1.05);
                 }}
-            """
-            )
+            """)
             btn.clicked.connect(lambda _, link=url: self._open_link(link))  # type: ignore
             donate_layout.addWidget(btn)
 
@@ -162,8 +162,7 @@ class AboutSettingsPage(QWidget):
             btn.setIconSize(QSize(40, 40))
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
             btn.setToolTip(f"{name}")
-            btn.setStyleSheet(
-                f"""
+            btn.setStyleSheet(f"""
                 QPushButton {{
                     background-color: transparent;
                     border: 1px solid transparent;
@@ -175,19 +174,59 @@ class AboutSettingsPage(QWidget):
                     border-color: {self.colors['accent']};
                     transform: scale(1.05);
                 }}
-            """
-            )
+            """)
             btn.clicked.connect(lambda _, link=url: self._open_link(link))  # type: ignore
             donate_layout.addWidget(btn)
 
         # ─── SIGNATURE BELOW ──────────────────────────
-        footer = QLabel("Developed by nondeletable · v1.3.6 beta · PyQt6 · 2025")
-        footer.setAlignment(Qt.AlignmentFlag.AlignHCenter)
-        footer.setStyleSheet(
+        footer_container = QWidget()
+        footer_layout = QHBoxLayout(footer_container)
+        footer_layout.setContentsMargins(0, 0, 0, 0)
+
+        # Левая часть (занимает 1 часть пространства)
+        left_spacer = QWidget()
+        footer_layout.addWidget(left_spacer, 1)
+
+        # Центральная часть (занимает 1 часть пространства)
+        self.footer_label = QLabel(
+            f"Developed by nondeletable · v{__version__} · PyQt6 · 2026"
+        )
+        self.footer_label.setAlignment(Qt.AlignmentFlag.AlignCenter)  # Строго по центру
+        self.footer_label.setStyleSheet(
             f"color: {self.colors['text_secondary']}; font-size: 12px;"
         )
-        layout.addStretch(1)
-        layout.addWidget(footer)
+        footer_layout.addWidget(self.footer_label, 1)
+
+        # Правая часть (занимает 1 часть пространства)
+        right_container = QWidget()
+        right_layout = QHBoxLayout(right_container)
+        right_layout.setContentsMargins(0, 0, 0, 0)
+        right_layout.setAlignment(Qt.AlignmentFlag.AlignRight)  # Кнопка прижата вправо
+
+        self.update_btn = QPushButton("Check for updates")
+        # Рекомендую все же добавить минимальную ширину, чтобы кнопка не была слишком узкой
+        self.update_btn.setMinimumWidth(130)
+        self.update_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.update_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: transparent;
+                color: {THEME.colors['text_secondary']};
+                border: 1px solid {THEME.colors['border_color']};
+                border-radius: 6px;
+                padding: 2px 8px;
+                font-size: 11px;
+            }}
+            QPushButton:hover {{
+                background-color: {THEME.colors['accent']};
+                color: {THEME.colors['text_inverse']};
+                border-color: {THEME.colors['accent']};
+            }}
+        """)
+        self.update_btn.clicked.connect(self._manual_update_check)  # type: ignore
+        right_layout.addWidget(self.update_btn)
+        footer_layout.addWidget(right_container, 1)
+
+        layout.addWidget(footer_container)
         THEME.themeChanged.connect(self._apply_theme)
 
     # ─── Opening a link (stub) ─────────────────
@@ -199,3 +238,48 @@ class AboutSettingsPage(QWidget):
     def _apply_theme(self):
         self.colors = THEME.colors
         self.setStyleSheet(f"background-color: {self.colors['bg_header']};")
+
+    def _manual_update_check(self):
+        """Запуск проверки вручную"""
+        # Исправлено: проверяем правильное имя атрибута
+        if hasattr(self, "_release_url") and self._release_url:
+            webbrowser.open(self._release_url)
+            return
+
+        self.update_btn.setText("Checking...")
+        self.update_btn.setEnabled(False)
+
+        # Создаем поток и сервис
+        self.update_thread = QThread()
+        self.update_service = UpdateService("nondeletable", "ComfyLauncher")
+        self.update_service.moveToThread(self.update_thread)
+
+        # Соединяем сигналы
+        self.update_thread.started.connect(self.update_service.check_for_updates)  # type: ignore
+        self.update_service.update_available.connect(self._on_manual_update_found)
+        self.update_service.update_not_found.connect(self._on_manual_update_none)
+        self.update_service.error_occurred.connect(self._on_manual_update_none)
+
+        # Важно: завершаем поток корректно
+        self.update_service.update_available.connect(self.update_thread.quit)
+        self.update_service.update_not_found.connect(self.update_thread.quit)
+        self.update_service.error_occurred.connect(self.update_thread.quit)
+
+        # Удаляем объекты после завершения
+        self.update_thread.finished.connect(self.update_service.deleteLater)  # type: ignore
+        self.update_thread.finished.connect(self.update_thread.deleteLater)  # type: ignore
+
+        self.update_thread.start()
+
+    def _on_manual_update_found(self, version, url):
+        self._release_url = url  # Сохраняем ссылку для повторного нажатия
+        self.update_btn.setText("Open Release Page")
+        self.update_btn.setEnabled(True)
+        # Добавляем визуальный акцент
+        self.update_btn.setStyleSheet(
+            self.update_btn.styleSheet() + "font-weight: bold; color: white;"
+        )
+
+    def _on_manual_update_none(self, *args):
+        self.update_btn.setText("Latest version")
+        self.update_btn.setEnabled(False)

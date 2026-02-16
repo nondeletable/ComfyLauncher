@@ -9,6 +9,7 @@ ASSETS_DIR = os.path.join(BASE_DIR, "assets")
 ICONS_DIR = os.path.join(ASSETS_DIR, "icons")
 SPLASH_DIR = os.path.join(ASSETS_DIR, "splash")
 INTERFACE_DIR = os.path.join(ASSETS_DIR, "interface")
+DOODLES_DIR = os.path.join(ICONS_DIR, "doodles")
 
 COMFYUI_PORT = 8188
 
@@ -32,6 +33,8 @@ ICON_PATHS = {
     "open_output": os.path.join(ICONS_DIR, "output.svg"),
     "refresh": os.path.join(ICONS_DIR, "reload.svg"),
     "terminal": os.path.join(ICONS_DIR, "terminal.svg"),
+    "plus": os.path.join(ICONS_DIR, "plus.svg"),
+    "delete": os.path.join(ICONS_DIR, "delete.svg"),
 }
 
 # ── Saved builds ─────────────────────────────
@@ -68,6 +71,19 @@ CONTACT_ICONS = {
     "discord": os.path.join(ICONS_DIR, "contacts", "discord.png"),
 }
 
+DOODLE_ICON_PATHS = {
+    "rhombus": os.path.join(DOODLES_DIR, "rhombus.svg"),
+    "triangle": os.path.join(DOODLES_DIR, "triangle.svg"),
+    "puzzle": os.path.join(DOODLES_DIR, "puzzle.svg"),
+    "banana": os.path.join(DOODLES_DIR, "banana.svg"),
+    "palette": os.path.join(DOODLES_DIR, "palette.svg"),
+    "rocket": os.path.join(DOODLES_DIR, "rocket.svg"),
+    "clover": os.path.join(DOODLES_DIR, "clover.svg"),
+    "unicorn": os.path.join(DOODLES_DIR, "unicorn.svg"),
+    "default": os.path.join(DOODLES_DIR, "default.svg"),
+}
+DEFAULT_DOODLE_ID = "default"
+
 OTHER_ICONS = {
     "refresh": os.path.join(ICONS_DIR, "refresh.svg"),
     "clear-log": os.path.join(ICONS_DIR, "clear-log.svg"),
@@ -81,6 +97,16 @@ DEFAULT_USER_CONFIG = {
     "ask_on_exit": True,
     "exit_mode": "always_stop",
     "browser_patch_registry": {},
+    "builds": [],
+    "last_used_build_id": "",
+    "startup_mode": "cpu",  # cpu/gpu/nvidia (потом привяжешь к настройкам)
+    "ui": {
+        "show_manager_on_start": True,
+    },
+    "update_etag": None,
+    "last_update_check": None,
+    "update_interval_hours": 48,
+    "updates_enabled": True,
 }
 
 
@@ -88,12 +114,23 @@ def load_user_config():
     if not os.path.exists(USER_CONFIG_PATH):
         save_user_config(DEFAULT_USER_CONFIG)
         return DEFAULT_USER_CONFIG.copy()
+
     try:
         with open(USER_CONFIG_PATH, "r", encoding="utf-8") as f:
             data = json.load(f)
-            for key, val in DEFAULT_USER_CONFIG.items():
-                data.setdefault(key, val)
-            return data
+
+        # 1) Дефолты верхнего уровня
+        for key, val in DEFAULT_USER_CONFIG.items():
+            data.setdefault(key, val)
+
+        # 2) Миграция: startup_mode внутри каждого build
+        global_mode = data.get("startup_mode", DEFAULT_USER_CONFIG["startup_mode"])
+        for b in data.get("builds") or []:
+            if isinstance(b, dict):
+                b.setdefault("startup_mode", global_mode)
+
+        return data
+
     except Exception:
         return DEFAULT_USER_CONFIG.copy()
 

@@ -8,7 +8,6 @@ from ui.theme.theme_registry import REGISTRY
 from config import USER_CONFIG_PATH as CONFIG_PATH
 from utils.logger import log_event
 
-
 _ = REGISTRY
 
 
@@ -118,7 +117,9 @@ class ThemeManager(QObject):
     def switch(self, name: str):
         """Changes the active theme and applies it."""
         if name not in self._themes:
-            log_event(f"⚠️ Theme '{name}' not found. Using current: {self._active_name}")
+            log_event(
+                f"⚠️ Theme '{name}' not found. Using current: {self._active_name}"
+            )
             return
 
         if name == self._active_name:

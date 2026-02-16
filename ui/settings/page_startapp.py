@@ -17,8 +17,8 @@ class StartAppSettingsPage(QWidget):
         layout.setContentsMargins(30, 30, 30, 30)
         layout.setSpacing(16)
 
-        title = QLabel("CMD Window")
-        title.setStyleSheet("font-size: 20px; font-weight: 500;")
+        title = QLabel("Startup")
+        title.setStyleSheet("font-size: 20px; font-weight: 600;")
         layout.addWidget(title)
 
         desc = QLabel(
@@ -31,8 +31,7 @@ class StartAppSettingsPage(QWidget):
 
         # ─── Checkbox ──────────────────────────────
         self.cb_show_cmd = QCheckBox("Show CMD window on launch")
-        self.cb_show_cmd.setStyleSheet(
-            f"""
+        self.cb_show_cmd.setStyleSheet(f"""
             QCheckBox {{
                 font-size: 14px;
                 color: {THEME.colors['text_primary']};
@@ -48,8 +47,7 @@ class StartAppSettingsPage(QWidget):
                 background-color: {THEME.colors['accent']};
                 border: 1px solid {THEME.colors['accent']};
             }}
-        """
-        )
+        """)
 
         row = QHBoxLayout()
         row.setContentsMargins(14, 0, 0, 0)

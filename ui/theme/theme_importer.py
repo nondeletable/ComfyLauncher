@@ -4,7 +4,6 @@ from typing import Optional
 
 from ui.theme.tokens import DARK_THEME
 
-
 # ───────────────────────────────────────────────
 # Helpers: HEX/RGBA processing
 # ───────────────────────────────────────────────
