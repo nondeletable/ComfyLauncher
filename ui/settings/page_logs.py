@@ -84,7 +84,8 @@ class LogsSettingsPage(QWidget):
 
         # Apply common style
         for btn in (self.btn_refresh, self.btn_clear):
-            btn.setStyleSheet(f"""
+            btn.setStyleSheet(
+                f"""
                 QPushButton {{
                     background-color: transparent;
                     border: 1px solid {THEME.colors['border_color']};
@@ -97,7 +98,8 @@ class LogsSettingsPage(QWidget):
                 QPushButton:pressed {{
                     background-color: {THEME.colors['accent_hover']};
                 }}
-                """)
+                """
+            )
             btn_layout.addWidget(btn)
 
         self.btn_refresh.setToolTip("Refresh log")
@@ -141,7 +143,8 @@ class LogsSettingsPage(QWidget):
         )
         self.text_edit.setStyleSheet(self._build_textedit_style())
         for btn in (self.btn_refresh, self.btn_clear):
-            btn.setStyleSheet(f"""
+            btn.setStyleSheet(
+                f"""
                 QPushButton {{
                     background-color: transparent;
                     color: {c['text_secondary']};
@@ -154,7 +157,8 @@ class LogsSettingsPage(QWidget):
                     color: {c['text_inverse']};
                     border-color: {c['accent']};
                 }}
-            """)
+            """
+            )
 
     # ─────────────────────────────────────────────────────
     def load_logs(self):

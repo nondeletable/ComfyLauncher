@@ -36,14 +36,16 @@ class ConsoleWindow(QWidget):
         # ─── Main frame ────────────────────────────────
         main_frame = QFrame(self)
         main_frame.setObjectName("console_main_frame")
-        main_frame.setStyleSheet(f"""
+        main_frame.setStyleSheet(
+            f"""
             QFrame#console_main_frame {{
                 background-color: {c['bg_header']};
                 color: {c['text_primary']};
                 border-radius: 10px;
                 border: 2px solid {c['border_color']};
             }}
-        """)
+        """
+        )
 
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
@@ -55,13 +57,15 @@ class ConsoleWindow(QWidget):
 
         # ─── Header bar ────────────────────────────────
         header = QFrame()
-        header.setStyleSheet(f"""
+        header.setStyleSheet(
+            f"""
             QFrame {{
                 background-color: {c['bg_header']};
                 border-top-left-radius: 10px;
                 border-top-right-radius: 10px;
             }}
-        """)
+        """
+        )
         hbox = QHBoxLayout(header)
         hbox.setContentsMargins(12, 6, 12, 6)
         hbox.setSpacing(8)
@@ -80,9 +84,11 @@ class ConsoleWindow(QWidget):
         btn_close.setIcon(
             colorize_svg(HEAD_ICON_PATHS["close"], c["icon_color_window"])
         )
-        btn_close.setStyleSheet("""
+        btn_close.setStyleSheet(
+            """
             QPushButton { border: none; background: transparent; }
-        """)
+        """
+        )
 
         hbox.addWidget(btn_close)
 

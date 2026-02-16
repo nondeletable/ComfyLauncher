@@ -12,11 +12,13 @@ class ErrorScreen(QWidget):
 
         self.setObjectName("ErrorScreen")
         self.setAutoFillBackground(True)
-        self.setStyleSheet("""
+        self.setStyleSheet(
+            """
             QWidget#ErrorScreen {
                 background-color: #353535;
             }
-        """)
+        """
+        )
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -60,30 +62,36 @@ class ErrorWidget(QWidget):
         # ─── Title ───────────────────────────────────────────────
         title_label = QLabel(title)
         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        title_label.setStyleSheet("""
+        title_label.setStyleSheet(
+            """
             font-size: 18px;
             font-weight: 600;
             color: #ff5555;
-            """)
+            """
+        )
 
         # ─── Message ─────────────────────────────────────────────
         message_label = QLabel(message)
         message_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         message_label.setWordWrap(True)
-        message_label.setStyleSheet("""
+        message_label.setStyleSheet(
+            """
             font-size: 15px;
             color: #d0d0d0;
-            """)
+            """
+        )
 
         # ─── Hint (optional) ─────────────────────────────────────
         if hint:
             hint_label = QLabel(hint)
             hint_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
             hint_label.setWordWrap(True)
-            hint_label.setStyleSheet("""
+            hint_label.setStyleSheet(
+                """
                 font-size: 14px;
                 color: #9a9a9a;
-                """)
+                """
+            )
         else:
             hint_label = None
 
@@ -97,12 +105,14 @@ class ErrorWidget(QWidget):
             card_layout.addWidget(hint_label)
 
         # Card style (inline, no theme)
-        card.setStyleSheet("""
+        card.setStyleSheet(
+            """
         QWidget#ErrorCard {
             background-color: #353535;
             border-radius: 12px;
 
         }
-        """)
+        """
+        )
 
         root.addWidget(card)

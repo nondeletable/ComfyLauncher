@@ -73,25 +73,29 @@ class SetupWindow(QDialog):
         r = 9  # radius
         b = 3  # border
 
-        self.main_frame.setStyleSheet(f"""
+        self.main_frame.setStyleSheet(
+            f"""
         QFrame#setup_main_frame {{
             background-color: {THEME.colors['bg_header']};
             border: {b}px solid {THEME.colors['border_color']};
             border-radius: {r}px;
         }}
-        """)
+        """
+        )
 
         info = QLabel(
             "Specify the folder where ComfyUI is located (folder with main.py).<br>"
             "For example: <code>D:/Portable/ComfyUI</code>. "
             "Be sure to give the build a name and select an icon."
         )
-        info.setStyleSheet(f"""
+        info.setStyleSheet(
+            f"""
             QLabel {{
                 font-size: 14px;
                 color: {THEME.colors['text_secondary']};
             }}
-        """)
+        """
+        )
         info.setWordWrap(True)
         layout.addWidget(info)
 
@@ -107,7 +111,8 @@ class SetupWindow(QDialog):
         )
         browse_btn.setIconSize(QSize(20, 20))
         browse_btn.setFixedSize(38, 36)
-        browse_btn.setStyleSheet(f"""
+        browse_btn.setStyleSheet(
+            f"""
             QPushButton {{
                 background-color: {THEME.colors['bg_input']};
                 border: 1px solid {THEME.colors['border_color']};
@@ -116,7 +121,8 @@ class SetupWindow(QDialog):
             QPushButton:hover {{
                 background-color: {THEME.colors['bg_hover']};
             }}
-        """)
+        """
+        )
         browse_btn.clicked.connect(self._browse)  # type: ignore
         row = QHBoxLayout()
         row.setSpacing(8)
@@ -124,7 +130,8 @@ class SetupWindow(QDialog):
         self.path_edit = QLineEdit()
         self.path_edit.setPlaceholderText("Path to ComfyUI… (Folder with main.py)")
         self.path_edit.setFixedHeight(36)
-        self.path_edit.setStyleSheet(f"""
+        self.path_edit.setStyleSheet(
+            f"""
             QLineEdit {{
                 background-color: {THEME.colors['bg_input']};
                 color: {THEME.colors['text_primary']};
@@ -132,7 +139,8 @@ class SetupWindow(QDialog):
                 border-radius: 6px;
                 padding-left: 10px;
             }}
-        """)
+        """
+        )
         self.path_edit.textChanged.connect(self._on_path_changed)  # type: ignore
 
         row.addWidget(self.path_edit)
@@ -145,7 +153,8 @@ class SetupWindow(QDialog):
         self.name_edit = QLineEdit()
         self.name_edit.setPlaceholderText("Build name")
         self.name_edit.setFixedHeight(36)
-        self.name_edit.setStyleSheet(f"""
+        self.name_edit.setStyleSheet(
+            f"""
             QLineEdit {{
                 background-color: {THEME.colors['bg_input']};
                 color: {THEME.colors['text_primary']};
@@ -153,7 +162,8 @@ class SetupWindow(QDialog):
                 border-radius: 6px;
                 padding-left: 10px;
             }}
-        """)
+        """
+        )
 
         self.name_edit.textChanged.connect(self._update_ok_state)  # type: ignore
         name_row.addWidget(self.name_edit)
@@ -185,7 +195,8 @@ class SetupWindow(QDialog):
             )
             btn.setIconSize(QSize(30, 30))
             btn.setFixedSize(36, 36)
-            btn.setStyleSheet(f"""
+            btn.setStyleSheet(
+                f"""
                 QToolButton {{
                     background-color: {THEME.colors['bg_input']};
                     border: 1px solid {THEME.colors['border_color']};
@@ -197,7 +208,8 @@ class SetupWindow(QDialog):
                 QToolButton:checked {{
                     border: 2px solid {THEME.colors['accent']};
                 }}
-                """)
+                """
+            )
 
             # store id on widget
             btn.setProperty("doodle_id", doodle_id)
@@ -230,7 +242,8 @@ class SetupWindow(QDialog):
             self.startup_group.addButton(rb)
             modes_row.addWidget(rb)
 
-            rb.setStyleSheet(f"""
+            rb.setStyleSheet(
+                f"""
                             QRadioButton {{
                                 font-size: 12px;
                                 color: {THEME.colors['text_primary']};
@@ -249,7 +262,8 @@ class SetupWindow(QDialog):
                             QRadioButton::indicator:hover {{
                                 border: 1px solid {THEME.colors['accent_hover']};
                             }}
-                        """)
+                        """
+            )
 
         # default
         rb_cpu.setChecked(True)
@@ -304,7 +318,8 @@ class SetupWindow(QDialog):
         self.cancel_btn = QPushButton("Cancel")
         for btn in (self.ok_btn, self.cancel_btn):
             btn.setFixedSize(100, 34)
-            btn.setStyleSheet(f"""
+            btn.setStyleSheet(
+                f"""
                 QPushButton {{
                     background-color: transparent;
                     color: {THEME.colors['text_secondary']};
@@ -316,7 +331,8 @@ class SetupWindow(QDialog):
                     color: {THEME.colors['text_inverse']};
                     border-color: {THEME.colors['accent']};
                 }}
-            """)
+            """
+            )
         self.ok_btn.setEnabled(False)
         btn_row.setSpacing(8)
 

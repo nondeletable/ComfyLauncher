@@ -59,13 +59,15 @@ class BuildManagerDialog(QDialog):
 
         r = 9
         b = 3
-        self.main_frame.setStyleSheet(f"""
+        self.main_frame.setStyleSheet(
+            f"""
             QFrame#build_manager_main_frame {{
                 background-color: {THEME.colors['bg_header']};
                 border: {b}px solid {THEME.colors['border_color']};
                 border-radius: {r}px;
             }}
-            """)
+            """
+        )
 
         title = QLabel("Select a build to launch")
         title.setStyleSheet(
@@ -80,7 +82,8 @@ class BuildManagerDialog(QDialog):
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.Shape.NoFrame)
 
-        scroll.setStyleSheet(f"""
+        scroll.setStyleSheet(
+            f"""
             QScrollArea {{
                 background-color: {THEME.colors['bg_header']};
             }}
@@ -88,7 +91,8 @@ class BuildManagerDialog(QDialog):
                 background-color: {THEME.colors['bg_header']};
                 border: none;
             }}
-            """)
+            """
+        )
 
         container = QWidget()
         container.setStyleSheet(f"background-color: {THEME.colors['bg_header']};")
@@ -134,7 +138,8 @@ class BuildManagerDialog(QDialog):
         )
         btn_add.setIconSize(QSize(30, 30))
         btn_add.setFixedSize(44, 44)
-        btn_add.setStyleSheet(f"""
+        btn_add.setStyleSheet(
+            f"""
             QToolButton {{
                 background-color: transparent;
                 border: 1px solid transparent;
@@ -143,7 +148,8 @@ class BuildManagerDialog(QDialog):
             QToolButton:hover {{
                 background-color: {THEME.colors['bg_hover']};
             }}
-            """)
+            """
+        )
         btn_add.clicked.connect(self._add_build)  # type: ignore
 
         lbl_add = QLabel("Add Build")
@@ -162,7 +168,8 @@ class BuildManagerDialog(QDialog):
 
         self.btn_close = QPushButton("Close")
         self.btn_close.setFixedSize(110, 34)
-        self.btn_close.setStyleSheet(f"""
+        self.btn_close.setStyleSheet(
+            f"""
                     QPushButton {{
                         background-color: transparent;
                         color: {THEME.colors['text_secondary']};
@@ -172,7 +179,8 @@ class BuildManagerDialog(QDialog):
                     QPushButton:hover {{
                         background-color: {THEME.colors['bg_hover']};
                     }}
-                    """)
+                    """
+        )
         self.btn_close.clicked.connect(self.reject)  # type: ignore
         bottom.addWidget(self.btn_close)
 
@@ -193,13 +201,15 @@ class BuildManagerDialog(QDialog):
         bg = THEME.colors["bg_header"]
         border = THEME.colors["border_color"]
 
-        row.setStyleSheet(f"""
+        row.setStyleSheet(
+            f"""
             QFrame#BuildRow {{
                 background-color: {bg};
                 border: 1px solid {border};
                 border-radius: 8px;
             }}
-            """)
+            """
+        )
 
         h = QHBoxLayout(row)
         h.setContentsMargins(10, 8, 10, 8)
@@ -255,7 +265,8 @@ class BuildManagerDialog(QDialog):
         )
         btn_edit.setIconSize(QSize(18, 18))
         btn_edit.setToolTip("Edit build")
-        btn_edit.setStyleSheet(f"""
+        btn_edit.setStyleSheet(
+            f"""
             QToolButton {{
                 background-color: transparent;
                 border: 1px solid {THEME.colors['border_color']};
@@ -264,7 +275,8 @@ class BuildManagerDialog(QDialog):
             QToolButton:hover {{
                 background-color: {THEME.colors['bg_hover']};
             }}
-        """)
+        """
+        )
         btn_edit.clicked.connect(  # type: ignore
             lambda checked=False, b=build: self._edit_build(b)
         )
@@ -273,7 +285,8 @@ class BuildManagerDialog(QDialog):
         # Launch button
         btn = QPushButton("Launch")
         btn.setFixedSize(110, 34)
-        btn.setStyleSheet(f"""
+        btn.setStyleSheet(
+            f"""
             QPushButton {{
                 background-color: transparent;
                 color: {THEME.colors['text_secondary']};
@@ -285,7 +298,8 @@ class BuildManagerDialog(QDialog):
                 color: {THEME.colors['text_inverse']};
                 border-color: {THEME.colors['accent']};
             }}
-            """)
+            """
+        )
         btn.clicked.connect(lambda: self._launch(build_id))  # type: ignore
         h.addWidget(btn)
 

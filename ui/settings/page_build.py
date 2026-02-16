@@ -108,7 +108,8 @@ class BuildSettingsPage(QWidget):
         self.path_edit.textChanged.connect(self.on_path_changed)  # type: ignore
         self.path_edit.setPlaceholderText("Select new ComfyUI folder...")
         self.path_edit.setFixedHeight(38)
-        self.path_edit.setStyleSheet(f"""
+        self.path_edit.setStyleSheet(
+            f"""
             QLineEdit {{
                 background-color: {THEME.colors['bg_input']};
                 color: {THEME.colors['text_primary']};
@@ -120,7 +121,8 @@ class BuildSettingsPage(QWidget):
             QLineEdit:focus {{
                 border-color: {THEME.colors['accent']};
             }}
-        """)
+        """
+        )
 
         btn_browse = QPushButton()
         btn_browse.setIcon(
@@ -134,7 +136,8 @@ class BuildSettingsPage(QWidget):
         )
         btn_browse.setIconSize(QSize(20, 20))
         btn_browse.setFixedSize(40, 38)
-        btn_browse.setStyleSheet(f"""
+        btn_browse.setStyleSheet(
+            f"""
             QPushButton {{
                 background-color: {THEME.colors['bg_input']};
                 border: 1px solid {THEME.colors['border_color']};
@@ -144,7 +147,8 @@ class BuildSettingsPage(QWidget):
                 background-color: {THEME.colors['accent']};
                 border-color: {THEME.colors['accent']};
             }}
-        """)
+        """
+        )
         btn_browse.clicked.connect(self.select_build_directory)  # type: ignore
 
         # ─── Horizontal container ─────────────────
@@ -168,7 +172,8 @@ class BuildSettingsPage(QWidget):
 
         for btn in (self.btn_apply, self.btn_cancel):
             btn.setFixedSize(100, 36)
-            btn.setStyleSheet(f"""
+            btn.setStyleSheet(
+                f"""
                 QPushButton {{
                     background-color: transparent;
                     color: {THEME.colors['text_secondary']};
@@ -185,7 +190,8 @@ class BuildSettingsPage(QWidget):
                     color: #555555;
                     border: 1px solid #555555;
                 }}
-            """)
+            """
+            )
             btns_layout.addWidget(btn)
 
         content_layout.addLayout(btns_layout)
@@ -216,7 +222,8 @@ class BuildSettingsPage(QWidget):
                 )
             )
         )
-        btn_download.setStyleSheet(f"""
+        btn_download.setStyleSheet(
+            f"""
             QPushButton {{
                 background-color: {THEME.colors['bg_input']};
                 border: 1px solid {THEME.colors['border_color']};
@@ -226,7 +233,8 @@ class BuildSettingsPage(QWidget):
                 background-color: {THEME.colors['accent']};
                 border-color: {THEME.colors['accent']};
             }}
-        """)
+        """
+        )
 
         btn_download.clicked.connect(  # type: ignore
             lambda: webbrowser.open("https://www.comfy.org/download")
@@ -379,13 +387,15 @@ class BuildSettingsPage(QWidget):
         row = QFrame()
         row.setObjectName("BuildRow")
         row.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
-        row.setStyleSheet(f"""
+        row.setStyleSheet(
+            f"""
             QFrame#BuildRow {{
                 background-color: {THEME.colors['bg_header']};
                 border: 1px solid {THEME.colors['border_color']};
                 border-radius: 8px;
             }}
-            """)
+            """
+        )
 
         h = QHBoxLayout(row)
         h.setContentsMargins(10, 8, 10, 8)
@@ -411,22 +421,26 @@ class BuildSettingsPage(QWidget):
 
         is_last = build_id == str(last_used_id)
         name_lbl = QLabel(name + ("  (last used)" if is_last else ""))
-        name_lbl.setStyleSheet(f"""
+        name_lbl.setStyleSheet(
+            f"""
             QLabel {{
                 font-size: 14px;
                 font-weight: 600;
                 color: {THEME.colors['text_primary']};
                 margin: 0px;
             }}
-            """)
+            """
+        )
         path_lbl = QLabel(path)
-        path_lbl.setStyleSheet(f"""
+        path_lbl.setStyleSheet(
+            f"""
             QLabel {{
                 font-size: 12px;
                 color: {THEME.colors['text_secondary']};
                 margin: 0px;
             }}
-            """)
+            """
+        )
         path_lbl.setToolTip(path)
 
         fm = QFontMetrics(path_lbl.font())
@@ -482,7 +496,8 @@ class BuildSettingsPage(QWidget):
         )
         btn_add.setIconSize(QSize(28, 28))
         btn_add.setFixedSize(40, 40)
-        btn_add.setStyleSheet(f"""
+        btn_add.setStyleSheet(
+            f"""
             QToolButton {{
                 background-color: transparent;
                 border: 1px solid transparent;
@@ -491,7 +506,8 @@ class BuildSettingsPage(QWidget):
             QToolButton:hover {{
                 background-color: {THEME.colors['bg_hover']};
             }}
-            """)
+            """
+        )
         btn_add.clicked.connect(self._on_add_build)  # type: ignore
 
         lbl = QLabel("Add Build")
