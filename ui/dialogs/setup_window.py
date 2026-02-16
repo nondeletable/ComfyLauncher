@@ -81,7 +81,6 @@ class SetupWindow(QDialog):
         }}
         """)
 
-
         info = QLabel(
             "Specify the folder where ComfyUI is located (folder with main.py).<br>"
             "For example: <code>D:/Portable/ComfyUI</code>. "
