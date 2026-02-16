@@ -1,5 +1,5 @@
 from PyQt6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QLabel
-from PyQt6.QtGui import QPainterPath, QRegion, QIcon
+from PyQt6.QtGui import QPainterPath, QRegion
 from PyQt6.QtCore import Qt, QTimer, QRectF, QThread
 
 import threading
@@ -31,7 +31,6 @@ from config import (
     load_user_config,
     save_user_config,
     SPLASH_PATH,
-    ICON_PATH,
 )
 
 
@@ -399,7 +398,7 @@ class ComfyBrowser(QMainWindow):
 
         self.thread.start()
 
-       def _on_comfy_ready(self):
+    def _on_comfy_ready(self):
         self.ui_state = "RUNNING"
         self.showMaximized()
         if hasattr(self, "splash") and self.splash:
