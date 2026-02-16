@@ -279,6 +279,3 @@ class HeaderBar(QWidget):
         self.btn_reload.setIcon(
             colorize_svg(ICON_PATHS["refresh"], c["icon_color_window"], QSize(20, 20))
         )
-        self.btn_console.setIcon(
-            colorize_svg(ICON_PATHS["terminal"], c["icon_color_window"], QSize(20, 20))
-        )

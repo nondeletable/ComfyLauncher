@@ -54,7 +54,6 @@ class ComfyBrowser(QMainWindow):
         self.poll_callback = poll_callback
         self.error_widget = None
         self.setWindowTitle("ComfyLauncher")
-        self.setWindowIcon(QIcon(ICON_PATH))
         self.comfyui_path = get_comfyui_path()
         self.settings_window = None
 
@@ -193,7 +192,7 @@ class ComfyBrowser(QMainWindow):
         log_event("🧩 Opening settings window...")
 
         try:
-            # Если уже есть — поднять
+            # If you already have it, raise it.
             if self.settings_window is not None:
                 try:
                     # если объект уже удалён (WA_DeleteOnClose), тут может быть RuntimeError
@@ -206,10 +205,10 @@ class ComfyBrowser(QMainWindow):
                     # "wrapped C/C++ object has been deleted"
                     self.settings_window = None
 
-            # Создаём самостоятельное окно (parent=None)
+            # Create an independent window (parent=None)
             self.settings_window = SettingsWindow(None)
 
-            # Когда окно реально уничтожено — сбросить ссылку
+            # When the window is actually destroyed, reset the link
             self.settings_window.destroyed.connect(self._on_settings_destroyed)
 
             self.settings_window.show()
@@ -277,7 +276,6 @@ class ComfyBrowser(QMainWindow):
             log_event("✅ Page loaded successfully.")
 
     def reload_comfy(self):
-        # self.setCentralWidget(self.browser)
         self.load_comfy()
         threading.Thread(target=ensure_comfyui_running, daemon=True).start()
         if self.poll_callback:
@@ -385,7 +383,7 @@ class ComfyBrowser(QMainWindow):
     def _start_comfyui(self):
         self.ui_state = "STARTING_COMFY"
 
-        # ── ПОКАЗЫВАЕМ SPLASH ─────────────────────
+        # ── SHOW SPLASH ─────────────────────
         if not hasattr(self, "splash") or self.splash is None:
             self.splash = LauncherSplashVideo(SPLASH_PATH)
             self.splash.show()
@@ -401,7 +399,7 @@ class ComfyBrowser(QMainWindow):
 
         self.thread.start()
 
-    def _on_comfy_ready(self):
+       def _on_comfy_ready(self):
         self.ui_state = "RUNNING"
         self.showMaximized()
         if hasattr(self, "splash") and self.splash:
@@ -412,7 +410,7 @@ class ComfyBrowser(QMainWindow):
         self.browser = WebView2Widget(url)
         self.browser.loaded.connect(self.on_load_finished)
 
-        # заменяем прелоадер на браузер
+        # Replace the preloader with a browser
         central = QWidget(self)
         vbox = QVBoxLayout(central)
         vbox.setContentsMargins(0, 0, 0, 0)
@@ -423,7 +421,7 @@ class ComfyBrowser(QMainWindow):
 
         self.setCentralWidget(central)
 
-        # аккуратно завершаем worker
+        # We carefully complete the worker
         self.worker.stop()
         self.thread.quit()
         self.thread.wait()
@@ -433,7 +431,7 @@ class ComfyBrowser(QMainWindow):
     def _enter_error_state(self, error_code: str):
         self.ui_state = "ERROR_STARTUP"
         self.showMaximized()
-        # закрываем splash
+        # close the splash
         if hasattr(self, "splash") and self.splash:
             self.splash.finish()
             self.splash = None
@@ -465,7 +463,7 @@ class ComfyBrowser(QMainWindow):
 
         self.setCentralWidget(central)
 
-        # аккуратно останавливаем worker
+        # We carefully stop the worker.
         if hasattr(self, "worker"):
             self.worker.stop()
         if hasattr(self, "thread"):
