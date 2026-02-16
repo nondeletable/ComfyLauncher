@@ -1,11 +1,12 @@
 from PyQt6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QLabel
 from PyQt6.QtGui import QPainterPath, QRegion
 from PyQt6.QtCore import Qt, QTimer, QRectF, QThread
-from ui.webview2_widget import WebView2Widget
 
 import threading
+import webbrowser
 import os
 import time
+from datetime import datetime
 
 from ui.header import HeaderBar
 from workers.comfy_loader import ComfyLoaderWorker
@@ -14,8 +15,11 @@ from ui.dialogs.messagebox import MessageBox as MB
 from ui.dialogs.console_window import ConsoleWindow
 from ui.error_page import ErrorWidget, ErrorScreen
 from core.errors import ERRORS
+from version import __version__
 from ui.splash_video import LauncherSplashVideo
+from ui.webview2_widget import WebView2Widget
 from utils.logger import log_event
+from utils.update_checker import UpdateService
 from launcher import (
     ensure_comfyui_running,
     stop_comfyui_hard,
@@ -279,6 +283,7 @@ class ComfyBrowser(QMainWindow):
             QTimer.singleShot(1000, self.poll_callback)
 
     def closeEvent(self, event):
+        print("CLOSE EVENT FIRED")
         """Reaction to closing depending on user settings"""
         # If a duplicate closeEvent fires while we're already processing exit
         if getattr(self, "_exit_in_progress", False):
@@ -387,7 +392,7 @@ class ComfyBrowser(QMainWindow):
         self.worker = ComfyLoaderWorker(self.comfyui_path)
 
         self.worker.moveToThread(self.thread)
-        self.thread.started.connect(self.worker.run)
+        self.thread.started.connect(self.worker.run)  # type: ignore
 
         self.worker.ready.connect(self._on_comfy_ready)
         self.worker.error.connect(self._on_comfy_error)
@@ -402,7 +407,6 @@ class ComfyBrowser(QMainWindow):
             self.splash.finish()
             self.splash = None
 
-        # We're creating a browser JUST NOW
         url = f"http://127.0.0.1:{COMFYUI_PORT}"
         self.browser = WebView2Widget(url)
         self.browser.loaded.connect(self.on_load_finished)
@@ -422,6 +426,8 @@ class ComfyBrowser(QMainWindow):
         self.worker.stop()
         self.thread.quit()
         self.thread.wait()
+
+        QTimer.singleShot(1500, self.start_update_check)
 
     def _enter_error_state(self, error_code: str):
         self.ui_state = "ERROR_STARTUP"
@@ -472,3 +478,54 @@ class ComfyBrowser(QMainWindow):
 
     def _on_comfy_timeout(self):
         self._enter_error_state("COMFY_START_TIMEOUT")
+
+    def cleanup_update_thread(self):
+        self.update_thread.quit()
+        self.update_thread.wait()
+        self.update_service.deleteLater()
+        self.update_thread.deleteLater()
+
+    def start_update_check(self):
+        self.update_thread = QThread()
+        self.update_service = UpdateService("nondeletable", "ComfyLauncher")
+
+        self.update_service.moveToThread(self.update_thread)
+
+        # когда поток стартует — выполняем проверку
+        self.update_thread.started.connect(self.update_service.check_for_updates)  # type: ignore
+
+        # сигналы результата
+        self.update_service.update_available.connect(self.on_update_available)
+        self.update_service.update_not_found.connect(self.on_update_not_found)
+        self.update_service.error_occurred.connect(self.on_update_error)
+
+        # аккуратное завершение
+        self.update_service.update_available.connect(self.cleanup_update_thread)
+        self.update_service.update_not_found.connect(self.cleanup_update_thread)
+        self.update_service.error_occurred.connect(self.cleanup_update_thread)
+
+        self.update_thread.start()
+
+    def on_update_available(self, latest_version, release_url):
+        title = "Update available"
+
+        message = (
+            f"A new version ({latest_version}) is available.\n\n"
+            f"Current version: {__version__}\n\n"
+            "Would you like to update now?"
+        )
+
+        user_wants_update = MB.update_available(self, title, message)
+
+        if user_wants_update:
+            webbrowser.open(release_url)
+        else:
+            config = load_user_config()
+            config["last_update_check"] = datetime.utcnow().isoformat()
+            save_user_config(config)
+
+    def on_update_not_found(self):
+        print("No updates found")
+
+    def on_update_error(self, error):
+        log_event(f"⚠️ Update check error: {error}")

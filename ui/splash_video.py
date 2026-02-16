@@ -19,6 +19,7 @@ class LauncherSplashVideo(QWidget):
         super().__init__()
 
         self.setWindowIcon(QIcon(ICON_PATH))
+        self.setWindowTitle("ComfyLauncher")
 
         # ─── Window flags ─────────────────────────────
         self.setWindowFlags(

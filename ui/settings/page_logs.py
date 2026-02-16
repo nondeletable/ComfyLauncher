@@ -30,7 +30,7 @@ class LogsSettingsPage(QWidget):
 
         # ─── Title ────────────────────────────────────
         title = QLabel("Launcher Logs")
-        title.setStyleSheet("font-size: 20px; font-weight: 500;")
+        title.setStyleSheet("font-size: 20px; font-weight: 600;")
         layout.addWidget(title)
 
         # ─── Log text field ─────────────────────────

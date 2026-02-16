@@ -27,7 +27,7 @@ class BehaviorSettingsPage(QWidget):
         layout.setSpacing(16)
 
         title = QLabel("Exit Options")
-        title.setStyleSheet("font-size: 20px; font-weight: 500;")
+        title.setStyleSheet("font-size: 20px; font-weight: 600;")
         layout.addWidget(title)
 
         desc = QLabel(

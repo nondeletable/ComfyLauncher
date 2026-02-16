@@ -227,6 +227,17 @@ class MessageBox(QDialog):
         dlg.exec()
         return dlg._answer
 
+    @staticmethod
+    def update_available(parent, title: str, message: str) -> bool:
+        """
+        Returns True if user chose Update,
+        False if Postpone.
+        """
+        dlg = MessageBox(title, message, "info", parent)
+        dlg._add_button("Update", "accept")
+        dlg._add_button("Postpone", "reject")
+        return dlg.exec() == QDialog.DialogCode.Accepted
+
     def _apply_theme(self, *args):
         c = THEME.colors
 

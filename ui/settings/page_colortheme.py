@@ -30,13 +30,13 @@ class ColorThemesPage(QWidget):
         self.cards = {}
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(24)
+        layout.setContentsMargins(30, 30, 30, 30)
+        layout.setSpacing(16)
 
         title = QLabel("Color Themes")
         title.setStyleSheet(
             f"color: {THEME.colors['text_primary']}; "
-            f"font-size: 20px; font-weight: 500;"
+            f"font-size: 20px; font-weight: 600;"
         )
         layout.addWidget(title)
 

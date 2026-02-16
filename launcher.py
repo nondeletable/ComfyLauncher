@@ -19,7 +19,6 @@ from config import (
     save_user_config,
 )
 
-
 _comfy_process: subprocess.Popen | None = None
 
 
@@ -204,20 +203,49 @@ def ensure_comfyui_running(comfy_path: str, port: int = 8188):
         log_event("✅ ComfyUI already launched.")
         return
 
-    # --- GPU / CPU выбор ---------------------------------------------
+    # --- GPU / CPU select ---------------------------------------------
     try:
         cuda_available = is_cuda_available()
     except Exception:
         cuda_available = False
 
-    mode = "GPU" if cuda_available else "CPU"
+    cfg = load_user_config()
+    active_build = _get_active_build(cfg)
+    startup_mode = (active_build or {}).get("startup_mode", "auto")
+
+    bat_name, mode = _resolve_bat_name(str(startup_mode), cuda_available)
     log_event(f"🚀 Starting ComfyUI in {mode} mode...")
 
     base_dir = os.path.dirname(comfy_path)
-    bat_name = "run_nvidia_gpu.bat" if cuda_available else "run_cpu.bat"
     bat_file = os.path.join(base_dir, bat_name)
 
     # --- BAT mode ----------------------------------------------------
+    sm = str(startup_mode).lower()
+
+    # downgrade chain for missing bats
+    if not os.path.exists(bat_file):
+        if sm == "cpu":
+            log_event("⚠️ run_cpu.bat not found → fallback to Python mode")
+        elif sm == "fast_fp16":
+            log_event(f"⚠️ Selected bat not found: {bat_name} → fallback to GPU bat")
+            bat_name, mode = "run_nvidia_gpu.bat", "GPU"
+            bat_file = os.path.join(base_dir, bat_name)
+
+            if not os.path.exists(bat_file):
+                log_event("⚠️ GPU bat not found either → fallback to AUTO")
+                bat_name, mode = _resolve_bat_name("auto", cuda_available)
+                bat_file = os.path.join(base_dir, bat_name)
+
+        elif sm == "gpu":
+            log_event(f"⚠️ Selected bat not found: {bat_name} → fallback to AUTO")
+            bat_name, mode = _resolve_bat_name("auto", cuda_available)
+            bat_file = os.path.join(base_dir, bat_name)
+
+    if os.path.exists(bat_file):
+        log_event(f"🚀 Starting ComfyUI via {bat_name} ({mode})")
+    else:
+        log_event(f"🚀 Starting ComfyUI in Python mode ({mode})")
+
     if os.path.exists(bat_file):
 
         env = os.environ.copy()
@@ -247,9 +275,7 @@ def ensure_comfyui_running(comfy_path: str, port: int = 8188):
 
     # --- Python mode -------------------------------------------------
     else:
-        python_exe = os.path.join(base_dir, "python_embeded", "python.exe")
-        if not os.path.exists(python_exe):
-            python_exe = shutil.which("python") or "python"
+        python_exe = resolve_python_exe(base_dir)
 
         args = [
             python_exe,
@@ -335,6 +361,7 @@ def stop_comfyui_hard(_grace_period=5):
             if (
                 "run_cpu.bat" in cmdline_joined
                 or "run_nvidia_gpu.bat" in cmdline_joined
+                or "run_nvidia_gpu_fast_fp16.bat" in cmdline_joined
             ):
                 log_event(
                     f"💀 We are finishing the bat file and all its descendants (PID {proc.pid})"
@@ -404,6 +431,32 @@ def _read_process_output(proc: subprocess.Popen):
                 ConsoleBuffer.add(line)
     except Exception as e:
         ConsoleBuffer.add(f"[Console reader error] {e}\n")
+
+
+def _get_active_build(cfg: dict) -> dict | None:
+    bid = str(cfg.get("last_used_build_id", "")).strip()
+    for b in cfg.get("builds", []) or []:
+        if str(b.get("id", "")) == bid:
+            return b
+    return None
+
+
+def _resolve_bat_name(startup_mode: str, cuda_available: bool) -> tuple[str, str]:
+    """
+    Returns (bat_name, mode_label)
+    startup_mode: cpu | gpu | fast_fp16 | auto
+    """
+    sm = (startup_mode or "auto").lower()
+
+    if sm == "cpu":
+        return "run_cpu.bat", "CPU"
+    if sm == "gpu":
+        return "run_nvidia_gpu.bat", "GPU"
+    if sm == "fast_fp16":
+        return "run_nvidia_gpu_fast_fp16.bat", "GPU (fast fp16)"
+
+    # auto
+    return ("run_nvidia_gpu.bat", "GPU") if cuda_available else ("run_cpu.bat", "CPU")
 
 
 __all__ = [

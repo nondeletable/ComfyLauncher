@@ -71,8 +71,8 @@ class SettingsWindow(QWidget):
         self.menu = QListWidget()
         self.menu.addItems(
             [
-                "Comfy Folder",
-                "CMD Window",
+                "Builds",
+                "Startup",
                 "Exit Options",
                 "Color Themes",
                 "Launcher Logs",
