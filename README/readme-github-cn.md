@@ -11,8 +11,7 @@
     <a href="https://github.com/nondeletable/ComfyLauncher/tree/master/README/readme-github-ru.md">Русский </a>
     <br>
     <br>
-    <img src="/README/screenshots/06-main%20window.png" alt="ComfyLauncher UI" width="46%"/>
-    <img src="/README/screenshots/13-themes.png" alt="ComfyLauncher Themes" width="46%"/>
+    <img src="/README/screenshots/render.png" alt="ComfyLauncher UI" width="96%"/>
     <br>
     <br>
   </p>
@@ -65,6 +64,7 @@ Comfy 的 Standalone 版本自带 Launcher，用起来非常舒服。所以我�
 - 前往 **Releases** 区域并下载最新版本。
 - 将压缩包解压到你喜欢的文件夹。
 - 运行 ".exe"，尽情使用！
+- 请确保您已安装 Microsoft WebView2 运行时。如果没有，请下载并安装 [Evergreen Bootstrapper](https://developer.microsoft.com/en-us/microsoft-edge/webview2)。
 &nbsp;
 &nbsp;
 
@@ -196,6 +196,10 @@ About - 关于应用、关于我，以及联系链接的简要信息。
 &nbsp;
  
 - 很遗憾，由于无边框 UI 的特性，目前还不支持窗口缩放，因此应用以全屏模式运行。你可以拖动窗口，但暂时无法调整大小。Windows 的 “Snap”（贴边吸附）目前也无法使用。我会在未来寻找解决方案——如果你知道如何实现，也欢迎分享！
+
+- 如果在启动 ComfyLauncher 后看到的不是 ComfyUI 界面而是白屏，则很可能是系统中缺少或损坏了 WebView2 Runtime。在这种情况下，请尝试从微软官方网站下载 [Evergreen Bootstrapper](https://developer.microsoft.com/en-us/microsoft-edge/webview2) 并进行安装或重新安装。
+
+    我们在 Windows 10 22H2 版本上进行测试时遇到了这种情况。WebView2 Runtime 已安装在系统中，但由于某种原因出现故障，可能是在使用某个系统优化工具后导致的。通过卸载故障的运行时并重新安装，问题得以解决。
 &nbsp;
 &nbsp;
 

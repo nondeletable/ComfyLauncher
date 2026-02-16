@@ -50,7 +50,7 @@ class ThemeManager(QObject):
         QFrame {{
             background-color: {t['bg_header']};
         }}
-    
+
         QListWidget {{
             background-color: {t['bg_menu']};
             color: {t['text_secondary']};
@@ -63,7 +63,7 @@ class ThemeManager(QObject):
         QListWidget::item:hover {{
             background-color: {t['bg_hover']};
         }}
-    
+
         QStackedWidget {{
             background-color: {t['bg_header']};
         }}

@@ -11,8 +11,7 @@
     <a href="https://github.com/nondeletable/ComfyLauncher/tree/master/README/readme-github-ru.md">Русский </a>
     <br>
     <br>
-    <img src="/README/screenshots/06-main%20window.png" alt="ComfyLauncher UI" width="46%"/>
-    <img src="/README/screenshots/13-themes.png" alt="ComfyLauncher Themes" width="46%"/>
+    <img src="/README/screenshots/render.png" alt="ComfyLauncher UI" width="96%"/>
     <br>
     <br>
   </p>
@@ -63,6 +62,7 @@ So I decided to build a dedicated launcher that’s practical for real-world use
 - Go to the **Releases** section and download the latest release.
 - Extract (unzip) the archive to a folder of your choice.
 - Run the ".exe" and enjoy!
+- Make sure you have Microsoft WebView2 Runtime installed. If not, please download and install the [Evergreen Bootstrapper](https://developer.microsoft.com/en-us/microsoft-edge/webview2).
 &nbsp;
 &nbsp;
 
@@ -190,9 +190,13 @@ Our small team did our best to test the app thoroughly, catch issues that appear
 
 If something breaks, you can contact me on [Discord](https://discord.com/invite/6nvXwXp78u). This is the fastest way to report an issue. So if you run into a bug, I’d really appreciate it if you let me know!
 
-- In the current version of Comfy Launcher, manual selection of the "python-embedded" directory (required for ComfyUI) is not implemented yet. The app assumes that "python-embedded" is located in the default place - next to the main ComfyUI folder.  
-&nbsp;
+- In the current version of Comfy Launcher, manual selection of the "python-embedded" directory (required for ComfyUI) is not implemented yet. The app assumes that "python-embedded" is located in the default place - next to the main ComfyUI folder.
+
 - Unfortunately, due to the specifics of a frameless UI, window resizing is not supported yet, so the app runs in fullscreen mode. You can drag the window, but you can’t resize it for now. Windows “snap” (docking to screen edges) also doesn’t work at the moment. I’ll be looking for a solution in the future - and if you know how to implement this, I’d be happy if you share it!
+
+- If you see a white screen instead of ComfyUI after launching ComfyLauncher, there is a high chance that WebView2 Runtime is missing or corrupted on your system. In this case, try downloading the [Evergreen Bootstrapper](https://developer.microsoft.com/en-us/microsoft-edge/webview2) from the official Microsoft website and install or reinstall it.
+
+    We encountered this situation during testing on Windows 10 22H2. WebView2 Runtime was installed on the system, but for some reason it was “broken,” likely after using one of the system optimization utilities. The issue was resolved by removing the faulty runtime and installing a fresh one.
 &nbsp;
 &nbsp;
 
