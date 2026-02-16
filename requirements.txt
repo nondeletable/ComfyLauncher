@@ -4,5 +4,5 @@ psutil==7.1.0
 requests==2.32.4
 PyInstaller==6.10.0
 pythonnet==3.0.5
-pywin32==311
+pywin32==311; sys_platform == 'win32'
 pyinstaller-hooks-contrib==2025.9
