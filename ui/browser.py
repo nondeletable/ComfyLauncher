@@ -408,7 +408,6 @@ class ComfyBrowser(QMainWindow):
             self.splash.finish()
             self.splash = None
 
-        # создаём браузер ТОЛЬКО СЕЙЧАС
         url = f"http://127.0.0.1:{COMFYUI_PORT}"
         self.browser = WebView2Widget(url)
         self.browser.loaded.connect(self.on_load_finished)
