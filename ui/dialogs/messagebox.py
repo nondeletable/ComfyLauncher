@@ -54,8 +54,7 @@ class MessageBox(QDialog):
         c = THEME.colors  # We take current tokens
 
         # — dialog and button styles
-        self.setStyleSheet(
-            f"""
+        self.setStyleSheet(f"""
             QDialog {{
                 background-color: {c['popup_bg']};
                 color: {c['popup_text']};
@@ -87,8 +86,7 @@ class MessageBox(QDialog):
                 color: {c['text_inverse']};
                 border-color: {c['accent']};
             }}
-        """
-        )
+        """)
 
         # — main layout
         root = QVBoxLayout(self)
@@ -242,8 +240,7 @@ class MessageBox(QDialog):
         c = THEME.colors
 
         # background, text, and frame — by popup_* tokens
-        self.setStyleSheet(
-            f"""
+        self.setStyleSheet(f"""
             QDialog {{
                 background-color: {c['popup_bg']};
                 color: {c['popup_text']};
@@ -275,8 +272,7 @@ class MessageBox(QDialog):
                 color: {c['text_inverse']};
                 border-color: {c['accent']};
             }}
-        """
-        )
+        """)
 
         # 🔹 Recolor the icon to match the active theme
         icon_paths = MESSAGEBOX_ICONS

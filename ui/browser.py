@@ -71,13 +71,11 @@ class ComfyBrowser(QMainWindow):
         # central container
         central = QWidget(self)
         central.setObjectName("CentralContainer")
-        central.setStyleSheet(
-            """
+        central.setStyleSheet("""
             QWidget#CentralContainer {
                 background-color: #353535;
             }
-        """
-        )
+        """)
         vbox = QVBoxLayout(central)
         vbox.setContentsMargins(0, 0, 0, 0)
         vbox.setSpacing(0)
@@ -449,13 +447,11 @@ class ComfyBrowser(QMainWindow):
 
         central = QWidget(self)
         central.setObjectName("CentralContainer")
-        central.setStyleSheet(
-            """
+        central.setStyleSheet("""
             QWidget#CentralContainer {
                 background-color: #353535;
             }
-        """
-        )
+        """)
 
         vbox = QVBoxLayout(central)
         vbox.setContentsMargins(0, 0, 0, 0)
@@ -515,7 +511,7 @@ class ComfyBrowser(QMainWindow):
             "Would you like to update now?"
         )
 
-        user_wants_update = MB.update_available(self, title, message)
+        user_wants_update = MB.update_available(self.window(), title, message)
 
         if user_wants_update:
             webbrowser.open(release_url)

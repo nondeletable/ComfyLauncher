@@ -44,8 +44,7 @@ class SettingsWindow(QWidget):
         main_frame.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
         )
-        main_frame.setStyleSheet(
-            f"""
+        main_frame.setStyleSheet(f"""
             QFrame {{
                 background-color: {self.colors['bg_header']};
                 color: {self.colors['text_primary']};
@@ -54,8 +53,7 @@ class SettingsWindow(QWidget):
             QFrame#settings_main_frame {{
                 border: 2px solid {self.colors['border_color']};
             }}
-        """
-        )
+        """)
 
         # ─── ONE layout for the entire window ──────────────────
         main_layout = QVBoxLayout(main_frame)
@@ -72,7 +70,7 @@ class SettingsWindow(QWidget):
         self.menu.addItems(
             [
                 "Builds",
-                "Startup",
+                "CMD Window",
                 "Exit Options",
                 "Color Themes",
                 "Launcher Logs",
@@ -80,8 +78,7 @@ class SettingsWindow(QWidget):
             ]
         )
         self.menu.setFixedWidth(200)
-        self.menu.setStyleSheet(
-            f"""
+        self.menu.setStyleSheet(f"""
             QListWidget {{
                 background-color: {self.colors['bg_menu']};
                 color: {self.colors['text_secondary']};
@@ -111,13 +108,11 @@ class SettingsWindow(QWidget):
                 outline: 0;
                 border: none;
             }}
-        """
-        )
+        """)
 
         # ─── Right content panel ───────────────────────────
         self.pages = QStackedWidget()
-        self.pages.setStyleSheet(
-            f"""
+        self.pages.setStyleSheet(f"""
             QStackedWidget {{
                 background-color: {self.colors["bg_header"]};
                 border-top-right-radius: 10px;
@@ -130,13 +125,11 @@ class SettingsWindow(QWidget):
                 font-size: 16px;
                 margin: 10px;
             }}
-        """
-        )
+        """)
 
         # ─── Bottom button bar ─────────────────────────────
         footer = QFrame()
-        footer.setStyleSheet(
-            f"""
+        footer.setStyleSheet(f"""
             QFrame {{
                 background-color: {self.colors['bg_menu']};
                 border-bottom-left-radius: 10px;
@@ -144,8 +137,7 @@ class SettingsWindow(QWidget):
                 border-bottom-right-radius: 10px;
                 border-top-right-radius: 0px;
             }}
-        """
-        )
+        """)
         footer_layout = QHBoxLayout(footer)
         footer_layout.setContentsMargins(20, 10, 20, 10)
         footer_layout.setSpacing(12)
@@ -156,8 +148,7 @@ class SettingsWindow(QWidget):
 
         for btn in (self.btn_apply, self.btn_close):
             btn.setFixedSize(100, 36)
-            btn.setStyleSheet(
-                f"""
+            btn.setStyleSheet(f"""
                 QPushButton {{
                     background-color: transparent;
                     color: {self.colors['text_secondary']};
@@ -174,8 +165,7 @@ class SettingsWindow(QWidget):
                     color: #555555;
                     border: 1px solid #555555;
                 }}
-            """
-            )
+            """)
             footer_layout.addWidget(btn)
 
         # ─── Adding menus and pages to the body ─────────────────
@@ -322,8 +312,7 @@ class SettingsWindow(QWidget):
 
     def _apply_theme(self, *args):
         c = THEME.colors
-        self.setStyleSheet(
-            f"""
+        self.setStyleSheet(f"""
             QWidget {{
                 background-color: {c['bg_header']};
                 color: {c['text_primary']};
@@ -339,5 +328,4 @@ class SettingsWindow(QWidget):
                 color: {c['text_inverse']};
                 border-color: {c['accent']};
             }}
-        """
-        )
+        """)

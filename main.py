@@ -21,16 +21,14 @@ def launch_app():
     THEME.apply()
 
     QToolTip.setFont(QFont("Segoe UI", 9))
-    app.setStyleSheet(
-        """
+    app.setStyleSheet("""
         QToolTip {
             background-color: #2b2b2b;
             color: white;
             padding: 3px 6px;
             border-radius: 4px;
         }
-        """
-    )
+        """)
 
     # ── FIRST SETUP ─────────────────────────────
     comfy_path = get_comfyui_path()
@@ -67,6 +65,10 @@ def launch_app():
     result = mgr.exec()
     if result != QDialog.DialogCode.Accepted or not mgr.selected_build_id:
         sys.exit(0)
+
+    # перечитываем конфиг — пользователь мог добавить новый билд внутри менеджера
+    data = load_user_config()
+    builds = data.get("builds", []) or []
 
     # применяем выбор -> записываем comfyui_path и last_used_build_id
     selected = None
