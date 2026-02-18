@@ -1,13 +1,9 @@
 from PyQt6.QtWidgets import (
     QWidget,
-    QListWidgetItem,
     QVBoxLayout,
     QLabel,
-    QLineEdit,
     QPushButton,
     QHBoxLayout,
-    QFileDialog,
-    QApplication,
     QFrame,
     QScrollArea,
     QSizePolicy,
@@ -25,7 +21,6 @@ from config import (
 from ui.header import colorize_svg
 from ui.theme.manager import THEME
 from ui.dialogs.messagebox import MessageBox as MB
-from utils.build_validation import is_valid_comfyui_build
 from ui.dialogs.setup_window import SetupWindow, SetupMode
 
 import webbrowser
@@ -67,11 +62,6 @@ class BuildSettingsPage(QWidget):
         desc.setWordWrap(True)
         content_layout.addWidget(desc)
 
-        # ─── Saved builds ───────────────────────────────
-        saved_title = QLabel("Saved builds:")
-        saved_title.setStyleSheet("font-size: 17px; font-weight: 500;")
-        content_layout.addWidget(saved_title)
-
         # ─── Builds List ────────────────────────────
         self.builds_container = QWidget()
         self.builds_container.setStyleSheet(
@@ -87,114 +77,6 @@ class BuildSettingsPage(QWidget):
         self.builds_layout.setSpacing(8)
 
         content_layout.addWidget(self.builds_container)
-
-        # ─── Current path ────────────────────────────
-        switch_title = QLabel("Switch now")
-        switch_title.setStyleSheet("font-size: 17px; font-weight: 500;")
-        content_layout.addWidget(switch_title)
-
-        switch_desc = QLabel(
-            "Here you can specify which ComfyUI installation the launcher should use.\n"
-            "Select the folder that contains main.py (usually the ComfyUI folder)."
-        )
-        switch_desc.setStyleSheet(
-            f"color: {THEME.colors['text_secondary']}; font-size: 13px;"
-        )
-        switch_desc.setWordWrap(True)
-        content_layout.addWidget(switch_desc)
-
-        # ─── Path selection field ─────────────────────────
-        self.path_edit = QLineEdit()
-        self.path_edit.textChanged.connect(self.on_path_changed)  # type: ignore
-        self.path_edit.setPlaceholderText("Select new ComfyUI folder...")
-        self.path_edit.setFixedHeight(38)
-        self.path_edit.setStyleSheet(
-            f"""
-            QLineEdit {{
-                background-color: {THEME.colors['bg_input']};
-                color: {THEME.colors['text_primary']};
-                border: 1px solid {THEME.colors['border_color']};
-                border-radius: 6px;
-                padding: 6px 8px;
-                font-size: 13px;
-            }}
-            QLineEdit:focus {{
-                border-color: {THEME.colors['accent']};
-            }}
-        """
-        )
-
-        btn_browse = QPushButton()
-        btn_browse.setIcon(
-            QIcon(
-                colorize_svg(
-                    ICON_PATHS["open_folder"],
-                    THEME.colors["icon_color_window"],
-                    QSize(20, 20),
-                )
-            )
-        )
-        btn_browse.setIconSize(QSize(20, 20))
-        btn_browse.setFixedSize(40, 38)
-        btn_browse.setStyleSheet(
-            f"""
-            QPushButton {{
-                background-color: {THEME.colors['bg_input']};
-                border: 1px solid {THEME.colors['border_color']};
-                border-radius: 6px;
-            }}
-            QPushButton:hover {{
-                background-color: {THEME.colors['accent']};
-                border-color: {THEME.colors['accent']};
-            }}
-        """
-        )
-        btn_browse.clicked.connect(self.select_build_directory)  # type: ignore
-
-        # ─── Horizontal container ─────────────────
-        path_row = QHBoxLayout()
-        path_row.setSpacing(8)
-        path_row.addWidget(self.path_edit)
-        path_row.addWidget(btn_browse)
-
-        path_container = QHBoxLayout()
-        path_container.setContentsMargins(14, 0, 0, 0)
-        path_container.addLayout(path_row)
-
-        content_layout.addLayout(path_container)
-
-        # ─── Apply / Cancel Buttons───────────────────────
-        btns_layout = QHBoxLayout()
-        btns_layout.setAlignment(Qt.AlignmentFlag.AlignRight)
-
-        self.btn_apply = QPushButton("Apply")
-        self.btn_cancel = QPushButton("Cancel")
-
-        for btn in (self.btn_apply, self.btn_cancel):
-            btn.setFixedSize(100, 36)
-            btn.setStyleSheet(
-                f"""
-                QPushButton {{
-                    background-color: transparent;
-                    color: {THEME.colors['text_secondary']};
-                    border: 1px solid {THEME.colors['border_color']};
-                    border-radius: 6px;
-                    transition: all 0.2s ease-in-out;
-                }}
-                QPushButton:hover {{
-                    background-color: {THEME.colors['accent']};
-                    color: {THEME.colors['text_inverse']};
-                    border-color: {THEME.colors['accent']};
-                }}
-                QPushButton:disabled {{
-                    color: #555555;
-                    border: 1px solid #555555;
-                }}
-            """
-            )
-            btns_layout.addWidget(btn)
-
-        content_layout.addLayout(btns_layout)
         content_layout.addStretch()
 
         # ---
@@ -248,78 +130,15 @@ class BuildSettingsPage(QWidget):
 
         self._refresh_builds_list()
 
-        # ─── Button logic ───────────────────────────────
-        self.btn_apply.clicked.connect(self.apply_changes)  # type: ignore
-        self.btn_cancel.clicked.connect(self.cancel_changes)  # type: ignore
-        self.btn_apply.setEnabled(False)
-
-    # ─── Processors ────────────────────────────────
-    def select_build_directory(self):
-        directory = QFileDialog.getExistingDirectory(self, "Select ComfyUI Folder")
-        if directory:
-            self.path_edit.setText(directory)
-
-    def _on_build_double_clicked(self, item: QListWidgetItem):
-        b = item.data(Qt.ItemDataRole.UserRole)
-        if not isinstance(b, dict):
-            return
-        path = (b.get("path") or "").strip()
-        if path:
-            self.path_edit.setText(path)
-
-    def on_path_changed(self, text: str):
-        # check the path and update the UI
-        if not text.strip():
-            self.btn_apply.setEnabled(False)
-            self._sync_footer_buttons()
-            return
-
-        if self.validate_build_path(text.strip()):
-            # valid
-            self._sync_footer_buttons()
-
     def _sync_footer_buttons(self):
-        """We keep the synchronization of the lower buttons of
-        the settings window with the current state of
-        the page in one place."""
         p = self.parent()
-        if not p:
-            return
-        # Apply at the bottom duplicates the Apply at the top.
-        if hasattr(p, "btn_apply"):
-            p.btn_apply.setEnabled(self.btn_apply.isEnabled())
-
-    # ──────────────────────────────────────────────────────
-    # Checking the build structure
-    def validate_build_path(self, path: str) -> bool:
-        ok = is_valid_comfyui_build(path)
-        self.btn_apply.setEnabled(ok)
-        self._sync_footer_buttons()
-        return ok
+        if p and hasattr(p, "btn_apply"):
+            p.btn_apply.setEnabled(False)
 
     def apply_changes(self):
-        new_path = self.path_edit.text().strip()
-        if not self.validate_build_path(new_path):
-            MB.warning(
-                self.window(), "Invalid folder", "This folder doesn't contain main.py."
-            )
-            return False
-
-        cfg = load_user_config()
-        cfg["comfyui_path"] = new_path
-        save_user_config(cfg)
-
-        MB.info(
-            self.window(),
-            "Restart required",
-            "The launcher will now close.\nPlease restart it to apply the new build.",
-        )
-        QApplication.quit()
         return True
 
     def cancel_changes(self):
-        self.path_edit.clear()
-        self.btn_apply.setEnabled(False)
         self._sync_footer_buttons()
         return True
 
@@ -537,10 +356,10 @@ class BuildSettingsPage(QWidget):
         name = str(build.get("name", "Unnamed"))
 
         if not build_id:
-            MB.warning(self, "Delete build", "Build ID is missing.")
+            MB.warning(self.window(), "Delete build", "Build ID is missing.")
             return
 
-        if not MB.ask_yes_no(self, "Delete build", f"Delete build “{name}”?"):
+        if not MB.ask_yes_no(self.window(), "Delete build", f"Delete build “{name}”?"):
             return
 
         cfg = load_user_config()
@@ -560,4 +379,3 @@ class BuildSettingsPage(QWidget):
 
         # update UI
         self._refresh_builds_list()
-        self.validate_build_path(self.path_edit.text().strip())

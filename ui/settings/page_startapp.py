@@ -17,7 +17,7 @@ class StartAppSettingsPage(QWidget):
         layout.setContentsMargins(30, 30, 30, 30)
         layout.setSpacing(16)
 
-        title = QLabel("Startup")
+        title = QLabel("CMD Window")
         title.setStyleSheet("font-size: 20px; font-weight: 600;")
         layout.addWidget(title)
 

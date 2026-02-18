@@ -464,7 +464,6 @@ class SetupWindow(QDialog):
         self.setMask(QRegion(path.toFillPolygon().toPolygon()))
 
     def _on_doodle_selected(self):
-        print("doodle selected; ok_btn exists:", hasattr(self, "ok_btn"))
         btn = self.sender()
         if btn:
             self.selected_doodle_id = btn.property("doodle_id") or DEFAULT_DOODLE_ID

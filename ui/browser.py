@@ -515,7 +515,7 @@ class ComfyBrowser(QMainWindow):
             "Would you like to update now?"
         )
 
-        user_wants_update = MB.update_available(self, title, message)
+        user_wants_update = MB.update_available(self.window(), title, message)
 
         if user_wants_update:
             webbrowser.open(release_url)

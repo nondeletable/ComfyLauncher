@@ -78,11 +78,11 @@ class BuildManagerDialog(QDialog):
         layout.addWidget(title)
 
         # --- Scroll area with build rows ---
-        scroll = QScrollArea(self.main_frame)
-        scroll.setWidgetResizable(True)
-        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        self.scroll = QScrollArea(self.main_frame)
+        self.scroll.setWidgetResizable(True)
+        self.scroll.setFrameShape(QFrame.Shape.NoFrame)
 
-        scroll.setStyleSheet(
+        self.scroll.setStyleSheet(
             f"""
             QScrollArea {{
                 background-color: {THEME.colors['bg_header']};
@@ -110,17 +110,16 @@ class BuildManagerDialog(QDialog):
             for b in self.builds:
                 self.list_layout.addWidget(self._build_row(b))
 
-        scroll.setWidget(container)
+        self.scroll.setWidget(container)
 
         # ── dynamic max height: shrink to content, but keep scroll when too long
         container.adjustSize()  # помогает пересчитать sizeHint сразу
         content_h = container.sizeHint().height()
-
         MAX_LIST_H = 260
-        scroll.setMaximumHeight(min(content_h, MAX_LIST_H))
+        self.scroll.setMaximumHeight(min(content_h, MAX_LIST_H))
 
         # 0 вместо 1 — скролл больше не "съедает" всё место
-        layout.addWidget(scroll, 0)
+        layout.addWidget(self.scroll, 0)
 
         # ── Add Build row (under the list) ─────────────────────────
         add_row = QHBoxLayout()
@@ -357,3 +356,11 @@ class BuildManagerDialog(QDialog):
                 self.list_layout.addWidget(self._build_row(b))
 
         self.list_layout.addStretch(1)
+
+        ROW_H = 55
+        SPACING = 8
+        count = len(self.builds) if self.builds else 1
+        content_h = count * ROW_H + (count - 1) * SPACING
+        MAX_LIST_H = 260
+        self.scroll.setMaximumHeight(min(content_h, MAX_LIST_H))
+        self.scroll.setMinimumHeight(min(content_h, MAX_LIST_H))
