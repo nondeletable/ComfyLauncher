@@ -140,7 +140,8 @@ class AboutSettingsPage(QWidget):
             btn.setIconSize(QSize(40, 40))
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
             btn.setToolTip(f"{name}")
-            btn.setStyleSheet(f"""
+            btn.setStyleSheet(
+                f"""
                 QPushButton {{
                     background-color: transparent;
                     border: 1px solid transparent;
@@ -152,7 +153,8 @@ class AboutSettingsPage(QWidget):
                     border-color: {self.colors['accent']};
                     transform: scale(1.05);
                 }}
-            """)
+            """
+            )
             btn.clicked.connect(lambda _, link=url: self._open_link(link))  # type: ignore
             donate_layout.addWidget(btn)
 
@@ -162,7 +164,8 @@ class AboutSettingsPage(QWidget):
             btn.setIconSize(QSize(40, 40))
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
             btn.setToolTip(f"{name}")
-            btn.setStyleSheet(f"""
+            btn.setStyleSheet(
+                f"""
                 QPushButton {{
                     background-color: transparent;
                     border: 1px solid transparent;
@@ -174,7 +177,8 @@ class AboutSettingsPage(QWidget):
                     border-color: {self.colors['accent']};
                     transform: scale(1.05);
                 }}
-            """)
+            """
+            )
             btn.clicked.connect(lambda _, link=url: self._open_link(link))  # type: ignore
             donate_layout.addWidget(btn)
 
@@ -207,7 +211,8 @@ class AboutSettingsPage(QWidget):
         # Рекомендую все же добавить минимальную ширину, чтобы кнопка не была слишком узкой
         self.update_btn.setMinimumWidth(130)
         self.update_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.update_btn.setStyleSheet(f"""
+        self.update_btn.setStyleSheet(
+            f"""
             QPushButton {{
                 background-color: transparent;
                 color: {THEME.colors['text_secondary']};
@@ -221,7 +226,8 @@ class AboutSettingsPage(QWidget):
                 color: {THEME.colors['text_inverse']};
                 border-color: {THEME.colors['accent']};
             }}
-        """)
+        """
+        )
         self.update_btn.clicked.connect(self._manual_update_check)  # type: ignore
         right_layout.addWidget(self.update_btn)
         footer_layout.addWidget(right_container, 1)

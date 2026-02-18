@@ -98,7 +98,8 @@ class ColorThemesPage(QWidget):
         self.btn_download.clicked.connect(self._open_comfyui_themes)
 
         for btn in (self.btn_select, self.btn_download):
-            btn.setStyleSheet(f"""
+            btn.setStyleSheet(
+                f"""
                        QPushButton {{
                            background-color: transparent;
                            border: 1px solid {THEME.colors['border_color']};
@@ -111,7 +112,8 @@ class ColorThemesPage(QWidget):
                        QPushButton:pressed {{
                            background-color: {THEME.colors['accent_hover']};
                        }}
-                       """)
+                       """
+            )
             btn_layout.addWidget(btn)
 
         self.btn_select.setToolTip("Select file")
@@ -132,7 +134,8 @@ class ColorThemesPage(QWidget):
         card.setCursor(Qt.CursorShape.PointingHandCursor)
         card.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
 
-        card.setStyleSheet(f"""
+        card.setStyleSheet(
+            f"""
             QFrame#{name} {{
                 background-color: {colors['bg_header']};
                 border: 1px solid {colors['accent']};
@@ -144,7 +147,8 @@ class ColorThemesPage(QWidget):
             QFrame#{name}:hover {{
                 border: 3px solid {colors['accent_hover']};
             }}
-        """)
+        """
+        )
 
         layout = QVBoxLayout(card)
         layout.setContentsMargins(10, 10, 10, 10)
@@ -165,12 +169,14 @@ class ColorThemesPage(QWidget):
 
         pretty_name = name.replace("_", " ").title()
         label = QLabel(pretty_name, card)
-        label.setStyleSheet(f"""
+        label.setStyleSheet(
+            f"""
             background-color: {colors['bg_header']};
             color: {colors['text_primary']};
             font-weight: 400;
             font-size: 12px;
-        """)
+        """
+        )
 
         row_top.addWidget(checkpoint)
         row_top.addWidget(label)

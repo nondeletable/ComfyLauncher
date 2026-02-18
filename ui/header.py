@@ -51,7 +51,8 @@ class HeaderBar(QWidget):
         show_cmd = cfg.get("show_cmd", True)
         self.use_internal_console = not show_cmd
 
-        self.setStyleSheet(f"""
+        self.setStyleSheet(
+            f"""
             #HeaderBar {{
                 background-color: {THEME.colors['bg_header']};
                 border-top-left-radius: 8px;
@@ -66,7 +67,8 @@ class HeaderBar(QWidget):
             }}
             QPushButton:hover {{ background-color: {THEME.colors['bg_hover']}; }}
             QPushButton:pressed {{ background-color: {THEME.colors['bg_hover']}; }}
-        """)
+        """
+        )
 
         layout = QHBoxLayout(self)
         layout.setContentsMargins(8, 2, 8, 2)
@@ -108,13 +110,15 @@ class HeaderBar(QWidget):
 
         # indicator online
         self.status_label = QLabel("Online")
-        self.status_label.setStyleSheet(f"""
+        self.status_label.setStyleSheet(
+            f"""
             color: {THEME.colors['success']};
             background-color: rgba(60,60,60,0.7);
             border-radius: 6px;
             padding: 3px 8px;
             font-weight: bold;
-        """)
+        """
+        )
         layout.addWidget(self.status_label)
 
         layout.addSpacerItem(
@@ -160,13 +164,15 @@ class HeaderBar(QWidget):
         for btn in [self.btn_min, self.btn_max, self.btn_close]:
             btn.setFixedSize(25, 25)
             btn.setIconSize(QSize(20, 20))
-            btn.setStyleSheet("""
+            btn.setStyleSheet(
+                """
                 QPushButton {
                     border: none;
                     background: transparent;
                 }
                 QPushButton:hover {{ background: {THEME.colors['bg_hover']}; }}
-            """)
+            """
+            )
             layout.addWidget(btn)
 
         self.btn_restart.setToolTip("Restart ComfyUI")
@@ -213,7 +219,8 @@ class HeaderBar(QWidget):
     def _apply_theme(self, *args):
         """Reapplies colors when changing themes."""
         c = THEME.colors
-        self.setStyleSheet(f"""
+        self.setStyleSheet(
+            f"""
             #HeaderBar {{
                 background-color: {c['bg_header']};
                 border-top-left-radius: 8px;
@@ -228,18 +235,21 @@ class HeaderBar(QWidget):
             }}
             QPushButton:hover {{ background-color: {c['bg_hover']}; }}
             QPushButton:pressed {{ background-color: {c['bg_hover']}; }}
-        """)
+        """
+        )
 
         self.title.setStyleSheet(
             f"color: {c['app_title_color']}; font-weight: bold; font-size: 15px;"
         )
-        self.status_label.setStyleSheet(f"""
+        self.status_label.setStyleSheet(
+            f"""
             color: {c['success']};
             background-color: rgba(60,60,60,0.7);
             border-radius: 6px;
             padding: 3px 8px;
             font-weight: bold;
-        """)
+        """
+        )
 
         # Re-creating icons for a new theme
         self.btn_min.setIcon(

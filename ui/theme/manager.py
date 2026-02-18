@@ -117,9 +117,7 @@ class ThemeManager(QObject):
     def switch(self, name: str):
         """Changes the active theme and applies it."""
         if name not in self._themes:
-            log_event(
-                f"⚠️ Theme '{name}' not found. Using current: {self._active_name}"
-            )
+            log_event(f"⚠️ Theme '{name}' not found. Using current: {self._active_name}")
             return
 
         if name == self._active_name:
