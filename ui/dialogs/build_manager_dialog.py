@@ -34,10 +34,12 @@ class BuildManagerDialog(QDialog):
         self.setWindowTitle("ComfyLauncher")
         self.setWindowIcon(QIcon(ICON_PATH))
         self.setModal(True)
-        self.setFixedSize(700, 420)
+        self.setFixedSize(700, 520)
         self.setObjectName("BuildManagerDialog")
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+
+        self.MAX_LIST_H = 450
 
         self.selected_build_id: Optional[str] = None
 
@@ -85,11 +87,30 @@ class BuildManagerDialog(QDialog):
         self.scroll.setStyleSheet(
             f"""
             QScrollArea {{
-                background-color: {THEME.colors['bg_header']};
-            }}
-            QScrollArea::viewport {{
-                background-color: {THEME.colors['bg_header']};
+                background: {THEME.colors['bg_header']};
                 border: none;
+            }}
+            QScrollArea > QWidget > QWidget {{
+                background: {THEME.colors['bg_header']};
+            }}
+            QScrollBar:vertical {{
+                background: {THEME.colors['bg_header']};
+                width: 12px;
+                border-radius: 3px;
+                margin-left: 6px;
+            }}
+            QScrollBar::handle:vertical {{
+                background: #555555;
+                border-radius: 3px;
+                min-height: 20px;
+            }}
+            QScrollBar::add-line:vertical,
+            QScrollBar::sub-line:vertical {{
+                height: 0px;
+            }}
+            QScrollBar::add-page:vertical,
+            QScrollBar::sub-page:vertical {{
+                background: {THEME.colors['bg_header']};
             }}
             """
         )
@@ -111,55 +132,12 @@ class BuildManagerDialog(QDialog):
                 self.list_layout.addWidget(self._build_row(b))
 
         self.scroll.setWidget(container)
+        self.scroll.setFixedHeight(self.MAX_LIST_H)
 
-        # ── dynamic max height: shrink to content, but keep scroll when too long
-        container.adjustSize()  # помогает пересчитать sizeHint сразу
-        content_h = container.sizeHint().height()
-        MAX_LIST_H = 260
-        self.scroll.setMaximumHeight(min(content_h, MAX_LIST_H))
-
-        # 0 вместо 1 — скролл больше не "съедает" всё место
         layout.addWidget(self.scroll, 0)
 
-        # ── Add Build row (under the list) ─────────────────────────
-        add_row = QHBoxLayout()
-        add_row.setContentsMargins(0, 0, 0, 0)
-        add_row.setSpacing(10)
-
-        btn_add = QToolButton()
-        btn_add.setIcon(
-            QIcon(
-                colorize_svg(
-                    ICON_PATHS["plus"],
-                    THEME.colors["icon_color_window"],
-                )
-            )
-        )
-        btn_add.setIconSize(QSize(30, 30))
-        btn_add.setFixedSize(44, 44)
-        btn_add.setStyleSheet(
-            f"""
-            QToolButton {{
-                background-color: transparent;
-                border: 1px solid transparent;
-                border-radius: 6px;
-            }}
-            QToolButton:hover {{
-                background-color: {THEME.colors['bg_hover']};
-            }}
-            """
-        )
-        btn_add.clicked.connect(self._add_build)  # type: ignore
-
-        lbl_add = QLabel("Add Build")
-        lbl_add.setStyleSheet(f"color: {THEME.colors['text_secondary']};")
-
-        add_row.addWidget(btn_add, 0, Qt.AlignmentFlag.AlignLeft)
-        add_row.addWidget(lbl_add, 0, Qt.AlignmentFlag.AlignVCenter)
-        add_row.addStretch(1)
-
-        layout.addLayout(add_row)
-        layout.addStretch(1)
+        self.list_layout.addWidget(self._build_add_row())
+        self.list_layout.addStretch(1)
 
         # --- Bottom buttons ---
         bottom = QHBoxLayout()
@@ -182,7 +160,7 @@ class BuildManagerDialog(QDialog):
         )
         self.btn_close.clicked.connect(self.reject)  # type: ignore
         bottom.addWidget(self.btn_close)
-
+        layout.addStretch(1)
         layout.addLayout(bottom)
 
     def _build_row(self, build: dict) -> QWidget:
@@ -192,6 +170,7 @@ class BuildManagerDialog(QDialog):
         icon_id = str(build.get("icon_id", DEFAULT_DOODLE_ID))
 
         row = QFrame()
+        row.setFixedHeight(55)
         row.setObjectName("BuildRow")
         row.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
 
@@ -316,6 +295,45 @@ class BuildManagerDialog(QDialog):
         super().resizeEvent(event)
         self._apply_rounded_mask()
 
+    def _build_add_row(self) -> QWidget:
+        widget = QWidget()
+        add_row = QHBoxLayout(widget)
+        add_row.setContentsMargins(0, 0, 0, 0)
+        add_row.setSpacing(10)
+
+        btn_add = QToolButton()
+        btn_add.setIcon(
+            QIcon(
+                colorize_svg(
+                    ICON_PATHS["plus"],
+                    THEME.colors["icon_color_window"],
+                )
+            )
+        )
+        btn_add.setIconSize(QSize(30, 30))
+        btn_add.setFixedSize(44, 44)
+        btn_add.setStyleSheet(
+            f"""
+            QToolButton {{
+                background-color: transparent;
+                border: 1px solid transparent;
+                border-radius: 6px;
+            }}
+            QToolButton:hover {{
+                background-color: {THEME.colors['bg_hover']};
+            }}
+            """
+        )
+        btn_add.clicked.connect(self._add_build)  # type: ignore
+        lbl_add = QLabel("Add Build")
+        lbl_add.setStyleSheet(f"color: {THEME.colors['text_secondary']};")
+
+        add_row.addWidget(btn_add, 0, Qt.AlignmentFlag.AlignLeft)
+        add_row.addWidget(lbl_add, 0, Qt.AlignmentFlag.AlignVCenter)
+        add_row.addStretch(1)
+
+        return widget
+
     def _apply_rounded_mask(self):
         radius = 9
         path = QPainterPath()
@@ -355,12 +373,5 @@ class BuildManagerDialog(QDialog):
             for b in self.builds:
                 self.list_layout.addWidget(self._build_row(b))
 
+        self.list_layout.addWidget(self._build_add_row())
         self.list_layout.addStretch(1)
-
-        ROW_H = 55
-        SPACING = 8
-        count = len(self.builds) if self.builds else 1
-        content_h = count * ROW_H + (count - 1) * SPACING
-        MAX_LIST_H = 260
-        self.scroll.setMaximumHeight(min(content_h, MAX_LIST_H))
-        self.scroll.setMinimumHeight(min(content_h, MAX_LIST_H))
