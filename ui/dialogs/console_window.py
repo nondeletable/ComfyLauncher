@@ -137,6 +137,27 @@ class ConsoleWindow(QWidget):
             QPlainTextEdit:focus {{
                 border-color: {c['accent']};
             }}
+            QScrollBar:vertical {{
+                background: {c['bg_input']};
+                width: 6px;
+                border-radius: 3px;
+            }}
+            QScrollBar::handle:vertical {{
+                background: #555555;
+                border-radius: 3px;
+                min-height: 20px;
+            }}
+            QScrollBar::handle:vertical:hover {{
+                background: #787878;
+            }}
+            QScrollBar::add-line:vertical,
+            QScrollBar::sub-line:vertical {{
+                height: 0px;
+            }}
+            QScrollBar::add-page:vertical,
+            QScrollBar::sub-page:vertical {{
+                background: transparent;
+            }}
         """
 
     def _apply_theme(self, *args):

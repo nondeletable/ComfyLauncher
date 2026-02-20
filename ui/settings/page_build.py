@@ -44,6 +44,40 @@ class BuildSettingsPage(QWidget):
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.Shape.NoFrame)
 
+        scroll.setStyleSheet(
+            """
+            QScrollArea {
+                background: transparent;
+                border: none;
+            }
+            QScrollArea > QWidget > QWidget {
+                background: transparent;
+            }
+            QScrollBar:vertical {
+                background: transparent;
+                width: 20px;
+                border-radius: 3px;
+                margin-right: 8px;
+                margin-left: 6px;
+                margin-top: 12px;    
+                margin-bottom: 12px;
+            }
+            QScrollBar::handle:vertical {
+                background: #555555;
+                border-radius: 3px;
+                min-height: 20px;
+            }
+            QScrollBar::add-line:vertical,
+            QScrollBar::sub-line:vertical {
+                height: 0px;
+            }
+            QScrollBar::add-page:vertical,
+            QScrollBar::sub-page:vertical {
+                background: transparent;
+            }
+            """
+        )
+
         content = QWidget()
         content_layout = QVBoxLayout(content)
         content_layout.setContentsMargins(30, 30, 30, 30)
