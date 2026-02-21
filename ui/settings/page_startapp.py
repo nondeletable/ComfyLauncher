@@ -27,7 +27,9 @@ class StartAppSettingsPage(QWidget):
             "If disabled, ComfyUI starts without a CMD window."
         )
         desc_cmd.setWordWrap(True)
-        desc_cmd.setStyleSheet(f"color: {THEME.colors['text_secondary']}; font-size: 13px;")
+        desc_cmd.setStyleSheet(
+            f"color: {THEME.colors['text_secondary']}; font-size: 13px;"
+        )
         layout.addWidget(desc_cmd)
 
         self.cb_show_cmd = self._make_checkbox("Show CMD window on launch")
@@ -42,7 +44,9 @@ class StartAppSettingsPage(QWidget):
             "If disabled, loading progress can be tracked via the Task Manager or CMD window."
         )
         desc_splash.setWordWrap(True)
-        desc_splash.setStyleSheet(f"color: {THEME.colors['text_secondary']}; font-size: 13px;")
+        desc_splash.setStyleSheet(
+            f"color: {THEME.colors['text_secondary']}; font-size: 13px;"
+        )
         layout.addWidget(desc_splash)
 
         self.cb_show_splash = self._make_checkbox("Show splash screen on launch")
@@ -55,8 +59,8 @@ class StartAppSettingsPage(QWidget):
 
         self.reset()
 
-        self.cb_show_cmd.stateChanged.connect(self._on_change)      # type: ignore
-        self.cb_show_splash.stateChanged.connect(self._on_change)   # type: ignore
+        self.cb_show_cmd.stateChanged.connect(self._on_change)  # type: ignore
+        self.cb_show_splash.stateChanged.connect(self._on_change)  # type: ignore
 
     # ───────────────────── HELPERS ────────────────────────
 
