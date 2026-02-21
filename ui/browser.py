@@ -385,9 +385,12 @@ class ComfyBrowser(QMainWindow):
         self.ui_state = "STARTING_COMFY"
 
         # ── SHOW SPLASH ─────────────────────
-        if not hasattr(self, "splash") or self.splash is None:
-            self.splash = LauncherSplashVideo(SPLASH_PATH)
-            self.splash.show()
+        cfg = load_user_config()
+        if cfg.get("show_splash", True):
+            if not hasattr(self, "splash") or self.splash is None:
+                self.splash = LauncherSplashVideo(SPLASH_PATH)
+                self.splash.show()
+
         self.thread = QThread()
         self.worker = ComfyLoaderWorker(self.comfyui_path)
 

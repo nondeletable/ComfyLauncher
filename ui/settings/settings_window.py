@@ -72,7 +72,7 @@ class SettingsWindow(QWidget):
         self.menu.addItems(
             [
                 "Builds",
-                "CMD Window",
+                "Startup",
                 "Exit Options",
                 "Color Themes",
                 "Launcher Logs",
