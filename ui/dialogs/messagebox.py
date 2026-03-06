@@ -1,5 +1,5 @@
-from PyQt6.QtCore import Qt
-from PyQt6.QtCore import QSize
+from PyQt6.QtCore import Qt, QSize
+from PyQt6.QtGui import QColor
 from PyQt6.QtWidgets import (
     QDialog,
     QVBoxLayout,
@@ -7,6 +7,8 @@ from PyQt6.QtWidgets import (
     QLabel,
     QPushButton,
     QSizePolicy,
+    QFrame,
+    QGraphicsDropShadowEffect,
 )
 
 from ui.header import colorize_svg
@@ -50,48 +52,27 @@ class MessageBox(QDialog):
             | Qt.WindowType.Dialog
             | Qt.WindowType.WindowStaysOnTopHint
         )
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
 
-        c = THEME.colors  # We take current tokens
+        c = THEME.colors
 
-        # — dialog and button styles
-        self.setStyleSheet(
-            f"""
-            QDialog {{
-                background-color: {c['popup_bg']};
-                color: {c['popup_text']};
-                border: 2px solid {c['popup_border']};
-                border-radius: 10px;
-                padding: 12px;
-            }}
-            QLabel#title {{
-                color: {c['text_primary']};
-                font-size: 15px;
-                font-weight: 600;
-                margin-bottom: 4px;
-            }}
-            QLabel#body {{
-                color: {c['popup_text']};
-                font-size: 13px;
-                line-height: 1.3em;
-            }}
-            QPushButton {{
-                background-color: transparent;
-                color: {c['text_primary']};
-                border: 1px solid {c['border_color']};
-                border-radius: 6px;
-                padding: 6px 8px;
-                min-width: 50px;
-            }}
-            QPushButton:hover {{
-                background-color: {c['accent']};
-                color: {c['text_inverse']};
-                border-color: {c['accent']};
-            }}
-        """
-        )
+        # — outer layout with padding for shadow
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(15, 15, 15, 15)
+        outer.setSpacing(0)
 
-        # — main layout
-        root = QVBoxLayout(self)
+        self.main_frame = QFrame(self)
+        self.main_frame.setObjectName("messagebox_main_frame")
+        outer.addWidget(self.main_frame)
+
+        shadow = QGraphicsDropShadowEffect(self)
+        shadow.setBlurRadius(30)
+        shadow.setOffset(0, 0)
+        shadow.setColor(QColor(0, 0, 0, 180))
+        self.main_frame.setGraphicsEffect(shadow)
+
+        # — main layout inside frame
+        root = QVBoxLayout(self.main_frame)
         root.setContentsMargins(16, 14, 16, 14)
         root.setSpacing(12)
 
@@ -154,18 +135,21 @@ class MessageBox(QDialog):
     @staticmethod
     def info(parent, title: str, text: str):
         dlg = MessageBox(title, text, "info", parent)
+        dlg.body.setContentsMargins(14, 0, 0, 0)
         dlg._add_button("OK", "accept")
         return dlg.exec()
 
     @staticmethod
     def warning(parent, title: str, text: str):
         dlg = MessageBox(title, text, "warning", parent)
+        dlg.body.setContentsMargins(14, 0, 0, 0)
         dlg._add_button("OK", "accept")
         return dlg.exec()
 
     @staticmethod
     def error(parent, title: str, text: str):
         dlg = MessageBox(title, text, "error", parent)
+        dlg.body.setContentsMargins(14, 0, 0, 0)
         dlg._add_button("OK", "accept")
         return dlg.exec()
 
@@ -241,15 +225,13 @@ class MessageBox(QDialog):
     def _apply_theme(self, *args):
         c = THEME.colors
 
-        # background, text, and frame — by popup_* tokens
-        self.setStyleSheet(
+        self.setStyleSheet("background: transparent;")
+
+        self.main_frame.setStyleSheet(
             f"""
-            QDialog {{
+            QFrame#messagebox_main_frame {{
                 background-color: {c['popup_bg']};
-                color: {c['popup_text']};
-                border: 1px solid {c['popup_border']};
                 border-radius: 10px;
-                padding: 12px;
             }}
             QLabel#title {{
                 color: {c['text_primary']};

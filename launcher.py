@@ -14,6 +14,7 @@ from utils.logger import log_event
 from config import (
     COMFYUI_PORT,
     CHECK_INTERVAL,
+    LAUNCH_PRESETS,
     MAX_WAIT_TIME,
     load_user_config,
     save_user_config,
@@ -203,122 +204,59 @@ def ensure_comfyui_running(comfy_path: str, port: int = 8188):
         log_event("✅ ComfyUI already launched.")
         return
 
-    # --- GPU / CPU select ---------------------------------------------
-    try:
-        cuda_available = is_cuda_available()
-    except Exception:
-        cuda_available = False
-
-    cfg = load_user_config()
+    # --- Build flags -------------------------------------------------
     active_build = _get_active_build(cfg)
-    startup_mode = (active_build or {}).get("startup_mode", "auto")
+    startup_mode = (active_build or {}).get("startup_mode", "gpu")
+    extra_flags = (active_build or {}).get("extra_flags", [])
 
-    bat_name, mode = _resolve_bat_name(str(startup_mode), cuda_available)
-    log_event(f"🚀 Starting ComfyUI in {mode} mode...")
+    if startup_mode == "custom":
+        flags = extra_flags
+    else:
+        flags = LAUNCH_PRESETS[startup_mode] + extra_flags
 
+    log_event(f"🚀 Starting ComfyUI in {startup_mode} mode...")
+
+    # --- Launch ------------------------------------------------------
     base_dir = os.path.dirname(comfy_path)
-    bat_file = os.path.join(base_dir, bat_name)
+    python_exe = resolve_python_exe(base_dir)
+    python_home = os.path.dirname(python_exe) if python_exe != "python" else ""
 
-    # --- BAT mode ----------------------------------------------------
-    sm = str(startup_mode).lower()
+    args = [python_exe, "-s", "-u", os.path.join(comfy_path, "main.py")] + flags
 
-    # downgrade chain for missing bats
-    if not os.path.exists(bat_file):
-        if sm == "cpu":
-            log_event("⚠️ run_cpu.bat not found → fallback to Python mode")
-        elif sm == "fast_fp16":
-            log_event(f"⚠️ Selected bat not found: {bat_name} → fallback to GPU bat")
-            bat_name, mode = "run_nvidia_gpu.bat", "GPU"
-            bat_file = os.path.join(base_dir, bat_name)
-
-            if not os.path.exists(bat_file):
-                log_event("⚠️ GPU bat not found either → fallback to AUTO")
-                bat_name, mode = _resolve_bat_name("auto", cuda_available)
-                bat_file = os.path.join(base_dir, bat_name)
-
-        elif sm == "gpu":
-            log_event(f"⚠️ Selected bat not found: {bat_name} → fallback to AUTO")
-            bat_name, mode = _resolve_bat_name("auto", cuda_available)
-            bat_file = os.path.join(base_dir, bat_name)
-
-    if os.path.exists(bat_file):
-        log_event(f"🚀 Starting ComfyUI via {bat_name} ({mode})")
-    else:
-        log_event(f"🚀 Starting ComfyUI in Python mode ({mode})")
-
-    if os.path.exists(bat_file):
-
-        env = os.environ.copy()
-        env["PYTHONUNBUFFERED"] = "1"
-        env["PYTHONIOENCODING"] = "utf-8"
-
-        if show_cmd:
-            # 🔹 MODE: SHOW CMD (REAL)
-            _comfy_process = subprocess.Popen(
-                ["cmd.exe", "/k", bat_file],
-                cwd=base_dir,
-                creationflags=subprocess.CREATE_NEW_CONSOLE,
-            )
-
-        else:
-            # 🔹 MODE: HIDDEN CONSOLE (PIPE)
-            _comfy_process = subprocess.Popen(
-                ["cmd.exe", "/d", "/c", bat_file],  # бат выполняем через cmd корректно
-                cwd=base_dir,
-                env=env,
-                creationflags=subprocess.CREATE_NO_WINDOW,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,  # один поток → без зависаний/пачек
-                text=True,
-                bufsize=1,
-            )
-
-    # --- Python mode -------------------------------------------------
-    else:
-        python_exe = resolve_python_exe(base_dir)
-
-        args = [
-            python_exe,
-            "-u",  # realtime
-            os.path.join(comfy_path, "main.py"),
-            "--windows-standalone-build",
-        ]
-        if not cuda_available:
-            args.append("--cpu")
-
-        env = os.environ.copy()
-        env["PYTHONUNBUFFERED"] = "1"
-        env["PYTHONHOME"] = os.path.join(base_dir, "python_embeded")
+    env = os.environ.copy()
+    env["PYTHONUNBUFFERED"] = "1"
+    env["PYTHONIOENCODING"] = "utf-8"
+    if python_home:
+        env["PYTHONHOME"] = python_home
         env["PYTHONPATH"] = comfy_path
-        env["PATH"] = env["PYTHONHOME"] + ";" + env["PATH"]
-        env["PYTHONIOENCODING"] = "utf-8"
+        env["PATH"] = python_home + ";" + env["PATH"]
 
-        if show_cmd:
-            _comfy_process = subprocess.Popen(
-                ["cmd.exe", "/k"] + args,
-                cwd=comfy_path,
-                env=env,
-                creationflags=subprocess.CREATE_NEW_CONSOLE,
-            )
-        else:
-            _comfy_process = subprocess.Popen(
-                args,
-                cwd=comfy_path,
-                env=env,
-                creationflags=subprocess.CREATE_NO_WINDOW,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                text=True,
-                bufsize=1,
-            )
+    if show_cmd:
+        _comfy_process = subprocess.Popen(
+            ["cmd.exe", "/k"] + args,
+            cwd=comfy_path,
+            env=env,
+            creationflags=subprocess.CREATE_NEW_CONSOLE,
+        )
+    else:
+        _comfy_process = subprocess.Popen(
+            args,
+            cwd=comfy_path,
+            env=env,
+            creationflags=subprocess.CREATE_NO_WINDOW,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1,
+        )
 
-    # We read the output ONLY in the built-in console mode
+    # --- Read output only in internal console mode -------------------
     if use_internal_console and _comfy_process:
         threading.Thread(
             target=_read_process_output, args=(_comfy_process,), daemon=True
         ).start()
 
-    log_event(f"🟢 ComfyUI started (PID {_comfy_process.pid}) in mode {mode}.")
+    log_event(f"🟢 ComfyUI started (PID {_comfy_process.pid}) in mode {startup_mode}.")
 
 
 def kill_process_tree(pid):
@@ -342,58 +280,26 @@ def kill_process_tree(pid):
         pass
 
 
-def stop_comfyui_hard(_grace_period=5):
-    """Completely completes ComfyUI (bat file + python descendants)."""
+def stop_comfyui_hard(comfy_path: str, _grace_period=5):
+    """Completely completes ComfyUI (python process and descendants)."""
     global _comfy_process
     log_event("⏹ Completing ComfyUI...")
 
     killed = False
+    comfy_main = os.path.join(comfy_path, "main.py").lower().replace("\\", "/")
 
-    # 1️⃣ Let's try to kill the running .bat
+    # 1️⃣ Look for python main.py process
     for proc in psutil.process_iter(["pid", "name", "cmdline"]):
         try:
-            # safely get the command line
-            cmdline = proc.info.get("cmdline") or []
-            if not cmdline:
-                continue
-            cmdline_joined = " ".join(cmdline).lower()
-
-            if (
-                "run_cpu.bat" in cmdline_joined
-                or "run_nvidia_gpu.bat" in cmdline_joined
-                or "run_nvidia_gpu_fast_fp16.bat" in cmdline_joined
-            ):
-                log_event(
-                    f"💀 We are finishing the bat file and all its descendants (PID {proc.pid})"
-                )
-                time.sleep(1)
+            cmd = " ".join(proc.info["cmdline"] or []).lower().replace("\\", "/")
+            if comfy_main in cmd:
+                log_event(f"💀 Force quit ComfyUI (PID {proc.pid})")
                 kill_process_tree(proc.pid)
-                # To be on the safe side, we'll additionally check for descendants after kill.
-                time.sleep(0.5)
-                for child in psutil.process_iter(["pid", "ppid", "name"]):
-                    if child.info["ppid"] == proc.pid:
-                        log_event(
-                            f"⚠️ Descendant {child.pid} ({child.info['name']}) still alive - kill directly"
-                        )
-                        child.kill()
                 killed = True
         except (psutil.NoSuchProcess, psutil.AccessDenied):
             continue
 
-    # 2️⃣ If the batch file is not found, fallback: look for python main.py
-    if not killed:
-        for proc in psutil.process_iter(["pid", "name", "cmdline"]):
-            try:
-                cmd = " ".join(proc.info["cmdline"]).lower()
-                if "comfyui" in cmd or "main.py" in cmd:
-                    log_event(f"💀 Force quit ComfyUI (PID {proc.pid})")
-                    proc.kill()
-                    killed = True
-            except (psutil.NoSuchProcess, psutil.AccessDenied):
-                continue
-
     if killed:
-        # 3️⃣ Confirm state
         if not is_port_open(COMFYUI_PORT):
             log_event("🟢 Port 8188 closed — server fully stopped.")
         else:
@@ -439,24 +345,6 @@ def _get_active_build(cfg: dict) -> dict | None:
         if str(b.get("id", "")) == bid:
             return b
     return None
-
-
-def _resolve_bat_name(startup_mode: str, cuda_available: bool) -> tuple[str, str]:
-    """
-    Returns (bat_name, mode_label)
-    startup_mode: cpu | gpu | fast_fp16 | auto
-    """
-    sm = (startup_mode or "auto").lower()
-
-    if sm == "cpu":
-        return "run_cpu.bat", "CPU"
-    if sm == "gpu":
-        return "run_nvidia_gpu.bat", "GPU"
-    if sm == "fast_fp16":
-        return "run_nvidia_gpu_fast_fp16.bat", "GPU (fast fp16)"
-
-    # auto
-    return ("run_nvidia_gpu.bat", "GPU") if cuda_available else ("run_cpu.bat", "CPU")
 
 
 __all__ = [

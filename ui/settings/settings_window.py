@@ -8,8 +8,9 @@ from PyQt6.QtWidgets import (
     QFrame,
     QSizePolicy,
 )
-from PyQt6.QtCore import Qt, QRectF
-from PyQt6.QtGui import QPainterPath, QRegion, QIcon
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QIcon, QColor
+from PyQt6.QtWidgets import QGraphicsDropShadowEffect
 
 from ui.settings.page_build import BuildSettingsPage
 from ui.settings.page_behavior import BehaviorSettingsPage
@@ -32,9 +33,10 @@ class SettingsWindow(QWidget):
         # ─── Basic window parameters ─────────────────────────
         self.setWindowTitle("Settings")
         self.setWindowIcon(QIcon(ICON_PATH))
-        self.setFixedSize(1200, 700)
+        self.setFixedSize(1230, 730)
         self.setWindowFlag(Qt.WindowType.FramelessWindowHint)
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.colors = THEME.colors
         self.drag_position = None
 
@@ -52,7 +54,7 @@ class SettingsWindow(QWidget):
                 border-radius: 10px;
             }}
             QFrame#settings_main_frame {{
-                border: 2px solid {self.colors['border_color']};
+                border: none;
             }}
         """
         )
@@ -188,9 +190,15 @@ class SettingsWindow(QWidget):
 
         # ─── Adding a main frame to the window ───────────────────
         outer_layout = QVBoxLayout()
-        outer_layout.setContentsMargins(0, 0, 0, 0)
+        outer_layout.setContentsMargins(15, 15, 15, 15)
         outer_layout.addWidget(main_frame)
         self.setLayout(outer_layout)
+
+        shadow = QGraphicsDropShadowEffect(self)
+        shadow.setBlurRadius(30)
+        shadow.setOffset(0, 0)
+        shadow.setColor(QColor(0, 0, 0, 180))
+        main_frame.setGraphicsEffect(shadow)
 
         # ─── Adding pages ───────────────────────────────
         self.pages.addWidget(BuildSettingsPage(parent=self))
@@ -216,7 +224,6 @@ class SettingsWindow(QWidget):
 
         # ─── Centering and formatting──────────────────
         self.center()
-        self._round_corners(10)
         THEME.themeChanged.connect(self._apply_theme)
         self._apply_theme()
         print("✅ Settings window initialized successfully")
@@ -312,21 +319,18 @@ class SettingsWindow(QWidget):
                 return
         e.accept()
 
-    def _round_corners(self, radius: int):
-        """Software Window Rounding - Eliminates White Corners on Windows."""
-        path = QPainterPath()
-        rect = QRectF(self.rect())  # ← convert QRect → QRectF
-        path.addRoundedRect(rect, radius, radius)
-        region = QRegion(path.toFillPolygon().toPolygon())
-        self.setMask(region)
-
     def _apply_theme(self, *args):
         c = THEME.colors
-        self.setStyleSheet(
+        self.setStyleSheet("background: transparent;")
+        self.findChild(QFrame, "settings_main_frame").setStyleSheet(
             f"""
-            QWidget {{
+            QFrame {{
                 background-color: {c['bg_header']};
                 color: {c['text_primary']};
+                border-radius: 10px;
+            }}
+            QFrame#settings_main_frame {{
+                border: none;
             }}
             QPushButton {{
                 background-color: transparent;

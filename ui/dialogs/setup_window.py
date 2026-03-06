@@ -11,9 +11,10 @@ from PyQt6.QtWidgets import (
     QButtonGroup,
     QToolButton,
     QRadioButton,
+    QGraphicsDropShadowEffect,
 )
-from PyQt6.QtCore import Qt, QSize, QRectF
-from PyQt6.QtGui import QIcon, QPainterPath, QRegion
+from PyQt6.QtCore import Qt, QSize, QTimer
+from PyQt6.QtGui import QIcon, QColor
 
 from config import (
     load_user_config,
@@ -33,8 +34,8 @@ from enum import Enum
 
 
 class SetupMode(Enum):
-    MANAGER = "manager"  # выбор/запуск билда => пишет last_used + comfyui_path
-    SETTINGS = "settings"  # просто CRUD билдов => не трогает last_used/comfyui_path
+    MANAGER = "manager"
+    SETTINGS = "settings"
 
 
 class SetupWindow(QDialog):
@@ -53,12 +54,14 @@ class SetupWindow(QDialog):
         self.setWindowTitle("ComfyLauncher Setup")
         self.setWindowIcon(QIcon(ICON_PATH))
         self.setModal(True)
-        self.setFixedSize(500, 350)
+        self.setFixedSize(530, 370)
         self.setObjectName("SetupWindow")
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
 
         outer = QVBoxLayout(self)
-        outer.setContentsMargins(0, 0, 0, 0)
+        outer.setContentsMargins(15, 15, 15, 15)
         outer.setSpacing(0)
 
         self.main_frame = QFrame(self)
@@ -66,18 +69,22 @@ class SetupWindow(QDialog):
 
         outer.addWidget(self.main_frame)
 
+        shadow = QGraphicsDropShadowEffect(self)
+        shadow.setBlurRadius(30)
+        shadow.setOffset(0, 0)
+        shadow.setColor(QColor(0, 0, 0, 180))
+        self.main_frame.setGraphicsEffect(shadow)
+
         layout = QVBoxLayout(self.main_frame)
         layout.setContentsMargins(24, 20, 24, 18)
         layout.setSpacing(14)
 
         r = 9  # radius
-        b = 3  # border
 
         self.main_frame.setStyleSheet(
             f"""
         QFrame#setup_main_frame {{
             background-color: {THEME.colors['bg_header']};
-            border: {b}px solid {THEME.colors['border_color']};
             border-radius: {r}px;
         }}
         """
@@ -234,9 +241,15 @@ class SetupWindow(QDialog):
 
         rb_cpu = QRadioButton("CPU")
         rb_gpu = QRadioButton("NVIDIA GPU")
-        rb_fp16 = QRadioButton("NVIDIA GPU (fast fp16)")
+        rb_fp16 = QRadioButton("FAST FP16")
+        rb_custom = QRadioButton("CUSTOM")
 
-        for rb, mode in [(rb_cpu, "cpu"), (rb_gpu, "gpu"), (rb_fp16, "fast_fp16")]:
+        for rb, mode in [
+            (rb_cpu, "cpu"),
+            (rb_gpu, "gpu"),
+            (rb_fp16, "fast_fp16"),
+            (rb_custom, "custom"),
+        ]:
             rb.setProperty("startup_mode", mode)
             rb.toggled.connect(self._on_startup_mode_changed)  # type: ignore
             self.startup_group.addButton(rb)
@@ -244,31 +257,50 @@ class SetupWindow(QDialog):
 
             rb.setStyleSheet(
                 f"""
-                            QRadioButton {{
-                                font-size: 12px;
-                                color: {THEME.colors['text_primary']};
-                                spacing: 8px;
-                            }}
-                            QRadioButton::indicator {{
-                                width: 16px; height: 16px;
-                                border-radius: 4px;
-                                border: 1px solid {THEME.colors['border_color']};
-                                background: transparent;
-                            }}
-                            QRadioButton::indicator:checked {{
-                                background-color: {THEME.colors['accent']};
-                                border: 1px solid {THEME.colors['accent']};
-                            }}
-                            QRadioButton::indicator:hover {{
-                                border: 1px solid {THEME.colors['accent_hover']};
-                            }}
-                        """
+                    QRadioButton {{
+                        font-size: 12px;
+                        color: {THEME.colors['text_primary']};
+                        spacing: 8px;
+                    }}
+                    QRadioButton::indicator {{
+                        width: 16px; height: 16px;
+                        border-radius: 4px;
+                        border: 1px solid {THEME.colors['border_color']};
+                        background: transparent;
+                    }}
+                    QRadioButton::indicator:checked {{
+                        background-color: {THEME.colors['accent']};
+                        border: 1px solid {THEME.colors['accent']};
+                    }}
+                    QRadioButton::indicator:hover {{
+                        border: 1px solid {THEME.colors['accent_hover']};
+                    }}
+                """
             )
 
         # default
-        rb_cpu.setChecked(True)
-
         layout.addLayout(modes_row)
+
+        # ── Custom flags input ───────────────────────────────────────────────
+        self.flags_edit = QLineEdit()
+        self.flags_edit.setPlaceholderText(
+            "--windows-standalone-build --lowvram --listen"
+        )
+        self.flags_edit.setFixedHeight(36)
+        self.flags_edit.setVisible(False)
+        self.flags_edit.setStyleSheet(
+            f"""
+            QLineEdit {{
+                background-color: {THEME.colors['bg_input']};
+                color: {THEME.colors['text_primary']};
+                border: 1px solid {THEME.colors['border_color']};
+                border-radius: 6px;
+                padding-left: 10px;
+            }}
+            """
+        )
+        layout.addWidget(self.flags_edit)
+        rb_cpu.setChecked(True)
 
         if build:
             self.path_edit.blockSignals(True)
@@ -307,6 +339,13 @@ class SetupWindow(QDialog):
 
             for rb in self.startup_group.buttons():
                 rb.blockSignals(False)
+
+            # загружаем extra_flags если режим custom
+            extra_flags = build.get("extra_flags", [])
+            self.flags_edit.setText(" ".join(extra_flags))
+            is_custom = mode == "custom"
+            self.flags_edit.setVisible(is_custom)
+            self.setFixedHeight(390 if is_custom else 370)
 
             self._update_ok_state()
         layout.addStretch(1)
@@ -386,6 +425,7 @@ class SetupWindow(QDialog):
                     b["path"] = path
                     b["icon_id"] = self.selected_doodle_id
                     b["startup_mode"] = self.selected_startup_mode
+                    b["extra_flags"] = self._get_extra_flags()
                     updated = True
                     break
 
@@ -397,6 +437,7 @@ class SetupWindow(QDialog):
                         "path": path,
                         "icon_id": self.selected_doodle_id,
                         "startup_mode": self.selected_startup_mode,
+                        "extra_flags": self._get_extra_flags(),
                     }
                 )
 
@@ -406,20 +447,6 @@ class SetupWindow(QDialog):
             save_user_config(data)
             self.accept()
             return
-
-        # ── ADD MODE: keep legacy dedupe-by-path ──
-        for b in builds:
-            if os.path.normpath(b.get("path", "")) == os.path.normpath(path):
-                b["name"] = name
-                b["icon_id"] = self.selected_doodle_id
-                b["startup_mode"] = self.selected_startup_mode
-
-                apply_manager_defaults(str(b.get("id", "")))
-
-                data["builds"] = builds
-                save_user_config(data)
-                self.accept()
-                return
 
         build_id = str(uuid.uuid4())
         builds.append(
@@ -438,31 +465,6 @@ class SetupWindow(QDialog):
         save_user_config(data)
         self.accept()
 
-    def _round_corners(self, radius: int):
-        from PyQt6.QtGui import QPainterPath, QRegion
-        from PyQt6.QtCore import QRectF
-
-        path = QPainterPath()
-        rect = QRectF(self.rect())
-        path.addRoundedRect(rect, radius, radius)
-        region = QRegion(path.toFillPolygon().toPolygon())
-        self.setMask(region)
-
-    def showEvent(self, event):
-        super().showEvent(event)
-        self._apply_rounded_mask()
-
-    def resizeEvent(self, event):
-        super().resizeEvent(event)
-        self._apply_rounded_mask()
-
-    def _apply_rounded_mask(self):
-        r = 10
-        rect = QRectF(self.rect()).adjusted(1.0, 1.0, -1.0, -1.0)
-        path = QPainterPath()
-        path.addRoundedRect(rect, r, r)
-        self.setMask(QRegion(path.toFillPolygon().toPolygon()))
-
     def _on_doodle_selected(self):
         btn = self.sender()
         if btn:
@@ -479,4 +481,13 @@ class SetupWindow(QDialog):
         rb = self.sender()
         if rb and rb.isChecked():
             self.selected_startup_mode = rb.property("startup_mode") or "cpu"
+            is_custom = self.selected_startup_mode == "custom"
+            self.flags_edit.setVisible(is_custom)
+            QTimer.singleShot(0, lambda: self.setFixedHeight(390 if is_custom else 370))
             self._update_ok_state()
+
+    def _get_extra_flags(self) -> list[str]:
+        if self.selected_startup_mode != "custom":
+            return []
+        raw = self.flags_edit.text().strip()
+        return raw.split() if raw else []
