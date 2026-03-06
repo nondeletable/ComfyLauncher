@@ -273,6 +273,9 @@ class HeaderBar(QWidget):
         self.btn_stop.setIcon(
             colorize_svg(ICON_PATHS["stop"], c["icon_color_window"], QSize(20, 20))
         )
+        self.btn_console.setIcon(
+            colorize_svg(ICON_PATHS["terminal"], c["icon_color_window"], QSize(20, 20))
+        )
         self.btn_settings.setIcon(
             colorize_svg(ICON_PATHS["settings"], c["icon_color_window"], QSize(20, 20))
         )

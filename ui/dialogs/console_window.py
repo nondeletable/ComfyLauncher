@@ -6,9 +6,10 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QPlainTextEdit,
     QFrame,
+    QGraphicsDropShadowEffect,
 )
-from PyQt6.QtCore import Qt, QTimer, QRectF
-from PyQt6.QtGui import QPainterPath, QRegion, QTextCursor
+from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtGui import QTextCursor, QColor
 
 from ui.theme.manager import THEME
 from ui.header import colorize_svg
@@ -23,13 +24,14 @@ class ConsoleWindow(QWidget):
         super().__init__(parent)
         self._drag_pos = None
         self.setWindowTitle("ComfyUI Console")
-        self.setFixedSize(900, 600)
+        self.setFixedSize(930, 630)
         self.setWindowFlags(
             Qt.WindowType.Window
             | Qt.WindowType.FramelessWindowHint
             | Qt.WindowType.WindowSystemMenuHint
         )
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, False)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
 
         c = THEME.colors
 
@@ -42,14 +44,19 @@ class ConsoleWindow(QWidget):
                 background-color: {c['bg_header']};
                 color: {c['text_primary']};
                 border-radius: 10px;
-                border: 2px solid {c['border_color']};
             }}
         """
         )
 
         outer = QVBoxLayout(self)
-        outer.setContentsMargins(0, 0, 0, 0)
+        outer.setContentsMargins(15, 15, 15, 15)
         outer.addWidget(main_frame)
+
+        shadow = QGraphicsDropShadowEffect(self)
+        shadow.setBlurRadius(30)
+        shadow.setOffset(0, 0)
+        shadow.setColor(QColor(0, 0, 0, 180))
+        main_frame.setGraphicsEffect(shadow)
 
         layout = QVBoxLayout(main_frame)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -117,7 +124,6 @@ class ConsoleWindow(QWidget):
         self._apply_theme()
         THEME.themeChanged.connect(self._apply_theme)
 
-        self._round_corners(10)
         self._center()
         self._refresh_logs()
 
@@ -182,17 +188,8 @@ class ConsoleWindow(QWidget):
         y = (screen.height() - self.height()) // 2
         self.move(x, y)
 
-    def _round_corners(self, radius: int):
-        path = QPainterPath()
-        rect = QRectF(self.rect())
-        path.addRoundedRect(rect, radius, radius)
-        region = QRegion(path.toFillPolygon().toPolygon())
-        self.setMask(region)
-
     def resizeEvent(self, event):
         super().resizeEvent(event)
-        if self.isVisible():
-            self._round_corners(10)
 
     def mousePressEvent(self, event):
         if event.button() == Qt.MouseButton.LeftButton:

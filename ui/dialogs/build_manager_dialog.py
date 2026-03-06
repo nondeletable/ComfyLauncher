@@ -3,8 +3,8 @@ from __future__ import annotations
 import os
 from typing import Optional
 
-from PyQt6.QtCore import Qt, QRectF, QSize
-from PyQt6.QtGui import QPainterPath, QRegion, QIcon, QFontMetrics
+from PyQt6.QtCore import Qt, QSize
+from PyQt6.QtGui import QColor, QIcon, QFontMetrics
 from PyQt6.QtWidgets import (
     QDialog,
     QVBoxLayout,
@@ -15,6 +15,7 @@ from PyQt6.QtWidgets import (
     QScrollArea,
     QWidget,
     QToolButton,
+    QGraphicsDropShadowEffect,
 )
 from ui.theme.manager import THEME
 from config import load_user_config, ICON_PATH, ICON_PATHS
@@ -34,10 +35,11 @@ class BuildManagerDialog(QDialog):
         self.setWindowTitle("ComfyLauncher")
         self.setWindowIcon(QIcon(ICON_PATH))
         self.setModal(True)
-        self.setFixedSize(700, 520)
+        self.setFixedSize(730, 550)
         self.setObjectName("BuildManagerDialog")
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
 
         self.MAX_LIST_H = 450
 
@@ -48,24 +50,28 @@ class BuildManagerDialog(QDialog):
         self.last_used_id = data.get("last_used_build_id", "")
 
         root = QVBoxLayout(self)
-        root.setContentsMargins(0, 0, 0, 0)
+        root.setContentsMargins(15, 15, 15, 15)
         root.setSpacing(0)
 
         self.main_frame = QFrame(self)
         self.main_frame.setObjectName("build_manager_main_frame")
         root.addWidget(self.main_frame)
 
+        shadow = QGraphicsDropShadowEffect(self)
+        shadow.setBlurRadius(30)
+        shadow.setOffset(0, 0)
+        shadow.setColor(QColor(0, 0, 0, 180))
+        self.main_frame.setGraphicsEffect(shadow)
+
         layout = QVBoxLayout(self.main_frame)
         layout.setContentsMargins(24, 20, 24, 18)
         layout.setSpacing(14)
 
         r = 9
-        b = 3
         self.main_frame.setStyleSheet(
             f"""
             QFrame#build_manager_main_frame {{
                 background-color: {THEME.colors['bg_header']};
-                border: {b}px solid {THEME.colors['border_color']};
                 border-radius: {r}px;
             }}
             """
@@ -287,14 +293,6 @@ class BuildManagerDialog(QDialog):
         self.selected_build_id = build_id
         self.accept()
 
-    def showEvent(self, event):
-        super().showEvent(event)
-        self._apply_rounded_mask()
-
-    def resizeEvent(self, event):
-        super().resizeEvent(event)
-        self._apply_rounded_mask()
-
     def _build_add_row(self) -> QWidget:
         widget = QWidget()
         add_row = QHBoxLayout(widget)
@@ -333,14 +331,6 @@ class BuildManagerDialog(QDialog):
         add_row.addStretch(1)
 
         return widget
-
-    def _apply_rounded_mask(self):
-        radius = 9
-        path = QPainterPath()
-        rect = QRectF(self.rect())
-        path.addRoundedRect(rect, radius, radius)
-        region = QRegion(path.toFillPolygon().toPolygon())
-        self.setMask(region)
 
     def _edit_build(self, build: dict):
         dlg = SetupWindow(self, build=build)

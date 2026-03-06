@@ -37,12 +37,6 @@ ICON_PATHS = {
     "delete": os.path.join(ICONS_DIR, "delete.svg"),
 }
 
-# ── Saved builds ─────────────────────────────
-SAVED_BUILDS = {
-    "active": "",
-    "history": [],
-}
-
 # ── Set of icons for header bar ──────────────────
 HEAD_ICON_PATHS = {
     "minimize": os.path.join(ICONS_DIR, "minimize.svg"),
@@ -92,6 +86,14 @@ OTHER_ICONS = {
 
 USER_CONFIG_PATH = os.path.join(BASE_DIR, "user_config.json")
 
+# ── Launch presets ────────────────────────────
+LAUNCH_PRESETS = {
+    "cpu": ["--cpu", "--windows-standalone-build"],
+    "gpu": ["--windows-standalone-build"],
+    "fast_fp16": ["--windows-standalone-build", "--fast", "fp16_accumulation"],
+}
+
+VALID_STARTUP_MODES = ("cpu", "gpu", "fast_fp16", "custom")
 
 DEFAULT_USER_CONFIG = {
     "ask_on_exit": True,
@@ -99,7 +101,6 @@ DEFAULT_USER_CONFIG = {
     "browser_patch_registry": {},
     "builds": [],
     "last_used_build_id": "",
-    "startup_mode": "cpu",  # cpu/gpu/nvidia (потом привяжешь к настройкам)
     "ui": {
         "show_manager_on_start": True,
     },
@@ -124,10 +125,12 @@ def load_user_config():
             data.setdefault(key, val)
 
         # 2) Миграция: startup_mode внутри каждого build
-        global_mode = data.get("startup_mode", DEFAULT_USER_CONFIG["startup_mode"])
         for b in data.get("builds") or []:
             if isinstance(b, dict):
-                b.setdefault("startup_mode", global_mode)
+                b.setdefault(
+                    "startup_mode", "gpu"
+                )  # дефолт для старых билдов без этого поля
+                b.setdefault("extra_flags", [])  # новое поле
 
         return data
 
