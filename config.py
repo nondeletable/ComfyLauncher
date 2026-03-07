@@ -17,6 +17,12 @@ COMFYUI_PORT = 8188
 CHECK_INTERVAL = 1
 MAX_WAIT_TIME = 90
 
+# ── User data directories ─────────────────────────────
+APP_DATA_DIR = os.path.join(
+    os.environ.get("APPDATA", os.path.expanduser("~")), "ComfyLauncher"
+)
+THEMES_DIR = os.path.join(APP_DATA_DIR, "themes")
+
 # ── Shared resources ─────────────────────────────
 ICON_PATH = os.path.join(ICONS_DIR, "icon.png")
 SPLASH_PATH = os.path.join(SPLASH_DIR, "1618x616_qt.mp4")

@@ -24,6 +24,7 @@ from launcher import (
     ensure_comfyui_running,
     stop_comfyui_hard,
     is_port_open,
+    restore_browser_auto_launch,
 )
 from config import (
     get_comfyui_path,
@@ -311,6 +312,7 @@ class ComfyBrowser(QMainWindow):
             if choice == "yes":
                 log_event("🟥 User chose: YES — stopping ComfyUI and exiting.")
                 stop_comfyui_hard(self.comfyui_path)
+                self._restore_comfy_on_exit()
                 self._close_settings_if_open()
                 save_user_config(user_config)
                 event.accept()
@@ -319,6 +321,7 @@ class ComfyBrowser(QMainWindow):
             # NO → exit, but keep server running
             elif choice == "no":
                 log_event("🟢 User chose: NO — exiting without stopping ComfyUI.")
+                self._restore_comfy_on_exit()
                 self._close_settings_if_open()
                 save_user_config(user_config)  # ← важно!
                 event.accept()
@@ -346,6 +349,7 @@ class ComfyBrowser(QMainWindow):
             stop_comfyui_hard(self.comfyui_path)
 
         # Save user config anyway (important!)
+        self._restore_comfy_on_exit()
         save_user_config(user_config)
         self._close_settings_if_open()
 
@@ -532,3 +536,9 @@ class ComfyBrowser(QMainWindow):
 
     def on_update_error(self, error):
         log_event(f"⚠️ Update check error: {error}")
+
+    def _restore_comfy_on_exit(self):
+        try:
+            restore_browser_auto_launch(self.comfyui_path)
+        except Exception as e:
+            log_event(f"⚠️ Failed to restore browser patch: {e}")

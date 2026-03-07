@@ -30,15 +30,57 @@ class ColorThemesPage(QWidget):
         self.cards = {}
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(30, 30, 30, 30)
-        layout.setSpacing(16)
+        layout.setContentsMargins(0, 0, 0, 0)
+
+        scroll = QScrollArea(self)
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+
+        scroll.setStyleSheet(
+            """
+            QScrollArea {
+                background: transparent;
+                border: none;
+            }
+            QScrollArea > QWidget > QWidget {
+                background: transparent;
+            }
+            QScrollBar:vertical {
+                background: transparent;
+                width: 20px;
+                border-radius: 3px;
+                margin-right: 8px;
+                margin-left: 6px;
+                margin-top: 12px;    
+                margin-bottom: 12px;
+            }
+            QScrollBar::handle:vertical {
+                background: #555555;
+                border-radius: 3px;
+                min-height: 20px;
+            }
+            QScrollBar::add-line:vertical,
+            QScrollBar::sub-line:vertical {
+                height: 0px;
+            }
+            QScrollBar::add-page:vertical,
+            QScrollBar::sub-page:vertical {
+                background: transparent;
+            }
+            """
+        )
+
+        content = QWidget()
+        content_layout = QVBoxLayout(content)
+        content_layout.setContentsMargins(30, 30, 30, 30)
+        content_layout.setSpacing(16)
 
         title = QLabel("Color Themes")
         title.setStyleSheet(
             f"color: {THEME.colors['text_primary']}; "
             f"font-size: 20px; font-weight: 600;"
         )
-        layout.addWidget(title)
+        content_layout.addWidget(title)
 
         self.grid = QGridLayout()
         self.grid.setSpacing(15)
@@ -58,23 +100,7 @@ class ColorThemesPage(QWidget):
 
         grid_container = QWidget()
         grid_container.setLayout(self.grid)
-
-        wrapper = QWidget()
-        wrapper_layout = QVBoxLayout(wrapper)
-        wrapper_layout.setContentsMargins(0, 0, 0, 0)
-        wrapper_layout.setSpacing(0)
-        wrapper_layout.addWidget(grid_container)
-        wrapper_layout.addStretch(1)
-
-        # scroll area
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-        scroll.setFixedHeight(370)
-        scroll.setWidget(wrapper)
-
-        layout.addWidget(scroll)
+        content_layout.addWidget(grid_container)
 
         desc = QLabel(
             "Here you can select a launcher theme from a .json file.\n"
@@ -82,7 +108,8 @@ class ColorThemesPage(QWidget):
         )
         desc.setStyleSheet(f"color: {THEME.colors['text_secondary']}; font-size: 13px;")
         desc.setWordWrap(True)
-        layout.addWidget(desc)
+        content_layout.addStretch()
+        content_layout.addWidget(desc)
 
         btn_layout = QHBoxLayout()
         btn_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
@@ -91,36 +118,37 @@ class ColorThemesPage(QWidget):
 
         self.btn_select = QPushButton("Select")
         self.btn_select.setFixedSize(80, 35)
-        self.btn_select.clicked.connect(self._load_custom_theme)
+        self.btn_select.clicked.connect(self._load_custom_theme)  # type: ignore
 
         self.btn_download = QPushButton("Download")
         self.btn_download.setFixedSize(80, 35)
-        self.btn_download.clicked.connect(self._open_comfyui_themes)
+        self.btn_download.clicked.connect(self._open_comfyui_themes)  # type: ignore
 
         for btn in (self.btn_select, self.btn_download):
             btn.setStyleSheet(
                 f"""
-                       QPushButton {{
-                           background-color: transparent;
-                           border: 1px solid {THEME.colors['border_color']};
-                           border-radius: 6px;
-                       }}
-                       QPushButton:hover {{
-                           background-color: {THEME.colors['accent']};
-                           border-color: {THEME.colors['accent']};
-                       }}
-                       QPushButton:pressed {{
-                           background-color: {THEME.colors['accent_hover']};
-                       }}
-                       """
+                QPushButton {{
+                    background-color: transparent;
+                    border: 1px solid {THEME.colors['border_color']};
+                    border-radius: 6px;
+                }}
+                QPushButton:hover {{
+                    background-color: {THEME.colors['accent']};
+                    border-color: {THEME.colors['accent']};
+                }}
+                QPushButton:pressed {{
+                    background-color: {THEME.colors['accent_hover']};
+                }}
+                """
             )
             btn_layout.addWidget(btn)
 
         self.btn_select.setToolTip("Select file")
         self.btn_download.setToolTip("Download from the website")
 
-        layout.addLayout(btn_layout)
-        layout.addStretch(1)
+        content_layout.addLayout(btn_layout)
+        scroll.setWidget(content)
+        layout.addWidget(scroll)
 
     # ────────────────────────────────
     def _create_theme_card(self, name: str) -> QFrame:

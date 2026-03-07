@@ -6,14 +6,13 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QHBoxLayout,
     QFileDialog,
-    QMessageBox,
     QFrame,
     QButtonGroup,
     QToolButton,
     QRadioButton,
     QGraphicsDropShadowEffect,
 )
-from PyQt6.QtCore import Qt, QSize, QTimer
+from PyQt6.QtCore import Qt, QSize
 from PyQt6.QtGui import QIcon, QColor
 
 from config import (
@@ -26,7 +25,8 @@ from config import (
 )
 from ui.header import colorize_svg
 from ui.theme.manager import THEME
-from utils.build_validation import is_valid_comfyui_build
+from utils.build_validation import is_valid_comfyui_build, detect_build_type
+from ui.dialogs.messagebox import MessageBox as MB
 
 import os
 import uuid
@@ -41,6 +41,10 @@ class SetupMode(Enum):
 class SetupWindow(QDialog):
     """The initial path setup window for ComfyUI"""
 
+    WINDOW_WIDTH = 530
+    WINDOW_HEIGHT = 420
+    BORDER_RADIUS = 9
+
     def __init__(
         self,
         parent=None,
@@ -54,7 +58,7 @@ class SetupWindow(QDialog):
         self.setWindowTitle("ComfyLauncher Setup")
         self.setWindowIcon(QIcon(ICON_PATH))
         self.setModal(True)
-        self.setFixedSize(530, 370)
+        self.setFixedSize(self.WINDOW_WIDTH, self.WINDOW_HEIGHT)
         self.setObjectName("SetupWindow")
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
@@ -79,7 +83,7 @@ class SetupWindow(QDialog):
         layout.setContentsMargins(24, 20, 24, 18)
         layout.setSpacing(14)
 
-        r = 9  # radius
+        r = self.BORDER_RADIUS
 
         self.main_frame.setStyleSheet(
             f"""
@@ -137,17 +141,7 @@ class SetupWindow(QDialog):
         self.path_edit = QLineEdit()
         self.path_edit.setPlaceholderText("Path to ComfyUI… (Folder with main.py)")
         self.path_edit.setFixedHeight(36)
-        self.path_edit.setStyleSheet(
-            f"""
-            QLineEdit {{
-                background-color: {THEME.colors['bg_input']};
-                color: {THEME.colors['text_primary']};
-                border: 1px solid {THEME.colors['border_color']};
-                border-radius: 6px;
-                padding-left: 10px;
-            }}
-        """
-        )
+        self.path_edit.setStyleSheet(self._line_edit_style())
         self.path_edit.textChanged.connect(self._on_path_changed)  # type: ignore
 
         row.addWidget(self.path_edit)
@@ -160,17 +154,7 @@ class SetupWindow(QDialog):
         self.name_edit = QLineEdit()
         self.name_edit.setPlaceholderText("Build name")
         self.name_edit.setFixedHeight(36)
-        self.name_edit.setStyleSheet(
-            f"""
-            QLineEdit {{
-                background-color: {THEME.colors['bg_input']};
-                color: {THEME.colors['text_primary']};
-                border: 1px solid {THEME.colors['border_color']};
-                border-radius: 6px;
-                padding-left: 10px;
-            }}
-        """
-        )
+        self.name_edit.setStyleSheet(self._line_edit_style())
 
         self.name_edit.textChanged.connect(self._update_ok_state)  # type: ignore
         name_row.addWidget(self.name_edit)
@@ -288,17 +272,7 @@ class SetupWindow(QDialog):
         )
         self.flags_edit.setFixedHeight(36)
         self.flags_edit.setVisible(False)
-        self.flags_edit.setStyleSheet(
-            f"""
-            QLineEdit {{
-                background-color: {THEME.colors['bg_input']};
-                color: {THEME.colors['text_primary']};
-                border: 1px solid {THEME.colors['border_color']};
-                border-radius: 6px;
-                padding-left: 10px;
-            }}
-            """
-        )
+        self.flags_edit.setStyleSheet(self._line_edit_style())
         layout.addWidget(self.flags_edit)
         rb_cpu.setChecked(True)
 
@@ -345,8 +319,6 @@ class SetupWindow(QDialog):
             self.flags_edit.setText(" ".join(extra_flags))
             is_custom = mode == "custom"
             self.flags_edit.setVisible(is_custom)
-            self.setFixedHeight(390 if is_custom else 370)
-
             self._update_ok_state()
         layout.addStretch(1)
 
@@ -380,12 +352,13 @@ class SetupWindow(QDialog):
         btn_row.addWidget(self.ok_btn)
         btn_row.addWidget(self.cancel_btn)
         layout.addLayout(btn_row)
-        # self._round_corners(10)
 
     def _browse(self):
         directory = QFileDialog.getExistingDirectory(self, "Select ComfyUI folder")
-        if directory:
-            self.path_edit.setText(directory)
+        if not directory:
+            return
+
+        self.path_edit.setText(directory)
         if not self.name_edit.text().strip():
             self.name_edit.setText(
                 os.path.basename(directory.rstrip("/\\")) or "My Build"
@@ -399,13 +372,20 @@ class SetupWindow(QDialog):
         name = self.name_edit.text().strip()
 
         if not is_valid_comfyui_build(path):
-            QMessageBox.warning(
-                self, "Invalid path", "This folder does not contain main.py"
+            MB.warning(self, "Invalid path", "This folder does not contain main.py")
+            return
+
+        if detect_build_type(path) == "standalone":
+            MB.warning(
+                self,
+                "Invalid build detected",
+                "This appears to be a standalone ComfyUI build or a third-party directory.\n"
+                "ComfyLauncher works only with the portable version.",
             )
             return
 
         if not name:
-            QMessageBox.warning(self, "Missing name", "Please enter a build name.")
+            MB.warning(self, "Missing name", "Please enter a build name.")
             return
 
         data = load_user_config()
@@ -456,6 +436,7 @@ class SetupWindow(QDialog):
                 "path": path,
                 "icon_id": self.selected_doodle_id,
                 "startup_mode": self.selected_startup_mode,
+                "extra_flags": self._get_extra_flags(),
             }
         )
 
@@ -483,7 +464,6 @@ class SetupWindow(QDialog):
             self.selected_startup_mode = rb.property("startup_mode") or "cpu"
             is_custom = self.selected_startup_mode == "custom"
             self.flags_edit.setVisible(is_custom)
-            QTimer.singleShot(0, lambda: self.setFixedHeight(390 if is_custom else 370))
             self._update_ok_state()
 
     def _get_extra_flags(self) -> list[str]:
@@ -491,3 +471,14 @@ class SetupWindow(QDialog):
             return []
         raw = self.flags_edit.text().strip()
         return raw.split() if raw else []
+
+    def _line_edit_style(self) -> str:
+        return f"""
+            QLineEdit {{
+                background-color: {THEME.colors['bg_input']};
+                color: {THEME.colors['text_primary']};
+                border: 1px solid {THEME.colors['border_color']};
+                border-radius: 6px;
+                padding-left: 10px;
+            }}
+        """

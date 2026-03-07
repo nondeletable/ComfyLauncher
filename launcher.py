@@ -147,6 +147,35 @@ def update_browser_patch_registry(comfy_path: str, patched: bool, file_hash: str
     save_user_config(cfg)
 
 
+def restore_browser_auto_launch(comfy_path: str):
+    """
+    Removes the comment added by disable_browser_auto_launch,
+    restoring the original webbrowser.open() call.
+    """
+    main_py = os.path.join(comfy_path, "main.py")
+    if not os.path.exists(main_py):
+        return
+
+    try:
+        with open(main_py, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        pattern = re.compile(
+            r"^(# )(\s*webbrowser\.open\(.*\))  # patched by ComfyLauncher$",
+            re.MULTILINE,
+        )
+        if pattern.search(content):
+            restored = pattern.sub(r"\2", content)
+            with open(main_py, "w", encoding="utf-8") as f:
+                f.write(restored)
+            log_event("🧩 Browser auto-launch restored.")
+        else:
+            log_event("ℹ️ Nothing to restore — patch not found.")
+
+    except Exception as e:
+        log_event(f"❌ Failed to restore browser launch: {e}")
+
+
 def resolve_python_exe(base_dir: str) -> str:
     """
     Returns the path to the embedded Python inside the portable build, if present.
@@ -353,4 +382,5 @@ __all__ = [
     "stop_comfyui_hard",
     "comfy_exists",
     "kill_process_tree",
+    "restore_browser_auto_launch",
 ]
