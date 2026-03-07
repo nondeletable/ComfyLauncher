@@ -30,7 +30,7 @@ class ComfyLoaderWorker(QObject):
         - result signal
         """
         try:
-            self.started.emit()
+            self.started.emit()  # type: ignore
 
             # 1️⃣ Launch ComfyUI (if it's already running, the function will figure it out automatically)
             ensure_comfyui_running(self.comfy_path)
@@ -40,15 +40,15 @@ class ComfyLoaderWorker(QObject):
 
             while self._running:
                 if is_port_open(COMFYUI_PORT):
-                    self.ready.emit()
+                    self.ready.emit()  # type: ignore
                     return
 
                 # We use timeout ONLY if this is not the first launch.
                 if not self.first_launch and time.time() - start_time > MAX_WAIT_TIME:
-                    self.timeout.emit()
+                    self.timeout.emit()  # type: ignore
                     return
 
                 time.sleep(0.3)
 
         except Exception as e:
-            self.error.emit(str(e))
+            self.error.emit(str(e))  # type: ignore

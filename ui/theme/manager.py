@@ -111,7 +111,7 @@ class ThemeManager(QObject):
         }}
         """
         app.setStyleSheet(qss)
-        self.themeChanged.emit(t)
+        self.themeChanged.emit(t)  # type: ignore
 
     # ─── Switching themes ──────────────────────────────
     def switch(self, name: str):

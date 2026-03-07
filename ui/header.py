@@ -191,7 +191,7 @@ class HeaderBar(QWidget):
         self.btn_output.clicked.connect(self.output_clicked.emit)  # type: ignore
         self.btn_reload.clicked.connect(self._on_reload_clicked)  # type: ignore
         if hasattr(self, "btn_console"):
-            self.btn_console.clicked.connect(self.console_clicked.emit)
+            self.btn_console.clicked.connect(self.console_clicked.emit)  # type: ignore
 
         self.btn_min.clicked.connect(self.parent.showMinimized)  # type: ignore
         self.btn_max.clicked.connect(lambda: self.parent.showNormal() if self.parent.isMaximized() else self.parent.showMaximized())  # type: ignore

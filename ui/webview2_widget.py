@@ -31,7 +31,7 @@ class WebView2Widget(QWidget):
         self._url = url
         self._core_ready = False
 
-        # Контейнер, куда мы будем "вклеивать" HWND WebView2
+        # The container where we will "paste" the WebView2 HWND
         self._host = QWidget(self)
         self._host.setAttribute(Qt.WidgetAttribute.WA_NativeWindow, True)
         self._host.setAttribute(Qt.WidgetAttribute.WA_DontCreateNativeAncestors, True)
@@ -46,20 +46,20 @@ class WebView2Widget(QWidget):
 
         self._init_webview2(dll_dir=dll_dir)
 
-        # pump для WinForms (иначе WebView2 часто не инициализируется/не рисуется)
+        # pump for WinForms (otherwise WebView2 often doesn't initialize/draw)
         self._pump = QTimer(self)
         self._pump.setInterval(10)
         self._pump.timeout.connect(self._do_events)  # type: ignore
         self._pump.start()
 
-        # запускаем инициализацию WebView2 уже ПОСЛЕ того, как Qt начнет показывать окно
+        # We start the initialization of WebView2 AFTER Qt starts showing the window
         QTimer.singleShot(200, self._ensure_core_async)
 
     def _init_webview2(self, dll_dir: str | None):
         import ctypes
         from pathlib import Path
 
-        # 1) Папка с DLL
+        # 1) Folder with DLL
         base = Path(dll_dir) if dll_dir else (Path(__file__).parent / "webview2_dll")
 
         winforms_dll = base / "Microsoft.Web.WebView2.WinForms.dll"
@@ -88,7 +88,7 @@ class WebView2Widget(QWidget):
 
         self._wf_app = Application
 
-        # 3) WinForms контейнер и WebView2
+        # 3) WinForms container and WebView2
         panel = Panel()
         self._panel = panel
 
@@ -108,8 +108,8 @@ class WebView2Widget(QWidget):
             props = CoreWebView2CreationProperties()
             props.UserDataFolder = user_data
 
-            # ВАЖНО: для Win10/драйверных глюков можно попробовать отключить GPU
-            # (если после фикса типа всё ещё белый экран)
+            # IMPORTANT: For Win10/driver glitches, you can try disabling the GPU.
+            # (if the screen is still white after the fix)
             # props.AdditionalBrowserArguments = "--disable-gpu --disable-gpu-compositing"
 
             web.CreationProperties = props
@@ -121,20 +121,20 @@ class WebView2Widget(QWidget):
 
         panel.Controls.Add(web)
 
-        # создаём хэндлы
+        # create handles
         panel.CreateControl()
         web.CreateControl()
 
         self._webview = web
         self._panel_hwnd = int(panel.Handle.ToInt64())
 
-        # флаг: ещё НЕ встроили в Qt
+        # flag: NOT yet built into Qt
         self._embedded = False
 
     def showEvent(self, event):
         super().showEvent(event)
 
-        # showEvent может вызываться несколько раз — встраиваем только один раз
+        # showEvent can be called multiple times - we embed it only once
         if getattr(self, "_embedded", False):
             return
 
@@ -170,7 +170,7 @@ class WebView2Widget(QWidget):
 
         rect = self._host.rect()
 
-        # Qt даёт размеры в логических пикселях, а WinAPI хочет физические.
+        # Qt gives dimensions in logical pixels, but WinAPI wants physical ones
         dpr = 1.0
         try:
             wh = self.window().windowHandle()
@@ -182,7 +182,7 @@ class WebView2Widget(QWidget):
         w = max(1, int(rect.width() * dpr))
         h = max(1, int(rect.height() * dpr))
 
-        # Встраиваемый hwnd всегда в (0,0) внутри host
+        # The embedded hwnd is always at (0,0) inside host
         win32gui.MoveWindow(self._panel_hwnd, 0, 0, w, h, True)
 
     def resizeEvent(self, event):
@@ -232,7 +232,7 @@ class WebView2Widget(QWidget):
 
     def shutdown(self):
         """
-        Аккуратное освобождение. Не идеально, но снижает шанс краша при выходе.
+        Gentle release. Not perfect, but reduces the chance of a crash when exiting.
         """
         try:
             if getattr(self, "_pump", None):
@@ -273,6 +273,6 @@ class WebView2Widget(QWidget):
                 self.loaded.emit(ok)  # type: ignore
 
             self._webview.CoreWebView2InitializationCompleted += _on_init
-            self._webview.EnsureCoreWebView2Async(None)  # ВАЖНО: без ожидания!
+            self._webview.EnsureCoreWebView2Async(None)
         except Exception:
             self.loaded.emit(False)  # type: ignore

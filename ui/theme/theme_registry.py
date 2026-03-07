@@ -2,6 +2,7 @@ import os
 import json
 from ui.theme.tokens import THEMES
 from utils.logger import log_event
+from config import THEMES_DIR
 
 
 class ThemeRegistry:
@@ -10,7 +11,7 @@ class ThemeRegistry:
     saves JSON copies, assigns unique names.
     """
 
-    STORAGE_DIR = os.path.join("data", "themes")
+    STORAGE_DIR = THEMES_DIR
 
     def __init__(self):
         os.makedirs(self.STORAGE_DIR, exist_ok=True)
