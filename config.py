@@ -2,6 +2,7 @@ import json
 import os
 
 from utils.logger import log_event
+from utils.platform import get_app_data_dir, IS_WINDOWS
 
 # ── Base paths ──────────────────────────────
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -18,9 +19,7 @@ CHECK_INTERVAL = 1
 MAX_WAIT_TIME = 90
 
 # ── User data directories ─────────────────────────────
-APP_DATA_DIR = os.path.join(
-    os.environ.get("APPDATA", os.path.expanduser("~")), "ComfyLauncher"
-)
+APP_DATA_DIR = get_app_data_dir()
 THEMES_DIR = os.path.join(APP_DATA_DIR, "themes")
 
 # ── Shared resources ─────────────────────────────
@@ -93,11 +92,18 @@ OTHER_ICONS = {
 USER_CONFIG_PATH = os.path.join(BASE_DIR, "user_config.json")
 
 # ── Launch presets ────────────────────────────
-LAUNCH_PRESETS = {
-    "cpu": ["--cpu", "--windows-standalone-build"],
-    "gpu": ["--windows-standalone-build"],
-    "fast_fp16": ["--windows-standalone-build", "--fast", "fp16_accumulation"],
-}
+if IS_WINDOWS:
+    LAUNCH_PRESETS = {
+        "cpu": ["--cpu", "--windows-standalone-build"],
+        "gpu": ["--windows-standalone-build"],
+        "fast_fp16": ["--windows-standalone-build", "--fast", "fp16_accumulation"],
+    }
+else:
+    LAUNCH_PRESETS = {
+        "cpu": ["--cpu"],
+        "gpu": [],
+        "fast_fp16": ["--fast", "fp16_accumulation"],
+    }
 
 VALID_STARTUP_MODES = ("cpu", "gpu", "fast_fp16", "custom")
 

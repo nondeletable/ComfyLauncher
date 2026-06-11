@@ -11,6 +11,7 @@ import threading
 from datetime import datetime
 from utils.console_buffer import ConsoleBuffer
 from utils.logger import log_event
+from utils.platform import IS_WINDOWS, IS_MACOS, find_venv_python
 from config import (
     COMFYUI_PORT,
     CHECK_INTERVAL,
@@ -75,6 +76,21 @@ def is_cuda_available():
         return result.returncode == 0
     except (OSError, TimeoutExpired):
         return False
+
+
+def is_gpu_available() -> bool:
+    """Detect GPU availability, cross-platform."""
+    if IS_MACOS:
+        try:
+            result = subprocess.run(
+                ["sysctl", "-n", "hw.optional.arm64"],
+                capture_output=True, text=True, timeout=5
+            )
+            return result.returncode == 0 and result.stdout.strip() == "1"
+        except Exception:
+            return False
+    else:
+        return is_cuda_available()
 
 
 # =====================================================================
@@ -176,19 +192,26 @@ def restore_browser_auto_launch(comfy_path: str):
         log_event(f"❌ Failed to restore browser launch: {e}")
 
 
-def resolve_python_exe(base_dir: str) -> str:
+def resolve_python_exe(comfy_path: str) -> str:
     """
-    Returns the path to the embedded Python inside the portable build, if present.
-    Supports both spellings: python_embeded / python_embedded.
-    Otherwise, it uses 'python' (the system interpreter).
+    Returns the path to the Python interpreter for launching ComfyUI.
+    - Windows: python_embeded/python.exe or python_embedded/python.exe
+    - macOS/Linux: uses find_venv_python() with unified search order
+    - Fallback: 'python3' (macOS) or 'python' (Windows)
     """
-    cand = os.path.join(base_dir, "python_embeded", "python.exe")
-    if os.path.exists(cand):
-        return cand
-    cand = os.path.join(base_dir, "python_embedded", "python.exe")
-    if os.path.exists(cand):
-        return cand
-    return "python"
+    base_dir = os.path.dirname(comfy_path)
+    if IS_WINDOWS:
+        cand = os.path.join(base_dir, "python_embeded", "python.exe")
+        if os.path.exists(cand):
+            return cand
+        cand = os.path.join(base_dir, "python_embedded", "python.exe")
+        if os.path.exists(cand):
+            return cand
+    else:
+        found = find_venv_python(comfy_path)
+        if found:
+            return found
+    return "python3" if IS_MACOS else "python"
 
 
 def ensure_comfyui_running(comfy_path: str, port: int = 8188):
@@ -246,33 +269,49 @@ def ensure_comfyui_running(comfy_path: str, port: int = 8188):
     log_event(f"🚀 Starting ComfyUI in {startup_mode} mode...")
 
     # --- Launch ------------------------------------------------------
-    base_dir = os.path.dirname(comfy_path)
-    python_exe = resolve_python_exe(base_dir)
-    python_home = os.path.dirname(python_exe) if python_exe != "python" else ""
+    python_exe = resolve_python_exe(comfy_path)
+    python_home = os.path.dirname(python_exe) if python_exe not in ("python", "python3") else ""
 
     args = [python_exe, "-s", "-u", os.path.join(comfy_path, "main.py")] + flags
+    log_event(f"📋 Command: {' '.join(args)}")
 
     env = os.environ.copy()
     env["PYTHONUNBUFFERED"] = "1"
     env["PYTHONIOENCODING"] = "utf-8"
-    if python_home:
+    if IS_WINDOWS and python_home:
+        # Windows embedded Python requires explicit PYTHONHOME
         env["PYTHONHOME"] = python_home
         env["PYTHONPATH"] = comfy_path
-        env["PATH"] = python_home + ";" + env["PATH"]
+        env["PATH"] = python_home + os.pathsep + env["PATH"]
+    elif python_home:
+        # macOS/Linux venv: do not set PYTHONHOME (breaks venv), only prepend PATH
+        env.pop("PYTHONHOME", None)
+        env["PATH"] = python_home + os.pathsep + env["PATH"]
 
-    if show_cmd:
-        _comfy_process = subprocess.Popen(
-            ["cmd.exe", "/k"] + args,
-            cwd=comfy_path,
-            env=env,
-            creationflags=subprocess.CREATE_NEW_CONSOLE,
-        )
+    if IS_WINDOWS:
+        if show_cmd:
+            _comfy_process = subprocess.Popen(
+                ["cmd.exe", "/k"] + args,
+                cwd=comfy_path,
+                env=env,
+                creationflags=subprocess.CREATE_NEW_CONSOLE,  # type: ignore[attr-defined]
+            )
+        else:
+            _comfy_process = subprocess.Popen(
+                args,
+                cwd=comfy_path,
+                env=env,
+                creationflags=subprocess.CREATE_NO_WINDOW,  # type: ignore[attr-defined]
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                bufsize=1,
+            )
     else:
         _comfy_process = subprocess.Popen(
             args,
             cwd=comfy_path,
             env=env,
-            creationflags=subprocess.CREATE_NO_WINDOW,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
@@ -383,4 +422,6 @@ __all__ = [
     "comfy_exists",
     "kill_process_tree",
     "restore_browser_auto_launch",
+    "is_gpu_available",
+    "resolve_python_exe",
 ]

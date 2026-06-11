@@ -1,11 +1,12 @@
 import os
 from datetime import datetime
 
+from utils.platform import get_log_dir
+
 
 def _get_log_dir():
     """Returns the path to the log directory in the user profile."""
-    base = os.getenv("APPDATA") or os.getenv("LOCALAPPDATA") or os.path.expanduser("~")
-    log_dir = os.path.join(base, "ComfyLauncher", "logs")
+    log_dir = get_log_dir()
     os.makedirs(log_dir, exist_ok=True)
     return log_dir
 
