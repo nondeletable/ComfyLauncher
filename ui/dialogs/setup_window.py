@@ -470,7 +470,14 @@ class SetupWindow(QDialog):
         if self.selected_startup_mode != "custom":
             return []
         raw = self.flags_edit.text().strip()
-        return raw.split() if raw else []
+        if not raw:
+            return []
+        import shlex
+        try:
+            return shlex.split(raw)
+        except ValueError:
+            # Fallback to simple split when quotes are unbalanced
+            return raw.split()
 
     def _line_edit_style(self) -> str:
         return f"""
