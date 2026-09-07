@@ -320,7 +320,9 @@ class SetupWindow(QDialog):
             self.flags_edit.setText(" ".join(extra_flags))
             is_custom = mode == "custom"
             self.flags_edit.setVisible(is_custom)
-            self.setFixedHeight(self.WINDOW_HEIGHT_EXPANDED if is_custom else self.WINDOW_HEIGHT)
+            self.setFixedHeight(
+                self.WINDOW_HEIGHT_EXPANDED if is_custom else self.WINDOW_HEIGHT
+            )
             self._update_ok_state()
         layout.addStretch(1)
 
@@ -466,9 +468,12 @@ class SetupWindow(QDialog):
             self.selected_startup_mode = rb.property("startup_mode") or "cpu"
             is_custom = self.selected_startup_mode == "custom"
             self.flags_edit.setVisible(is_custom)
-            QTimer.singleShot(0, lambda: self.setFixedHeight(
-                self.WINDOW_HEIGHT_EXPANDED if is_custom else self.WINDOW_HEIGHT
-            ))
+            QTimer.singleShot(
+                0,
+                lambda: self.setFixedHeight(
+                    self.WINDOW_HEIGHT_EXPANDED if is_custom else self.WINDOW_HEIGHT
+                ),
+            )
             self._update_ok_state()
 
     def _get_extra_flags(self) -> list[str]:
