@@ -68,9 +68,9 @@ class WebView2Widget(QWidget):
 
         if not (winforms_dll.exists() and core_dll.exists() and loader_dll.exists()):
             raise RuntimeError(
-                "Не найдены DLL WebView2 в папке:\n"
+                "WebView2 DLLs were not found in folder:\n"
                 f"{base}\n"
-                "Нужны: Microsoft.Web.WebView2.WinForms.dll, Microsoft.Web.WebView2.Core.dll, WebView2Loader.dll"
+                "Required: Microsoft.Web.WebView2.WinForms.dll, Microsoft.Web.WebView2.Core.dll, WebView2Loader.dll"
             )
 
         # важно: чтобы native loader точно находился
