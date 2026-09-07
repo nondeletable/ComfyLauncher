@@ -12,7 +12,7 @@ from PyQt6.QtWidgets import (
     QRadioButton,
     QGraphicsDropShadowEffect,
 )
-from PyQt6.QtCore import Qt, QSize
+from PyQt6.QtCore import Qt, QSize, QTimer
 from PyQt6.QtGui import QIcon, QColor
 
 from config import (
@@ -42,7 +42,8 @@ class SetupWindow(QDialog):
     """The initial path setup window for ComfyUI"""
 
     WINDOW_WIDTH = 530
-    WINDOW_HEIGHT = 420
+    WINDOW_HEIGHT = 370
+    WINDOW_HEIGHT_EXPANDED = 420
     BORDER_RADIUS = 9
 
     def __init__(
@@ -319,6 +320,9 @@ class SetupWindow(QDialog):
             self.flags_edit.setText(" ".join(extra_flags))
             is_custom = mode == "custom"
             self.flags_edit.setVisible(is_custom)
+            self.setFixedHeight(
+                self.WINDOW_HEIGHT_EXPANDED if is_custom else self.WINDOW_HEIGHT
+            )
             self._update_ok_state()
         layout.addStretch(1)
 
@@ -464,6 +468,12 @@ class SetupWindow(QDialog):
             self.selected_startup_mode = rb.property("startup_mode") or "cpu"
             is_custom = self.selected_startup_mode == "custom"
             self.flags_edit.setVisible(is_custom)
+            QTimer.singleShot(
+                0,
+                lambda: self.setFixedHeight(
+                    self.WINDOW_HEIGHT_EXPANDED if is_custom else self.WINDOW_HEIGHT
+                ),
+            )
             self._update_ok_state()
 
     def _get_extra_flags(self) -> list[str]:
