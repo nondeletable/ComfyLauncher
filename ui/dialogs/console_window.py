@@ -215,7 +215,7 @@ class ConsoleWindow(QWidget):
         if text.startswith(self._last_text):
             # Common case: buffer only grew — append the new tail with a
             # detached cursor so the user's selection is left untouched.
-            delta = text[len(self._last_text):]
+            delta = text[len(self._last_text) :]
             cursor = QTextCursor(self.text_edit.document())
             cursor.movePosition(QTextCursor.MoveOperation.End)
             cursor.insertText(delta)
