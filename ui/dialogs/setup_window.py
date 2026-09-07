@@ -432,7 +432,9 @@ class SetupWindow(QDialog):
             apply_manager_defaults(self.edit_build_id)
 
             data["builds"] = builds
-            save_user_config(data)
+            if not save_user_config(data):
+                self._warn_save_failed()
+                return
             self.accept()
             return
 
@@ -451,8 +453,18 @@ class SetupWindow(QDialog):
         data["builds"] = builds
         apply_manager_defaults(build_id)
 
-        save_user_config(data)
+        if not save_user_config(data):
+            self._warn_save_failed()
+            return
         self.accept()
+
+    def _warn_save_failed(self):
+        MB.warning(
+            self,
+            "Could not save",
+            "Failed to save the settings. Make sure the app can write to your "
+            "AppData folder, then try again.",
+        )
 
     def _on_doodle_selected(self):
         btn = self.sender()
