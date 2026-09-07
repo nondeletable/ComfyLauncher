@@ -380,13 +380,17 @@ class SetupWindow(QDialog):
             return
 
         if detect_build_type(path) == "standalone":
-            MB.warning(
+            proceed = MB.ask_yes_no(
                 self,
-                "Invalid build detected",
-                "This appears to be a standalone ComfyUI build or a third-party directory.\n"
-                "ComfyLauncher works only with the portable version.",
+                "Non-portable build",
+                "No embedded Python was found next to this folder, so it looks like "
+                "a non-portable or third-party ComfyUI install "
+                "(e.g. system Python or Stability Matrix).\n\n"
+                "ComfyLauncher will launch it using the system Python. "
+                "Add this build anyway?",
             )
-            return
+            if not proceed:
+                return
 
         if not name:
             MB.warning(self, "Missing name", "Please enter a build name.")
