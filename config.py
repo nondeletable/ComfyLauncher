@@ -1,5 +1,6 @@
 import json
 import os
+import shutil
 
 from utils.logger import log_event
 
@@ -90,7 +91,12 @@ OTHER_ICONS = {
     "comfyui": os.path.join(ICONS_DIR, "comfyui-text.svg"),
 }
 
-USER_CONFIG_PATH = os.path.join(BASE_DIR, "user_config.json")
+# ── User config ───────────────────────────────
+# Stored in %APPDATA% so it stays writable even for all-users installs
+# (Program Files, where the in-app folder is read-only). LEGACY_* is the old
+# in-app location, kept only for one-time migration of existing users.
+USER_CONFIG_PATH = os.path.join(APP_DATA_DIR, "user_config.json")
+LEGACY_USER_CONFIG_PATH = os.path.join(BASE_DIR, "user_config.json")
 
 # ── Launch presets ────────────────────────────
 LAUNCH_PRESETS = {
@@ -117,7 +123,27 @@ DEFAULT_USER_CONFIG = {
 }
 
 
+def _migrate_legacy_config():
+    """One-time move of a pre-%APPDATA% config from the in-app folder.
+
+    Only runs when no config exists at the new location yet, so it never
+    clobbers an existing one. Never raises.
+    """
+    if os.path.exists(USER_CONFIG_PATH):
+        return
+    if not os.path.exists(LEGACY_USER_CONFIG_PATH):
+        return
+    try:
+        os.makedirs(os.path.dirname(USER_CONFIG_PATH), exist_ok=True)
+        shutil.copy2(LEGACY_USER_CONFIG_PATH, USER_CONFIG_PATH)
+        log_event(f"🗂 Migrated user config to {USER_CONFIG_PATH}")
+    except Exception as e:
+        log_event(f"⚠️ Failed to migrate user config: {e}")
+
+
 def load_user_config():
+    _migrate_legacy_config()
+
     if not os.path.exists(USER_CONFIG_PATH):
         save_user_config(DEFAULT_USER_CONFIG)
         return DEFAULT_USER_CONFIG.copy()
@@ -144,13 +170,22 @@ def load_user_config():
         return DEFAULT_USER_CONFIG.copy()
 
 
-def save_user_config(data: dict):
+def save_user_config(data: dict) -> bool:
+    """Write the user config. Returns True on success, False on failure.
+
+    Never raises and never shows UI — it is also called from background threads
+    (e.g. the update checker). Callers on a UI path should check the return
+    value and warn the user if it is False.
+    """
     try:
+        os.makedirs(os.path.dirname(USER_CONFIG_PATH), exist_ok=True)
         with open(USER_CONFIG_PATH, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=4, ensure_ascii=False)
+        return True
     except Exception as e:
         print(f"⚠️ Failed to save config: {e}")
         log_event(f"⚠️ Failed to save config: {e}")
+        return False
 
 
 def get_comfyui_path() -> str:
