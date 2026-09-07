@@ -22,9 +22,9 @@ class LauncherSplashVideo(QWidget):
         self.setWindowTitle("ComfyLauncher")
 
         # ─── Window flags ─────────────────────────────
-        self.setWindowFlags(
-            Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint
-        )
+        # No WindowStaysOnTopHint: splash shows on top at creation (it gets focus),
+        # but other windows (opened folder / browser) can cover it afterwards.
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
 
         # ─── Layout ──────────────────────────────────
         layout = QVBoxLayout(self)
