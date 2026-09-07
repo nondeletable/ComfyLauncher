@@ -284,7 +284,6 @@ class ComfyBrowser(QMainWindow):
             QTimer.singleShot(1000, self.poll_callback)
 
     def closeEvent(self, event):
-        print("CLOSE EVENT FIRED")
         """Reaction to closing depending on user settings"""
         # If a duplicate closeEvent fires while we're already processing exit
         if getattr(self, "_exit_in_progress", False):
@@ -532,7 +531,7 @@ class ComfyBrowser(QMainWindow):
             save_user_config(config)
 
     def on_update_not_found(self):
-        print("No updates found")
+        log_event("✅ Update check: no updates found.")
 
     def on_update_error(self, error):
         log_event(f"⚠️ Update check error: {error}")
