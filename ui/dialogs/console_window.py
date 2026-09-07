@@ -109,11 +109,26 @@ class ConsoleWindow(QWidget):
 
         log_container = QHBoxLayout()
 
-        log_container.setContentsMargins(14, 8, 14, 14)
+        log_container.setContentsMargins(14, 8, 14, 6)
         log_container.addWidget(self.text_edit)
+
+        # ─── View-only hint ────────────────────────────
+        # The internal console is output-only: the process runs with
+        # CREATE_NO_WINDOW and its stdin is a pipe, not a real console, so
+        # keystrokes (Esc, arrows, …) cannot be delivered to it. Point users
+        # to the external CMD window when they need interactive input.
+        self.hint_label = QLabel(
+            "View-only. To type into the console, enable "
+            "“Show CMD window on launch” in Settings."
+        )
+        self.hint_label.setWordWrap(True)
+        hint_container = QHBoxLayout()
+        hint_container.setContentsMargins(16, 0, 16, 12)
+        hint_container.addWidget(self.hint_label)
 
         layout.addWidget(header)
         layout.addLayout(log_container)
+        layout.addLayout(hint_container)
 
         # ─── Timer for updates ─────────────────────────
         self._timer = QTimer(self)
@@ -166,12 +181,17 @@ class ConsoleWindow(QWidget):
             }}
         """
 
+    def _hint_style(self) -> str:
+        c = THEME.colors
+        return f"color: {c['text_secondary']}; font-size: 11px;"
+
     def _apply_theme(self, *args):
         c = THEME.colors
         self.setStyleSheet(
             f"background-color: {c['bg_header']}; color: {c['text_primary']};"
         )
         self.text_edit.setStyleSheet(self._build_text_style())
+        self.hint_label.setStyleSheet(self._hint_style())
 
     # ─────────────────────────────────────────────────
     def _refresh_logs(self):
