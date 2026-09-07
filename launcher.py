@@ -276,6 +276,8 @@ def ensure_comfyui_running(comfy_path: str, port: int = 8188):
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             bufsize=1,
         )
 
@@ -359,11 +361,24 @@ def stop_comfyui_hard(comfy_path: str, _grace_period=5):
 
 
 def _read_process_output(proc: subprocess.Popen):
-    """Reads stdout of ComfyUI process and writes to ConsoleBuffer."""
+    """Drain the child's stdout into ConsoleBuffer.
+
+    This loop must never stop while the process is alive: if it dies, the OS
+    pipe buffer fills up, the child blocks on write, and ComfyUI hangs on
+    startup. Decoding is handled by Popen (utf-8, errors="replace"), so a
+    non-Latin byte from a custom node can no longer crash the reader; we still
+    guard each line so a single failure can't break the drain.
+    """
+    stdout = proc.stdout
+    if not stdout:
+        return
     try:
-        if proc.stdout:
-            for line in proc.stdout:
+        for line in stdout:
+            try:
                 ConsoleBuffer.add(line)
+            except Exception:
+                # Never let a buffering error stop us draining the pipe.
+                pass
     except Exception as e:
         ConsoleBuffer.add(f"[Console reader error] {e}\n")
 
