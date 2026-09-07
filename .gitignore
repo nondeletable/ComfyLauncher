@@ -78,3 +78,6 @@ tests/__pycache__/
 # --- Optional: ignore images or assets you don’t want to push ---
 # screenshots/
 # assets/generated/
+
+# --- Secrets (never commit) ---
+git-token.txt
