@@ -41,7 +41,7 @@ class StartingWidget(QWidget):
         layout = QVBoxLayout(self)
         layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        label = QLabel("🚀 Запуск ComfyUI…")
+        label = QLabel("🚀 Starting ComfyUI…")
         label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         label.setStyleSheet("font-size: 18px; color: #cccccc;")
 
