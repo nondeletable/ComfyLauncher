@@ -106,14 +106,37 @@ class ConsoleWindow(QWidget):
         self.text_edit.setReadOnly(True)
         self.text_edit.setStyleSheet(self._build_text_style())
         self.text_edit.setContextMenuPolicy(Qt.ContextMenuPolicy.DefaultContextMenu)
+        self.text_edit.setTextInteractionFlags(
+            Qt.TextInteractionFlag.TextSelectableByMouse
+            | Qt.TextInteractionFlag.TextSelectableByKeyboard
+        )
+
+        # Full text currently shown; used to append only the new tail on
+        # refresh so the user's selection and scroll position survive.
+        self._last_text = ""
 
         log_container = QHBoxLayout()
 
-        log_container.setContentsMargins(14, 8, 14, 14)
+        log_container.setContentsMargins(14, 8, 14, 6)
         log_container.addWidget(self.text_edit)
+
+        # ─── View-only hint ────────────────────────────
+        # The internal console is output-only: the process runs with
+        # CREATE_NO_WINDOW and its stdin is a pipe, not a real console, so
+        # keystrokes (Esc, arrows, …) cannot be delivered to it. Point users
+        # to the external CMD window when they need interactive input.
+        self.hint_label = QLabel(
+            "View-only. To type into the console, enable "
+            "“Show CMD window on launch” in Settings."
+        )
+        self.hint_label.setWordWrap(True)
+        hint_container = QHBoxLayout()
+        hint_container.setContentsMargins(16, 0, 16, 12)
+        hint_container.addWidget(self.hint_label)
 
         layout.addWidget(header)
         layout.addLayout(log_container)
+        layout.addLayout(hint_container)
 
         # ─── Timer for updates ─────────────────────────
         self._timer = QTimer(self)
@@ -166,20 +189,45 @@ class ConsoleWindow(QWidget):
             }}
         """
 
+    def _hint_style(self) -> str:
+        c = THEME.colors
+        return f"color: {c['text_secondary']}; font-size: 11px;"
+
     def _apply_theme(self, *args):
         c = THEME.colors
         self.setStyleSheet(
             f"background-color: {c['bg_header']}; color: {c['text_primary']};"
         )
         self.text_edit.setStyleSheet(self._build_text_style())
+        self.hint_label.setStyleSheet(self._hint_style())
 
     # ─────────────────────────────────────────────────
     def _refresh_logs(self):
         text = ConsoleBuffer.get_all()
-        # To avoid flashing, we update only if there is a real change.
-        if text != self.text_edit.toPlainText():
+        if text == self._last_text:
+            return
+
+        sb = self.text_edit.verticalScrollBar()
+        # Follow the tail only when the user is already at the bottom, so
+        # scrolling up to select text is not yanked back down.
+        at_bottom = sb.value() >= sb.maximum() - 4
+
+        if text.startswith(self._last_text):
+            # Common case: buffer only grew — append the new tail with a
+            # detached cursor so the user's selection is left untouched.
+            delta = text[len(self._last_text) :]
+            cursor = QTextCursor(self.text_edit.document())
+            cursor.movePosition(QTextCursor.MoveOperation.End)
+            cursor.insertText(delta)
+        else:
+            # Buffer was cleared or truncated: fall back to a full rebuild
+            # (selection can't be preserved here).
             self.text_edit.setPlainText(text)
-            self.text_edit.moveCursor(QTextCursor.MoveOperation.End)
+
+        self._last_text = text
+
+        if at_bottom:
+            sb.setValue(sb.maximum())
 
     # ── geometry/drag/rounding ───────────────────────
     def _center(self):
