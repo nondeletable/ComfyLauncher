@@ -106,6 +106,14 @@ class ConsoleWindow(QWidget):
         self.text_edit.setReadOnly(True)
         self.text_edit.setStyleSheet(self._build_text_style())
         self.text_edit.setContextMenuPolicy(Qt.ContextMenuPolicy.DefaultContextMenu)
+        self.text_edit.setTextInteractionFlags(
+            Qt.TextInteractionFlag.TextSelectableByMouse
+            | Qt.TextInteractionFlag.TextSelectableByKeyboard
+        )
+
+        # Full text currently shown; used to append only the new tail on
+        # refresh so the user's selection and scroll position survive.
+        self._last_text = ""
 
         log_container = QHBoxLayout()
 
@@ -196,10 +204,30 @@ class ConsoleWindow(QWidget):
     # ─────────────────────────────────────────────────
     def _refresh_logs(self):
         text = ConsoleBuffer.get_all()
-        # To avoid flashing, we update only if there is a real change.
-        if text != self.text_edit.toPlainText():
+        if text == self._last_text:
+            return
+
+        sb = self.text_edit.verticalScrollBar()
+        # Follow the tail only when the user is already at the bottom, so
+        # scrolling up to select text is not yanked back down.
+        at_bottom = sb.value() >= sb.maximum() - 4
+
+        if text.startswith(self._last_text):
+            # Common case: buffer only grew — append the new tail with a
+            # detached cursor so the user's selection is left untouched.
+            delta = text[len(self._last_text):]
+            cursor = QTextCursor(self.text_edit.document())
+            cursor.movePosition(QTextCursor.MoveOperation.End)
+            cursor.insertText(delta)
+        else:
+            # Buffer was cleared or truncated: fall back to a full rebuild
+            # (selection can't be preserved here).
             self.text_edit.setPlainText(text)
-            self.text_edit.moveCursor(QTextCursor.MoveOperation.End)
+
+        self._last_text = text
+
+        if at_bottom:
+            sb.setValue(sb.maximum())
 
     # ── geometry/drag/rounding ───────────────────────
     def _center(self):
