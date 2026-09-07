@@ -5,6 +5,10 @@ os.environ["QT_MEDIA_BACKEND"] = "ffmpeg"
 os.environ["QT_FFMPEG_HWACCEL"] = "none"
 # os.environ["QSG_RHI_BACKEND"] = "software"
 
+# Must run before any CLR assembly load (pythonnet / WebView2 via ui.browser):
+# importing this module strips Mark-of-the-Web from bundled DLLs as a side effect.
+from utils import motw_unblock  # noqa: F401
+
 from PyQt6.QtWidgets import QApplication, QToolTip, QDialog
 from PyQt6.QtGui import QFont, QIcon
 from ui.browser import ComfyBrowser
