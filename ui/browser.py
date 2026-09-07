@@ -284,7 +284,6 @@ class ComfyBrowser(QMainWindow):
             QTimer.singleShot(1000, self.poll_callback)
 
     def closeEvent(self, event):
-        print("CLOSE EVENT FIRED")
         """Reaction to closing depending on user settings"""
         # If a duplicate closeEvent fires while we're already processing exit
         if getattr(self, "_exit_in_progress", False):
