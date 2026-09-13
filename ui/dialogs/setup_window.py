@@ -9,10 +9,9 @@ from PyQt6.QtWidgets import (
     QFrame,
     QButtonGroup,
     QToolButton,
-    QRadioButton,
     QGraphicsDropShadowEffect,
 )
-from PyQt6.QtCore import Qt, QSize, QTimer
+from PyQt6.QtCore import Qt, QSize
 from PyQt6.QtGui import QIcon, QColor
 
 from config import (
@@ -42,9 +41,9 @@ class SetupWindow(QDialog):
     """The initial path setup window for ComfyUI"""
 
     WINDOW_WIDTH = 530
-    WINDOW_HEIGHT = 370
-    WINDOW_HEIGHT_EXPANDED = 420
+    WINDOW_HEIGHT = 400
     BORDER_RADIUS = 9
+    DEFAULT_FLAGS = "--windows-standalone-build"
 
     def __init__(
         self,
@@ -169,7 +168,6 @@ class SetupWindow(QDialog):
         doodle_row.setSpacing(16)
 
         self.selected_doodle_id = DEFAULT_DOODLE_ID
-        self.selected_startup_mode = "cpu"
 
         for doodle_id, doodle_path in DOODLE_ICON_PATHS.items():
             if not os.path.exists(doodle_path):
@@ -217,65 +215,60 @@ class SetupWindow(QDialog):
 
         layout.addLayout(doodle_row)
 
-        # ── Startup mode radios ──────────────────────────────────────────────
-        self.startup_group = QButtonGroup(self)
-        self.startup_group.setExclusive(True)
+        # ── Startup flags ────────────────────────────────────────────────────
+        flags_label = QLabel("Startup flags")
+        flags_label.setStyleSheet(
+            f"""
+            QLabel {{
+                font-size: 12px;
+                color: {THEME.colors['text_secondary']};
+            }}
+        """
+        )
+        layout.addWidget(flags_label)
 
-        modes_row = QHBoxLayout()
-        modes_row.setSpacing(14)
+        flags_row = QHBoxLayout()
+        flags_row.setSpacing(8)
 
-        rb_cpu = QRadioButton("CPU")
-        rb_gpu = QRadioButton("NVIDIA GPU")
-        rb_fp16 = QRadioButton("FAST FP16")
-        rb_custom = QRadioButton("CUSTOM")
-
-        for rb, mode in [
-            (rb_cpu, "cpu"),
-            (rb_gpu, "gpu"),
-            (rb_fp16, "fast_fp16"),
-            (rb_custom, "custom"),
-        ]:
-            rb.setProperty("startup_mode", mode)
-            rb.toggled.connect(self._on_startup_mode_changed)  # type: ignore
-            self.startup_group.addButton(rb)
-            modes_row.addWidget(rb)
-
-            rb.setStyleSheet(
-                f"""
-                    QRadioButton {{
-                        font-size: 12px;
-                        color: {THEME.colors['text_primary']};
-                        spacing: 8px;
-                    }}
-                    QRadioButton::indicator {{
-                        width: 16px; height: 16px;
-                        border-radius: 4px;
-                        border: 1px solid {THEME.colors['border_color']};
-                        background: transparent;
-                    }}
-                    QRadioButton::indicator:checked {{
-                        background-color: {THEME.colors['accent']};
-                        border: 1px solid {THEME.colors['accent']};
-                    }}
-                    QRadioButton::indicator:hover {{
-                        border: 1px solid {THEME.colors['accent_hover']};
-                    }}
-                """
-            )
-
-        # default
-        layout.addLayout(modes_row)
-
-        # ── Custom flags input ───────────────────────────────────────────────
         self.flags_edit = QLineEdit()
         self.flags_edit.setPlaceholderText(
             "--windows-standalone-build --lowvram --listen"
         )
         self.flags_edit.setFixedHeight(36)
-        self.flags_edit.setVisible(False)
         self.flags_edit.setStyleSheet(self._line_edit_style())
-        layout.addWidget(self.flags_edit)
-        rb_cpu.setChecked(True)
+
+        add_btn = QPushButton()
+        add_btn.setIcon(
+            QIcon(
+                colorize_svg(
+                    ICON_PATHS["plus"],
+                    THEME.colors["icon_color_window"],
+                )
+            )
+        )
+        add_btn.setIconSize(QSize(20, 20))
+        add_btn.setFixedSize(38, 36)
+        add_btn.setToolTip("Add flags")
+        add_btn.setStyleSheet(
+            f"""
+            QPushButton {{
+                background-color: {THEME.colors['bg_input']};
+                border: 1px solid {THEME.colors['border_color']};
+                border-radius: 6px;
+            }}
+            QPushButton:hover {{
+                background-color: {THEME.colors['bg_hover']};
+            }}
+        """
+        )
+        add_btn.clicked.connect(self._open_flags_picker)  # type: ignore
+
+        flags_row.addWidget(self.flags_edit)
+        flags_row.addWidget(add_btn)
+        layout.addLayout(flags_row)
+
+        if not build:
+            self.flags_edit.setText(self.DEFAULT_FLAGS)
 
         if build:
             self.path_edit.blockSignals(True)
@@ -301,28 +294,8 @@ class SetupWindow(QDialog):
             for b in self.doodle_group.buttons():
                 b.blockSignals(False)
 
-            mode = str(build.get("startup_mode", "cpu"))
-            self.selected_startup_mode = mode
-
-            for rb in self.startup_group.buttons():
-                rb.blockSignals(True)
-
-            for rb in self.startup_group.buttons():
-                if rb.property("startup_mode") == mode:
-                    rb.setChecked(True)
-                    break
-
-            for rb in self.startup_group.buttons():
-                rb.blockSignals(False)
-
-            # загружаем extra_flags если режим custom
             extra_flags = build.get("extra_flags", [])
             self.flags_edit.setText(" ".join(extra_flags))
-            is_custom = mode == "custom"
-            self.flags_edit.setVisible(is_custom)
-            self.setFixedHeight(
-                self.WINDOW_HEIGHT_EXPANDED if is_custom else self.WINDOW_HEIGHT
-            )
             self._update_ok_state()
         layout.addStretch(1)
 
@@ -412,8 +385,8 @@ class SetupWindow(QDialog):
                     b["name"] = name
                     b["path"] = path
                     b["icon_id"] = self.selected_doodle_id
-                    b["startup_mode"] = self.selected_startup_mode
                     b["extra_flags"] = self._get_extra_flags()
+                    b.pop("startup_mode", None)
                     updated = True
                     break
 
@@ -424,7 +397,6 @@ class SetupWindow(QDialog):
                         "name": name,
                         "path": path,
                         "icon_id": self.selected_doodle_id,
-                        "startup_mode": self.selected_startup_mode,
                         "extra_flags": self._get_extra_flags(),
                     }
                 )
@@ -445,7 +417,6 @@ class SetupWindow(QDialog):
                 "name": name,
                 "path": path,
                 "icon_id": self.selected_doodle_id,
-                "startup_mode": self.selected_startup_mode,
                 "extra_flags": self._get_extra_flags(),
             }
         )
@@ -478,23 +449,12 @@ class SetupWindow(QDialog):
         if hasattr(self, "ok_btn"):
             self.ok_btn.setEnabled(path_ok and name_ok)
 
-    def _on_startup_mode_changed(self):
-        rb = self.sender()
-        if rb and rb.isChecked():
-            self.selected_startup_mode = rb.property("startup_mode") or "cpu"
-            is_custom = self.selected_startup_mode == "custom"
-            self.flags_edit.setVisible(is_custom)
-            QTimer.singleShot(
-                0,
-                lambda: self.setFixedHeight(
-                    self.WINDOW_HEIGHT_EXPANDED if is_custom else self.WINDOW_HEIGHT
-                ),
-            )
-            self._update_ok_state()
+    def _open_flags_picker(self):
+        # Stage 5: opens the grouped-flags modal (chips from flags.json) that
+        # inserts flags into flags_edit. Placeholder until then.
+        pass
 
     def _get_extra_flags(self) -> list[str]:
-        if self.selected_startup_mode != "custom":
-            return []
         raw = self.flags_edit.text().strip()
         return raw.split() if raw else []
 
