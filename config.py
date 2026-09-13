@@ -8,6 +8,7 @@ from utils.logger import log_event
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ASSETS_DIR = os.path.join(BASE_DIR, "assets")
 ICONS_DIR = os.path.join(ASSETS_DIR, "icons")
+DATA_DIR = os.path.join(ASSETS_DIR, "data")
 SPLASH_DIR = os.path.join(ASSETS_DIR, "splash")
 INTERFACE_DIR = os.path.join(ASSETS_DIR, "interface")
 DOODLES_DIR = os.path.join(ICONS_DIR, "doodles")
@@ -26,6 +27,7 @@ THEMES_DIR = os.path.join(APP_DATA_DIR, "themes")
 
 # ── Shared resources ─────────────────────────────
 ICON_PATH = os.path.join(ICONS_DIR, "icon.png")
+FLAGS_JSON_PATH = os.path.join(DATA_DIR, "flags.json")
 SPLASH_PATH = os.path.join(SPLASH_DIR, "1618x616_qt.mp4")
 ABOUT_LOGO_BG = os.path.join(INTERFACE_DIR, "back.png")
 ABOUT_LOGO_ANIM = os.path.join(INTERFACE_DIR, "menu_anim.mp4")
