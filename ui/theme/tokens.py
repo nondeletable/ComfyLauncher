@@ -23,6 +23,7 @@ DARK_THEME = {
     # ─── STATES ────────────────────────────────
     "success": "#3CCB7F",
     "error": "#E2574C",
+    "warning": "#F59E0B",
     # ─── POPUPS ───────────────────────────────────
     "popup_bg": "#353535",
     "popup_text": "#FFFFFF",
@@ -49,6 +50,7 @@ LIGHT_THEME = {
     # ─── STATES ────────────────────────────────
     "success": "#049342",
     "error": "#EF4444",
+    "warning": "#D97706",
     # ─── POPUPS ───────────────────────────────────
     "popup_bg": "#F5F5F5",
     "popup_text": "#222222",
@@ -75,6 +77,7 @@ DRACULA_THEME = {
     # ─── STATES ──────────────────────────────────
     "success": "#50fa7b",
     "error": "#ff5555",
+    "warning": "#ffb86c",
     # ─── POPUPS ──────────────────────────────────
     "popup_bg": "#21222b",
     "popup_text": "#f8f8f2",
@@ -101,6 +104,7 @@ OBSIDIAN_ORANGE_THEME = {
     # ─── STATES ──────────────────────────────────
     "success": "#3CCB7F",
     "error": "#E2574C",
+    "warning": "#FBBF24",
     # ─── POPUPS ──────────────────────────────────
     "popup_bg": "#1C1C1E",
     "popup_text": "#FFFFFF",

@@ -21,7 +21,7 @@ class _Badge(QLabel):
 
     def __init__(self, icon_path: str, color: str, parent=None):
         super().__init__(parent)
-        self.setFixedSize(45, 45)
+        self.setFixedSize(34, 34)
         icon = colorize_svg(icon_path, color, QSize(22, 22))
         self.setPixmap(icon.pixmap(QSize(22, 22)))
         self.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -87,7 +87,7 @@ class MessageBox(QDialog):
 
         badge_color = {
             "info": c["accent"],
-            "warning": "#F59E0B",
+            "warning": c.get("warning", "#F59E0B"),
             "error": c["error"],
             "ask_yes_no": c["accent"],
         }.get(kind, c["accent"])
@@ -103,14 +103,14 @@ class MessageBox(QDialog):
         )
         header.addWidget(title_label, 1, Qt.AlignmentFlag.AlignVCenter)
         root.addLayout(header)
-        root.addSpacing(12)
 
-        # — message body
+        # — message body (indent kept consistent for every popup kind)
         self.body = QLabel(text)
         self.body.setObjectName("body")
         self.body.setWordWrap(True)
+        self.body.setContentsMargins(14, 0, 0, 0)
         root.addWidget(self.body)
-        root.addSpacing(20)
+        root.addSpacing(8)
 
         # — buttons
         self._buttons = QHBoxLayout()
@@ -119,7 +119,7 @@ class MessageBox(QDialog):
         root.addLayout(self._buttons)
         THEME.themeChanged.connect(self._apply_theme)
         self._apply_theme()
-        self.setMinimumHeight(180)
+        self.setMinimumHeight(130)
 
     # — auxiliary addition of buttons
     def _add_button(self, text: str, role: str):
@@ -135,34 +135,26 @@ class MessageBox(QDialog):
     @staticmethod
     def info(parent, title: str, text: str):
         dlg = MessageBox(title, text, "info", parent)
-        dlg.body.setContentsMargins(14, 0, 0, 0)
         dlg._add_button("OK", "accept")
         return dlg.exec()
 
     @staticmethod
     def warning(parent, title: str, text: str):
         dlg = MessageBox(title, text, "warning", parent)
-        dlg.body.setContentsMargins(14, 0, 0, 0)
         dlg._add_button("OK", "accept")
         return dlg.exec()
 
     @staticmethod
     def error(parent, title: str, text: str):
         dlg = MessageBox(title, text, "error", parent)
-        dlg.body.setContentsMargins(14, 0, 0, 0)
         dlg._add_button("OK", "accept")
         return dlg.exec()
 
     @staticmethod
     def ask_yes_no(parent, title: str, text: str) -> bool:
         dlg = MessageBox(title, text, "ask_yes_no", parent)
-        dlg.body.setContentsMargins(14, 0, 0, 0)
         dlg._add_button("Yes", "accept")
         dlg._add_button("No", "reject")
-        # center over parent (carefully)
-        if parent:
-            geo = parent.frameGeometry()
-            dlg.move(geo.center() - dlg.rect().center())
         return dlg.exec() == QDialog.DialogCode.Accepted
 
     @staticmethod
@@ -172,8 +164,6 @@ class MessageBox(QDialog):
         returns 'yes', 'no', or 'cancel'.
         """
         dlg = MessageBox(title, text, "ask_yes_no", parent)
-        dlg.body.setContentsMargins(14, 0, 0, 0)
-        # кнопки по центру
         dlg._buttons.setSpacing(10)
         dlg._buttons.setAlignment(Qt.AlignmentFlag.AlignRight)
 
@@ -202,11 +192,6 @@ class MessageBox(QDialog):
             btn = QPushButton(text_label)
             btn.clicked.connect(handler)  # type: ignore
             dlg._buttons.addWidget(btn)
-
-        # центрируем над родителем
-        if parent:
-            geo = parent.frameGeometry()
-            dlg.move(geo.center() - dlg.rect().center())
 
         dlg.exec()
         return dlg._answer
@@ -249,8 +234,9 @@ class MessageBox(QDialog):
                 color: {c['text_primary']};
                 border: 1px solid {c['border_color']};
                 border-radius: 6px;
-                padding: 6px 8px;
-                min-width: 50px;
+                padding: 0 16px;
+                min-width: 96px;
+                min-height: 34px;
             }}
             QPushButton:hover {{
                 background-color: {c['accent']};
@@ -267,16 +253,14 @@ class MessageBox(QDialog):
 
         badge_color = {
             "info": c["accent"],
-            "warning": "#F59E0B",
+            "warning": c.get("warning", "#F59E0B"),
             "error": c["error"],
             "ask_yes_no": c["accent"],
         }.get(kind, c["accent"])
 
-        # If the icon already exists, update its pixmap
-        badge = self.findChild(QLabel)
-        if badge:
-            icon = colorize_svg(icon_path, badge_color, QSize(22, 22))
-            badge.setPixmap(icon.pixmap(QSize(22, 22)))
+        # Recolor the stored badge (avoids a fragile findChild-by-order lookup)
+        icon = colorize_svg(icon_path, badge_color, QSize(22, 22))
+        self._badge.setPixmap(icon.pixmap(QSize(22, 22)))
 
     def showEvent(self, event):
         super().showEvent(event)

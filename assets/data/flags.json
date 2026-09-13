@@ -1,0 +1,372 @@
+{
+  "groups": [
+    {
+      "id": "device",
+      "title": "Device / Backend",
+      "flags": [
+        {
+          "flag": "--cpu",
+          "type": "bool",
+          "value_type": null,
+          "default": null,
+          "choices": null,
+          "exclusive_group": "vram_group",
+          "description": "Run everything on the CPU (slow, but works without a GPU)."
+        },
+        {
+          "flag": "--directml",
+          "type": "bool",
+          "value_type": null,
+          "default": null,
+          "choices": null,
+          "exclusive_group": null,
+          "description": "Use torch-directml (AMD / DirectX 12 GPUs on Windows)."
+        },
+        {
+          "flag": "--cuda-device",
+          "type": "value",
+          "value_type": "str",
+          "default": "0",
+          "choices": null,
+          "exclusive_group": null,
+          "description": "Select CUDA device id(s), e.g. 0 or 0,1."
+        }
+      ]
+    },
+    {
+      "id": "vram",
+      "title": "VRAM / Memory",
+      "flags": [
+        {
+          "flag": "--gpu-only",
+          "type": "bool",
+          "value_type": null,
+          "default": null,
+          "choices": null,
+          "exclusive_group": "vram_group",
+          "description": "Keep everything on the GPU (fastest, needs lots of VRAM)."
+        },
+        {
+          "flag": "--highvram",
+          "type": "bool",
+          "value_type": null,
+          "default": null,
+          "choices": null,
+          "exclusive_group": "vram_group",
+          "description": "Keep models in VRAM between runs."
+        },
+        {
+          "flag": "--lowvram",
+          "type": "bool",
+          "value_type": null,
+          "default": null,
+          "choices": null,
+          "exclusive_group": "vram_group",
+          "description": "Run text encoders on the CPU to save VRAM."
+        },
+        {
+          "flag": "--novram",
+          "type": "bool",
+          "value_type": null,
+          "default": null,
+          "choices": null,
+          "exclusive_group": "vram_group",
+          "description": "Most aggressive VRAM saving, for very low-VRAM GPUs."
+        },
+        {
+          "flag": "--reserve-vram",
+          "type": "value",
+          "value_type": "float",
+          "default": 2,
+          "choices": null,
+          "exclusive_group": null,
+          "description": "Reserve N GB of VRAM for the OS / other apps."
+        },
+        {
+          "flag": "--disable-smart-memory",
+          "type": "bool",
+          "value_type": null,
+          "default": null,
+          "choices": null,
+          "exclusive_group": null,
+          "description": "Aggressively offload models to system RAM."
+        }
+      ]
+    },
+    {
+      "id": "precision",
+      "title": "Precision",
+      "flags": [
+        {
+          "flag": "--force-fp32",
+          "type": "bool",
+          "value_type": null,
+          "default": null,
+          "choices": null,
+          "exclusive_group": "fp_group",
+          "description": "Force fp32 everywhere (most compatible, slowest)."
+        },
+        {
+          "flag": "--force-fp16",
+          "type": "bool",
+          "value_type": null,
+          "default": null,
+          "choices": null,
+          "exclusive_group": "fp_group",
+          "description": "Force fp16 everywhere."
+        },
+        {
+          "flag": "--fp16-vae",
+          "type": "bool",
+          "value_type": null,
+          "default": null,
+          "choices": null,
+          "exclusive_group": "fpvae_group",
+          "description": "Run the VAE in fp16 (faster, may cause black images)."
+        },
+        {
+          "flag": "--fp32-vae",
+          "type": "bool",
+          "value_type": null,
+          "default": null,
+          "choices": null,
+          "exclusive_group": "fpvae_group",
+          "description": "Run the VAE in full-precision fp32 (most compatible)."
+        },
+        {
+          "flag": "--bf16-vae",
+          "type": "bool",
+          "value_type": null,
+          "default": null,
+          "choices": null,
+          "exclusive_group": "fpvae_group",
+          "description": "Run the VAE in bf16."
+        },
+        {
+          "flag": "--fp16-unet",
+          "type": "bool",
+          "value_type": null,
+          "default": null,
+          "choices": null,
+          "exclusive_group": "fpunet_group",
+          "description": "Run the diffusion model in fp16."
+        },
+        {
+          "flag": "--bf16-unet",
+          "type": "bool",
+          "value_type": null,
+          "default": null,
+          "choices": null,
+          "exclusive_group": "fpunet_group",
+          "description": "Run the diffusion model in bf16."
+        },
+        {
+          "flag": "--fp8_e4m3fn-unet",
+          "type": "bool",
+          "value_type": null,
+          "default": null,
+          "choices": null,
+          "exclusive_group": "fpunet_group",
+          "description": "Store diffusion-model weights in fp8 (saves memory)."
+        }
+      ]
+    },
+    {
+      "id": "attention",
+      "title": "Attention",
+      "flags": [
+        {
+          "flag": "--use-split-cross-attention",
+          "type": "bool",
+          "value_type": null,
+          "default": null,
+          "choices": null,
+          "exclusive_group": "attn_group",
+          "description": "Split cross-attention (lower memory use)."
+        },
+        {
+          "flag": "--use-pytorch-cross-attention",
+          "type": "bool",
+          "value_type": null,
+          "default": null,
+          "choices": null,
+          "exclusive_group": "attn_group",
+          "description": "PyTorch 2.0 cross-attention."
+        },
+        {
+          "flag": "--use-sage-attention",
+          "type": "bool",
+          "value_type": null,
+          "default": null,
+          "choices": null,
+          "exclusive_group": "attn_group",
+          "description": "SageAttention (fast, needs hardware support)."
+        },
+        {
+          "flag": "--use-flash-attention",
+          "type": "bool",
+          "value_type": null,
+          "default": null,
+          "choices": null,
+          "exclusive_group": "attn_group",
+          "description": "FlashAttention (fast, needs hardware support)."
+        },
+        {
+          "flag": "--disable-xformers",
+          "type": "bool",
+          "value_type": null,
+          "default": null,
+          "choices": null,
+          "exclusive_group": null,
+          "description": "Disable xformers."
+        }
+      ]
+    },
+    {
+      "id": "performance",
+      "title": "Performance / Cache",
+      "flags": [
+        {
+          "flag": "--fast",
+          "type": "bool",
+          "value_type": null,
+          "default": null,
+          "choices": null,
+          "exclusive_group": null,
+          "description": "Enable experimental speed optimizations (e.g. fp16_accumulation)."
+        },
+        {
+          "flag": "--cache-classic",
+          "type": "bool",
+          "value_type": null,
+          "default": null,
+          "choices": null,
+          "exclusive_group": "cache_group",
+          "description": "Old aggressive caching."
+        },
+        {
+          "flag": "--cache-none",
+          "type": "bool",
+          "value_type": null,
+          "default": null,
+          "choices": null,
+          "exclusive_group": "cache_group",
+          "description": "Minimal RAM/VRAM use; re-runs every node each time."
+        },
+        {
+          "flag": "--cache-lru",
+          "type": "value",
+          "value_type": "int",
+          "default": 10,
+          "choices": null,
+          "exclusive_group": "cache_group",
+          "description": "Cache up to N node results (uses more RAM/VRAM)."
+        },
+        {
+          "flag": "--deterministic",
+          "type": "bool",
+          "value_type": null,
+          "default": null,
+          "choices": null,
+          "exclusive_group": null,
+          "description": "Use slower, more reproducible algorithms."
+        }
+      ]
+    },
+    {
+      "id": "network",
+      "title": "Network / Server",
+      "flags": [
+        {
+          "flag": "--listen",
+          "type": "value",
+          "value_type": "str",
+          "default": "0.0.0.0",
+          "choices": null,
+          "exclusive_group": null,
+          "description": "Listen on a given IP (bare = all interfaces)."
+        },
+        {
+          "flag": "--port",
+          "type": "value",
+          "value_type": "int",
+          "default": 8188,
+          "choices": null,
+          "exclusive_group": null,
+          "description": "Server listen port."
+        },
+        {
+          "flag": "--enable-cors-header",
+          "type": "value",
+          "value_type": "str",
+          "default": "*",
+          "choices": null,
+          "exclusive_group": null,
+          "description": "Enable CORS; optional origin, default '*'."
+        }
+      ]
+    },
+    {
+      "id": "preview",
+      "title": "Preview",
+      "flags": [
+        {
+          "flag": "--preview-method",
+          "type": "choice",
+          "value_type": null,
+          "default": "auto",
+          "choices": [
+            "none",
+            "auto",
+            "latent2rgb",
+            "taesd"
+          ],
+          "exclusive_group": null,
+          "description": "Latent preview method for sampler nodes."
+        },
+        {
+          "flag": "--preview-size",
+          "type": "value",
+          "value_type": "int",
+          "default": 512,
+          "choices": null,
+          "exclusive_group": null,
+          "description": "Maximum latent preview size."
+        }
+      ]
+    },
+    {
+      "id": "misc",
+      "title": "Custom Nodes / Misc",
+      "flags": [
+        {
+          "flag": "--disable-all-custom-nodes",
+          "type": "bool",
+          "value_type": null,
+          "default": null,
+          "choices": null,
+          "exclusive_group": null,
+          "description": "Load no custom nodes (clean startup)."
+        },
+        {
+          "flag": "--disable-api-nodes",
+          "type": "bool",
+          "value_type": null,
+          "default": null,
+          "choices": null,
+          "exclusive_group": null,
+          "description": "Disable API nodes and their internet access."
+        },
+        {
+          "flag": "--multi-user",
+          "type": "bool",
+          "value_type": null,
+          "default": null,
+          "choices": null,
+          "exclusive_group": null,
+          "description": "Enable per-user storage."
+        }
+      ]
+    }
+  ]
+}

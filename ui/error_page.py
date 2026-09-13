@@ -109,7 +109,7 @@ class ErrorWidget(QWidget):
             """
         QWidget#ErrorCard {
             background-color: #353535;
-            border-radius: 12px;
+            border-radius: 10px;
 
         }
         """

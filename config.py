@@ -8,6 +8,7 @@ from utils.logger import log_event
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ASSETS_DIR = os.path.join(BASE_DIR, "assets")
 ICONS_DIR = os.path.join(ASSETS_DIR, "icons")
+DATA_DIR = os.path.join(ASSETS_DIR, "data")
 SPLASH_DIR = os.path.join(ASSETS_DIR, "splash")
 INTERFACE_DIR = os.path.join(ASSETS_DIR, "interface")
 DOODLES_DIR = os.path.join(ICONS_DIR, "doodles")
@@ -26,6 +27,7 @@ THEMES_DIR = os.path.join(APP_DATA_DIR, "themes")
 
 # ── Shared resources ─────────────────────────────
 ICON_PATH = os.path.join(ICONS_DIR, "icon.png")
+FLAGS_JSON_PATH = os.path.join(DATA_DIR, "flags.json")
 SPLASH_PATH = os.path.join(SPLASH_DIR, "1618x616_qt.mp4")
 ABOUT_LOGO_BG = os.path.join(INTERFACE_DIR, "back.png")
 ABOUT_LOGO_ANIM = os.path.join(INTERFACE_DIR, "menu_anim.mp4")
@@ -98,14 +100,15 @@ OTHER_ICONS = {
 USER_CONFIG_PATH = os.path.join(APP_DATA_DIR, "user_config.json")
 LEGACY_USER_CONFIG_PATH = os.path.join(BASE_DIR, "user_config.json")
 
-# ── Launch presets ────────────────────────────
+# ── Startup-mode → flags migration table ──────
+# Legacy `startup_mode` was replaced by a plain `extra_flags` list (the single
+# source of truth). This table only drives the one-time fold in the config
+# migration below; it is not used at launch time anymore.
 LAUNCH_PRESETS = {
     "cpu": ["--cpu", "--windows-standalone-build"],
     "gpu": ["--windows-standalone-build"],
     "fast_fp16": ["--windows-standalone-build", "--fast", "fp16_accumulation"],
 }
-
-VALID_STARTUP_MODES = ("cpu", "gpu", "fast_fp16", "custom")
 
 DEFAULT_USER_CONFIG = {
     "ask_on_exit": True,
@@ -141,6 +144,34 @@ def _migrate_legacy_config():
         log_event(f"⚠️ Failed to migrate user config: {e}")
 
 
+def _migrate_build_flags(build: dict) -> None:
+    """Fold a legacy `startup_mode` into `extra_flags` (single source of truth).
+
+    In-place. `extra_flags` becomes the explicit flag list and the obsolete
+    `startup_mode` field is dropped. Idempotent: builds without `startup_mode`
+    (already migrated or written by the current UI) are left untouched.
+    """
+    if not isinstance(build, dict):
+        return
+
+    build.setdefault("extra_flags", [])
+
+    if "startup_mode" not in build:
+        return
+
+    mode = str(build.get("startup_mode", "gpu"))
+    old_extra = build.get("extra_flags") or []
+
+    if mode == "custom":
+        new_flags = list(old_extra)
+    else:
+        preset = LAUNCH_PRESETS.get(mode, LAUNCH_PRESETS["gpu"])
+        new_flags = list(preset) + [f for f in old_extra if f not in preset]
+
+    build["extra_flags"] = new_flags
+    build.pop("startup_mode", None)
+
+
 def load_user_config():
     _migrate_legacy_config()
 
@@ -156,13 +187,9 @@ def load_user_config():
         for key, val in DEFAULT_USER_CONFIG.items():
             data.setdefault(key, val)
 
-        # 2) Миграция: startup_mode внутри каждого build
+        # 2) Migration: fold legacy startup_mode into extra_flags
         for b in data.get("builds") or []:
-            if isinstance(b, dict):
-                b.setdefault(
-                    "startup_mode", "gpu"
-                )  # дефолт для старых билдов без этого поля
-                b.setdefault("extra_flags", [])  # новое поле
+            _migrate_build_flags(b)
 
         return data
 
