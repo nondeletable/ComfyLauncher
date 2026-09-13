@@ -79,5 +79,11 @@ tests/__pycache__/
 # screenshots/
 # assets/generated/
 
+# --- Claude Code workflow (local only, must not reach GitHub) ---
+.claude/
+CLAUDE.md
+PROGRESS.md
+
 # --- Secrets (never commit) ---
 git-token.txt
+*token*.txt
