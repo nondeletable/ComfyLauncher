@@ -128,7 +128,7 @@ class BuildSettingsPage(QWidget):
 
         btn_download = QPushButton()
         btn_download.setIconSize(QSize(60, 28))
-        btn_download.setFixedSize(100, 36)
+        btn_download.setFixedSize(110, 34)
         btn_download.setIcon(
             QIcon(
                 colorize_svg(

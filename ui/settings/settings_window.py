@@ -157,7 +157,7 @@ class SettingsWindow(QWidget):
         self.btn_close = QPushButton("Close")
 
         for btn in (self.btn_apply, self.btn_close):
-            btn.setFixedSize(100, 36)
+            btn.setFixedSize(110, 34)
             btn.setStyleSheet(
                 f"""
                 QPushButton {{

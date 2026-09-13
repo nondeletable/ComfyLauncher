@@ -67,7 +67,7 @@ class BuildManagerDialog(QDialog):
         layout.setContentsMargins(24, 20, 24, 18)
         layout.setSpacing(14)
 
-        r = 9
+        r = 10
         self.main_frame.setStyleSheet(
             f"""
             QFrame#build_manager_main_frame {{
@@ -138,9 +138,12 @@ class BuildManagerDialog(QDialog):
                 self.list_layout.addWidget(self._build_row(b))
 
         self.scroll.setWidget(container)
-        self.scroll.setFixedHeight(self.MAX_LIST_H)
+        # Let the scroll area flex to the space between title and the bottom bar
+        # instead of a hard-coded height that overran the frame and pushed the
+        # "Close" row out from under it. MAX_LIST_H stays as an upper bound only.
+        self.scroll.setMaximumHeight(self.MAX_LIST_H)
 
-        layout.addWidget(self.scroll, 0)
+        layout.addWidget(self.scroll, 1)
 
         self.list_layout.addWidget(self._build_add_row())
         self.list_layout.addStretch(1)
@@ -166,7 +169,6 @@ class BuildManagerDialog(QDialog):
         )
         self.btn_close.clicked.connect(self.reject)  # type: ignore
         bottom.addWidget(self.btn_close)
-        layout.addStretch(1)
         layout.addLayout(bottom)
 
     def _build_row(self, build: dict) -> QWidget:
