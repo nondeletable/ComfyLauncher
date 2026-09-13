@@ -26,6 +26,7 @@ from ui.header import colorize_svg
 from ui.theme.manager import THEME
 from utils.build_validation import is_valid_comfyui_build, detect_build_type
 from ui.dialogs.messagebox import MessageBox as MB
+from ui.dialogs.flags_picker_dialog import FlagsPickerDialog
 
 import os
 import uuid
@@ -450,9 +451,9 @@ class SetupWindow(QDialog):
             self.ok_btn.setEnabled(path_ok and name_ok)
 
     def _open_flags_picker(self):
-        # Stage 5: opens the grouped-flags modal (chips from flags.json) that
-        # inserts flags into flags_edit. Placeholder until then.
-        pass
+        picker = FlagsPickerDialog(self, flags_text=self.flags_edit.text())
+        picker.flagsChanged.connect(self.flags_edit.setText)
+        picker.exec()
 
     def _get_extra_flags(self) -> list[str]:
         raw = self.flags_edit.text().strip()
