@@ -84,3 +84,91 @@ def test_load_creates_defaults_when_none(tmp_path, monkeypatch):
 
     assert new.exists()
     assert "builds" in data
+
+
+# ── Stage 3: startup_mode → extra_flags fold ──────────────────────────
+
+
+def test_migrate_gpu_mode():
+    b = {"id": "b", "startup_mode": "gpu", "extra_flags": []}
+    config._migrate_build_flags(b)
+    assert b["extra_flags"] == ["--windows-standalone-build"]
+    assert "startup_mode" not in b
+
+
+def test_migrate_cpu_mode():
+    b = {"id": "b", "startup_mode": "cpu", "extra_flags": []}
+    config._migrate_build_flags(b)
+    assert b["extra_flags"] == ["--cpu", "--windows-standalone-build"]
+    assert "startup_mode" not in b
+
+
+def test_migrate_fast_fp16_mode():
+    b = {"id": "b", "startup_mode": "fast_fp16", "extra_flags": []}
+    config._migrate_build_flags(b)
+    assert b["extra_flags"] == [
+        "--windows-standalone-build",
+        "--fast",
+        "fp16_accumulation",
+    ]
+    assert "startup_mode" not in b
+
+
+def test_migrate_custom_mode_keeps_flags_verbatim():
+    b = {"id": "b", "startup_mode": "custom", "extra_flags": ["--port", "9000"]}
+    config._migrate_build_flags(b)
+    assert b["extra_flags"] == ["--port", "9000"]
+    assert "startup_mode" not in b
+
+
+def test_migrate_unknown_mode_falls_back_to_gpu():
+    b = {"id": "b", "startup_mode": "weird", "extra_flags": []}
+    config._migrate_build_flags(b)
+    assert b["extra_flags"] == ["--windows-standalone-build"]
+
+
+def test_migrate_preset_dedupes_hand_edited_extra_flags():
+    # A hand-edited config may already carry a preset flag in extra_flags.
+    b = {
+        "id": "b",
+        "startup_mode": "cpu",
+        "extra_flags": ["--windows-standalone-build", "--lowvram"],
+    }
+    config._migrate_build_flags(b)
+    assert b["extra_flags"] == ["--cpu", "--windows-standalone-build", "--lowvram"]
+
+
+def test_migrate_is_idempotent():
+    b = {"id": "b", "startup_mode": "gpu", "extra_flags": []}
+    config._migrate_build_flags(b)
+    once = list(b["extra_flags"])
+    config._migrate_build_flags(b)
+    assert b["extra_flags"] == once
+    assert "startup_mode" not in b
+
+
+def test_migrate_missing_startup_mode_only_ensures_extra_flags():
+    b = {"id": "b"}
+    config._migrate_build_flags(b)
+    assert b["extra_flags"] == []
+    assert "startup_mode" not in b
+
+
+def test_load_user_config_migrates_builds(tmp_path, monkeypatch):
+    new = tmp_path / "appdata" / "user_config.json"
+    new.parent.mkdir(parents=True)
+    new.write_text(
+        '{"builds": [{"id": "x", "startup_mode": "fast_fp16", "extra_flags": []}]}',
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(config, "USER_CONFIG_PATH", str(new))
+
+    data = config.load_user_config()
+    build = data["builds"][0]
+
+    assert build["extra_flags"] == [
+        "--windows-standalone-build",
+        "--fast",
+        "fp16_accumulation",
+    ]
+    assert "startup_mode" not in build

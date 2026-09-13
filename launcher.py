@@ -14,7 +14,6 @@ from utils.logger import log_event
 from config import (
     COMFYUI_PORT,
     CHECK_INTERVAL,
-    LAUNCH_PRESETS,
     MAX_WAIT_TIME,
     load_user_config,
     save_user_config,
@@ -234,16 +233,12 @@ def ensure_comfyui_running(comfy_path: str, port: int = 8188):
         return
 
     # --- Build flags -------------------------------------------------
+    # extra_flags is the single source of truth (startup_mode was folded into
+    # it by the config migration in load_user_config).
     active_build = _get_active_build(cfg)
-    startup_mode = (active_build or {}).get("startup_mode", "gpu")
-    extra_flags = (active_build or {}).get("extra_flags", [])
+    flags = list((active_build or {}).get("extra_flags", []))
 
-    if startup_mode == "custom":
-        flags = extra_flags
-    else:
-        flags = LAUNCH_PRESETS[startup_mode] + extra_flags
-
-    log_event(f"🚀 Starting ComfyUI in {startup_mode} mode...")
+    log_event(f"🚀 Starting ComfyUI with flags: {' '.join(flags) or '(none)'}")
 
     # --- Launch ------------------------------------------------------
     base_dir = os.path.dirname(comfy_path)
@@ -287,7 +282,7 @@ def ensure_comfyui_running(comfy_path: str, port: int = 8188):
             target=_read_process_output, args=(_comfy_process,), daemon=True
         ).start()
 
-    log_event(f"🟢 ComfyUI started (PID {_comfy_process.pid}) in mode {startup_mode}.")
+    log_event(f"🟢 ComfyUI started (PID {_comfy_process.pid}).")
 
 
 def kill_process_tree(pid):
