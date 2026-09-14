@@ -10,8 +10,101 @@ pythonnet.load("netfx")  # noqa: E402
 
 import clr  # type: ignore  # noqa: E402
 
-from PyQt6.QtCore import pyqtSignal, Qt, QTimer  # noqa: E402
-from PyQt6.QtWidgets import QWidget, QVBoxLayout  # noqa: E402
+from PyQt6.QtCore import (  # noqa: E402
+    pyqtSignal,
+    Qt,
+    QTimer,
+    QPropertyAnimation,
+    QPoint,
+)
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel  # noqa: E402
+
+from ui.theme.manager import THEME  # noqa: E402
+
+
+class _DownloadToast(QWidget):
+    """Frameless top-level toast shown after a silent download.
+
+    It is a separate always-on-top window (not a child widget) on purpose:
+    the WebView2 panel is a native HWND reparented into Qt, and native
+    windows paint on top of Qt children — a plain child QLabel would be
+    hidden behind the web view. A top-level window renders above it.
+    """
+
+    _AUTOHIDE_MS = 2500
+
+    def __init__(self):
+        super().__init__(
+            None,
+            Qt.WindowType.FramelessWindowHint
+            | Qt.WindowType.Tool
+            | Qt.WindowType.WindowStaysOnTopHint
+            | Qt.WindowType.WindowDoesNotAcceptFocus,
+        )
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+        self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating, True)
+
+        self._label = QLabel(self)
+        self._label.setTextFormat(Qt.TextFormat.RichText)
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(self._label)
+
+        self._hide_timer = QTimer(self)
+        self._hide_timer.setSingleShot(True)
+        self._hide_timer.timeout.connect(self._start_fade)  # type: ignore
+
+        self._fade = QPropertyAnimation(self, b"windowOpacity", self)
+        self._fade.setDuration(300)
+        self._fade.setStartValue(1.0)
+        self._fade.setEndValue(0.0)
+        self._fade.finished.connect(self.hide)  # type: ignore
+
+    def _restyle(self):
+        c = THEME.colors
+        self._label.setStyleSheet(
+            f"""
+            QLabel {{
+                background-color: {c['popup_bg']};
+                color: {c['popup_text']};
+                border: 1px solid {c['popup_border']};
+                border-radius: 8px;
+                padding: 9px 14px;
+                font-size: 13px;
+            }}
+            """
+        )
+
+    def show_saved(self, name: str, full_path: str, anchor: QWidget):
+        """Show '✔ Saved: <name>' anchored to the bottom-center of ``anchor``."""
+        self._restyle()
+        c = THEME.colors
+        safe = name.replace("<", "&lt;").replace(">", "&gt;")
+        self._label.setText(
+            f'<span style="color:{c["success"]};font-weight:bold;">✔</span>'
+            f"&nbsp;&nbsp;Сохранено: "
+            f'<span style="color:{c["text_secondary"]};">{safe}</span>'
+        )
+        self._label.setToolTip(full_path)
+
+        self._fade.stop()
+        self.setWindowOpacity(1.0)
+        self.adjustSize()
+
+        rect = anchor.rect()
+        bottom_center = anchor.mapToGlobal(
+            QPoint(rect.width() // 2, rect.height() - 16 - self.height())
+        )
+        self.move(bottom_center.x() - self.width() // 2, bottom_center.y())
+
+        self.show()
+        self.raise_()
+        self._hide_timer.start(self._AUTOHIDE_MS)
+
+    def _start_fade(self):
+        self._fade.stop()
+        self._fade.start()
 
 
 def _wv2_userdata_dir(app_name: str = "ComfyLauncher") -> str:
@@ -23,6 +116,8 @@ def _wv2_userdata_dir(app_name: str = "ComfyLauncher") -> str:
 
 class WebView2Widget(QWidget):
     loaded = pyqtSignal(bool)
+    # (basename, full_path) — emitted from the WebView2 event when a download finishes
+    download_saved = pyqtSignal(str, str)
 
     def __init__(
         self, url: str, dll_dir: str | None = None, parent: QWidget | None = None
@@ -43,6 +138,10 @@ class WebView2Widget(QWidget):
 
         self._webview = None
         self._panel_hwnd = None
+
+        # Silent-download toast (created lazily on first download)
+        self._toast: _DownloadToast | None = None
+        self.download_saved.connect(self._show_download_toast)
 
         self._init_webview2(dll_dir=dll_dir)
 
@@ -241,11 +340,51 @@ class WebView2Widget(QWidget):
             pass
 
         try:
+            if self._toast is not None:
+                self._toast.close()
+                self._toast = None
+        except Exception:
+            pass
+
+        try:
             if self._webview is not None:
                 self._webview.Dispose()
         except Exception:
             pass
         self._webview = None
+
+    # ── Downloads (silent, no default WebView2 flyout) ──────────
+    def _on_download_starting(self, sender, args):
+        """Suppress Edge's default download flyout (it covers ComfyUI's RUN
+        button) and let the file save silently to the default folder.
+        A lightweight in-app toast is shown once the download completes."""
+        try:
+            # Hide the built-in download UI; the download itself still runs.
+            args.Handled = True
+
+            op = args.DownloadOperation
+
+            def _on_state_changed(s, e):
+                try:
+                    from Microsoft.Web.WebView2.Core import (  # type: ignore
+                        CoreWebView2DownloadState,
+                    )
+
+                    if op.State == CoreWebView2DownloadState.Completed:
+                        path = str(op.ResultFilePath or "")
+                        name = os.path.basename(path) if path else "файл"
+                        self.download_saved.emit(name, path)  # type: ignore
+                except Exception:
+                    pass
+
+            op.StateChanged += _on_state_changed
+        except Exception:
+            pass
+
+    def _show_download_toast(self, name: str, full_path: str):
+        if self._toast is None:
+            self._toast = _DownloadToast()
+        self._toast.show_saved(name, full_path, self)
 
     def _do_events(self):
         try:
@@ -269,6 +408,9 @@ class WebView2Widget(QWidget):
                         self.loaded.emit(args.IsSuccess)  # type: ignore
 
                     self._webview.CoreWebView2.NavigationCompleted += _on_nav_completed
+                    self._webview.CoreWebView2.DownloadStarting += (
+                        self._on_download_starting
+                    )
                     self.navigate(self._url)
                 self.loaded.emit(ok)  # type: ignore
 

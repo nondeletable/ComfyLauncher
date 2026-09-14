@@ -306,6 +306,43 @@ def kill_process_tree(pid):
         pass
 
 
+def _pid_belongs_to_build(pid: int, comfy_main: str, base_dir: str) -> bool:
+    """True if the process (or any ancestor) is part of *this* ComfyUI build.
+
+    A listener on port 8188 is only ours if its command line references this
+    build's main.py, or its executable lives inside the build folder. Anything
+    else — a second ComfyUI install, an unrelated app that happens to hold the
+    port — must not be killed. When ownership can't be verified, return False
+    (safe default: leave the process alone).
+    """
+    try:
+        proc = psutil.Process(pid)
+    except (psutil.NoSuchProcess, psutil.AccessDenied):
+        return False
+
+    chain = [proc]
+    try:
+        chain.extend(proc.parents())
+    except (psutil.NoSuchProcess, psutil.AccessDenied):
+        pass
+
+    for p in chain:
+        try:
+            cmd = " ".join(p.cmdline() or []).lower().replace("\\", "/")
+            if comfy_main in cmd:
+                return True
+        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+            pass
+        try:
+            exe = (p.exe() or "").lower().replace("\\", "/")
+            if base_dir and exe.startswith(base_dir):
+                return True
+        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+            pass
+
+    return False
+
+
 def stop_comfyui_hard(comfy_path: str, _grace_period=5):
     """Completely completes ComfyUI (python process and descendants)."""
     global _comfy_process
@@ -313,6 +350,7 @@ def stop_comfyui_hard(comfy_path: str, _grace_period=5):
 
     killed = False
     comfy_main = os.path.join(comfy_path, "main.py").lower().replace("\\", "/")
+    base_dir = os.path.dirname(comfy_path).lower().replace("\\", "/")
 
     # 1️⃣ Look for python main.py process
     for proc in psutil.process_iter(["pid", "name", "cmdline"]):
@@ -342,8 +380,20 @@ def stop_comfyui_hard(comfy_path: str, _grace_period=5):
             continue
 
         for pid in pids:
-            log_event(f"💀 Killing listener on port {COMFYUI_PORT}: PID {pid}")
-            kill_process_tree(pid)
+            if _pid_belongs_to_build(pid, comfy_main, base_dir):
+                log_event(f"💀 Killing listener on port {COMFYUI_PORT}: PID {pid}")
+                kill_process_tree(pid)
+            else:
+                try:
+                    pname = psutil.Process(pid).name()
+                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                    pname = "?"
+                log_event(
+                    f"⛔ Port {COMFYUI_PORT} held by unrelated process "
+                    f"PID {pid} ({pname}) — not killing."
+                )
+                # Not ours and not going away: stop waiting on the grace loop.
+                deadline = 0
 
         time.sleep(0.3)
 
