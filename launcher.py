@@ -11,6 +11,7 @@ import threading
 from datetime import datetime
 from utils.console_buffer import ConsoleBuffer
 from utils.logger import log_event
+from utils.python_resolver import resolve_interpreter, build_env
 from config import (
     COMFYUI_PORT,
     CHECK_INTERVAL,
@@ -175,21 +176,6 @@ def restore_browser_auto_launch(comfy_path: str):
         log_event(f"❌ Failed to restore browser launch: {e}")
 
 
-def resolve_python_exe(base_dir: str) -> str:
-    """
-    Returns the path to the embedded Python inside the portable build, if present.
-    Supports both spellings: python_embeded / python_embedded.
-    Otherwise, it uses 'python' (the system interpreter).
-    """
-    cand = os.path.join(base_dir, "python_embeded", "python.exe")
-    if os.path.exists(cand):
-        return cand
-    cand = os.path.join(base_dir, "python_embedded", "python.exe")
-    if os.path.exists(cand):
-        return cand
-    return "python"
-
-
 def ensure_comfyui_running(comfy_path: str, port: int = 8188):
     """
     1) Checks if the server is running.
@@ -241,19 +227,12 @@ def ensure_comfyui_running(comfy_path: str, port: int = 8188):
     log_event(f"🚀 Starting ComfyUI with flags: {' '.join(flags) or '(none)'}")
 
     # --- Launch ------------------------------------------------------
-    base_dir = os.path.dirname(comfy_path)
-    python_exe = resolve_python_exe(base_dir)
-    python_home = os.path.dirname(python_exe) if python_exe != "python" else ""
+    interp = resolve_interpreter(comfy_path)
+    log_event(f"🐍 Interpreter: {interp.kind} → {interp.exe}")
 
-    args = [python_exe, "-s", "-u", os.path.join(comfy_path, "main.py")] + flags
+    args = [interp.exe, "-s", "-u", os.path.join(comfy_path, "main.py")] + flags
 
-    env = os.environ.copy()
-    env["PYTHONUNBUFFERED"] = "1"
-    env["PYTHONIOENCODING"] = "utf-8"
-    if python_home:
-        env["PYTHONHOME"] = python_home
-        env["PYTHONPATH"] = comfy_path
-        env["PATH"] = python_home + ";" + env["PATH"]
+    env = build_env(interp, comfy_path)
 
     if show_cmd:
         _comfy_process = subprocess.Popen(

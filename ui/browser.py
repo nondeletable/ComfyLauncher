@@ -19,6 +19,7 @@ from version import __version__
 from ui.splash_video import LauncherSplashVideo
 from ui.webview2_widget import WebView2Widget
 from utils.logger import log_event
+from utils.platform_paths import open_in_file_manager
 from utils.update_checker import UpdateService
 from launcher import (
     ensure_comfyui_running,
@@ -188,7 +189,7 @@ class ComfyBrowser(QMainWindow):
         log_event("🟥 ComfyUI completely stopped by the user.")
 
     def open_folder(self):
-        os.startfile(self.comfyui_path)
+        open_in_file_manager(self.comfyui_path)
 
     def open_settings(self):
         log_event("🧩 Opening settings window...")
@@ -247,7 +248,7 @@ class ComfyBrowser(QMainWindow):
         output_dir = os.path.join(comfy_path, "output")
 
         if os.path.exists(output_dir):
-            os.startfile(output_dir)
+            open_in_file_manager(output_dir)
         else:
             log_event(f"⚠️ Output folder not found: {output_dir}")
 
