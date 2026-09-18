@@ -12,6 +12,11 @@ class ErrorScreen(QWidget):
 
         self.setObjectName("ErrorScreen")
         self.setAutoFillBackground(True)
+        # A QWidget subclass needs this to paint a stylesheet background; the
+        # plain QWidget card below does not. Without it the screen showed the
+        # ambient (light) palette instead of the dark backdrop below — on
+        # Windows too, since its default palette is light as well.
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.setStyleSheet(
             """
             QWidget#ErrorScreen {
