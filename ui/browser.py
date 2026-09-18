@@ -1,4 +1,10 @@
-from PyQt6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QLabel
+from PyQt6.QtWidgets import (
+    QApplication,
+    QMainWindow,
+    QWidget,
+    QVBoxLayout,
+    QLabel,
+)
 from PyQt6.QtGui import QPainterPath, QRegion
 from PyQt6.QtCore import Qt, QTimer, QRectF, QThread
 
@@ -61,6 +67,8 @@ class ComfyBrowser(QMainWindow):
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
         # self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
 
+        self._init_geometry()
+
         # Status check timer
         self.status_timer = QTimer(self)
         self.status_timer.timeout.connect(self.check_server_status)  # type: ignore
@@ -102,6 +110,26 @@ class ComfyBrowser(QMainWindow):
 
         self.ui_state = "STARTING_COMFY"
         self._start_comfyui()
+
+    def _init_geometry(self):
+        """Give the window a usable size for when it is not maximized.
+
+        The window is always shown maximized, and nothing ever set a normal
+        size — so its restore geometry (drag a maximized window off the top,
+        or press the restore button) was Qt's 640x480 default, and its size
+        hint is just the header strip. The minimum is capped against the
+        normal size so it still fits on a small screen.
+        """
+        screen = QApplication.primaryScreen()
+        if screen is None:
+            return
+
+        available = screen.availableGeometry()
+        normal_w = int(available.width() * 0.8)
+        normal_h = int(available.height() * 0.8)
+
+        self.setMinimumSize(min(900, normal_w), min(600, normal_h))
+        self.resize(normal_w, normal_h)
 
     # ──────────────────────────────────────────────
     def restart_comfy(self):
