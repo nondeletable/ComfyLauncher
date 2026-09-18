@@ -1,3 +1,5 @@
+import sys
+
 from PyQt6.QtWidgets import (
     QWidget,
     QHBoxLayout,
@@ -44,6 +46,7 @@ class HeaderBar(QWidget):
         super().__init__(parent)
         self.parent = parent
         self.drag_pos = QPoint(0, 0)
+        self._system_move_active = False
         self.setObjectName("HeaderBar")
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.setFixedHeight(46)
@@ -208,16 +211,46 @@ class HeaderBar(QWidget):
             self.parent.browser.reload()
 
     # ── Dragging a window ───────────────────────────
+    def _try_system_move(self) -> bool:
+        """Hand the drag to the compositor; True if it took over.
+
+        Wayland has no client-side window positioning — a client cannot place
+        its own toplevel, so ``move()`` is silently ignored and the window
+        simply does not follow the mouse. ``startSystemMove()`` asks the
+        compositor to run the drag instead.
+
+        Deliberately not used on Windows: ``move()`` works there, and handing
+        the drag to the OS would also bring in native edge snapping, which is
+        a UX change that needs its own decision.
+        """
+        if sys.platform == "win32":
+            return False
+        handle = self.parent.windowHandle() if self.parent is not None else None
+        if handle is None:
+            return False
+        try:
+            return bool(handle.startSystemMove())
+        except Exception:
+            return False
+
     def mousePressEvent(self, event):
-        if event.button() == Qt.MouseButton.LeftButton:
+        if event.button() != Qt.MouseButton.LeftButton:
+            return
+        self._system_move_active = self._try_system_move()
+        if not self._system_move_active:
             self.drag_pos = event.globalPosition().toPoint()
 
     def mouseMoveEvent(self, event):
+        if self._system_move_active:
+            return  # the compositor is moving the window for us
         if event.buttons() == Qt.MouseButton.LeftButton:
             self.parent.move(
                 self.parent.pos() + event.globalPosition().toPoint() - self.drag_pos
             )
             self.drag_pos = event.globalPosition().toPoint()
+
+    def mouseReleaseEvent(self, event):
+        self._system_move_active = False
 
     def _apply_theme(self, *args):
         """Reapplies colors when changing themes."""
