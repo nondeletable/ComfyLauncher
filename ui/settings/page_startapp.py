@@ -3,6 +3,7 @@ from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QCheckBox, QHBoxLayout
 from config import load_user_config, save_user_config
 from ui.theme.manager import THEME
 from ui.dialogs.messagebox import MessageBox as MB
+from utils.process_launch import external_console_supported
 
 
 class StartAppSettingsPage(QWidget):
@@ -22,21 +23,27 @@ class StartAppSettingsPage(QWidget):
         title_cmd.setStyleSheet("font-size: 20px; font-weight: 600;")
         layout.addWidget(title_cmd)
 
-        desc_cmd = QLabel(
-            "Show the Windows Command Prompt (CMD) window when launching ComfyUI.\n"
-            "If disabled, ComfyUI starts without a CMD window."
-        )
-        desc_cmd.setWordWrap(True)
-        desc_cmd.setStyleSheet(
-            f"color: {THEME.colors['text_secondary']}; font-size: 13px;"
-        )
-        layout.addWidget(desc_cmd)
-
+        # The external CMD window is Windows-only. On other platforms ComfyUI
+        # always uses the internal console, so this option makes no sense there:
+        # keep the widget (reset()/apply() stay uniform) but hide it.
         self.cb_show_cmd = self._make_checkbox("Show CMD window on launch")
-        row_cmd = QHBoxLayout()
-        row_cmd.setContentsMargins(14, 0, 0, 0)
-        row_cmd.addWidget(self.cb_show_cmd)
-        layout.addLayout(row_cmd)
+        if external_console_supported():
+            desc_cmd = QLabel(
+                "Show the Windows Command Prompt (CMD) window when launching ComfyUI.\n"
+                "If disabled, ComfyUI starts without a CMD window."
+            )
+            desc_cmd.setWordWrap(True)
+            desc_cmd.setStyleSheet(
+                f"color: {THEME.colors['text_secondary']}; font-size: 13px;"
+            )
+            layout.addWidget(desc_cmd)
+
+            row_cmd = QHBoxLayout()
+            row_cmd.setContentsMargins(14, 0, 0, 0)
+            row_cmd.addWidget(self.cb_show_cmd)
+            layout.addLayout(row_cmd)
+        else:
+            self.cb_show_cmd.hide()
 
         # ─── Splash Section ───────────────────────────
         desc_splash = QLabel(

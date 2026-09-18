@@ -11,6 +11,7 @@ from PyQt6.QtGui import QIcon, QPainter, QPixmap, QColor
 
 from config import ICON_PATH, ICON_PATHS, HEAD_ICON_PATHS, load_user_config
 from ui.theme.manager import THEME
+from utils.process_launch import external_console_supported
 
 
 def colorize_svg(svg_path, color=THEME.colors["icon_color_window"], size=QSize(20, 20)):
@@ -49,7 +50,9 @@ class HeaderBar(QWidget):
 
         cfg = load_user_config()
         show_cmd = cfg.get("show_cmd", True)
-        self.use_internal_console = not show_cmd
+        # Where there is no external console (Linux/macOS), ComfyUI always uses
+        # the internal one, so its toolbar button must always be available.
+        self.use_internal_console = (not show_cmd) or not external_console_supported()
 
         self.setStyleSheet(
             f"""

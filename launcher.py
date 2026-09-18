@@ -12,6 +12,7 @@ from datetime import datetime
 from utils.console_buffer import ConsoleBuffer
 from utils.logger import log_event
 from utils.python_resolver import resolve_interpreter, build_env
+from utils.process_launch import spawn_comfy, external_console_supported
 from config import (
     COMFYUI_PORT,
     CHECK_INTERVAL,
@@ -191,7 +192,6 @@ def ensure_comfyui_running(comfy_path: str, port: int = 8188):
 
     cfg = load_user_config()
     show_cmd = cfg.get("show_cmd", True)
-    use_internal_console = not show_cmd
 
     registry = cfg.get("browser_patch_registry", {})
     entry = registry.get(comfy_path, {})
@@ -234,29 +234,19 @@ def ensure_comfyui_running(comfy_path: str, port: int = 8188):
 
     env = build_env(interp, comfy_path)
 
-    if show_cmd:
-        _comfy_process = subprocess.Popen(
-            ["cmd.exe", "/k"] + args,
-            cwd=comfy_path,
-            env=env,
-            creationflags=subprocess.CREATE_NEW_CONSOLE,
-        )
-    else:
-        _comfy_process = subprocess.Popen(
-            args,
-            cwd=comfy_path,
-            env=env,
-            creationflags=subprocess.CREATE_NO_WINDOW,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            bufsize=1,
+    if show_cmd and not external_console_supported():
+        log_event(
+            "ℹ️ External console not supported on this OS — using internal console."
         )
 
-    # --- Read output only in internal console mode -------------------
-    if use_internal_console and _comfy_process:
+    _comfy_process, piped = spawn_comfy(
+        args, comfy_path, env, external_console=show_cmd
+    )
+
+    # --- Drain stdout whenever we own the pipe -----------------------
+    # Piped means the internal console is in use (always on posix; the
+    # hidden-window mode on Windows). The external cmd.exe console is not piped.
+    if piped and _comfy_process:
         threading.Thread(
             target=_read_process_output, args=(_comfy_process,), daemon=True
         ).start()
