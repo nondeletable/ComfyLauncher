@@ -333,11 +333,11 @@ def stop_comfyui_hard(comfy_path: str, _grace_period=5):
             continue
 
     if killed:
-        if not is_port_open(COMFYUI_PORT):
-            log_event("🟢 Port 8188 closed — server fully stopped.")
-        else:
-            log_event("⚠️ Port still busy — possible residual process.")
-        log_event("✅ ComfyUI stopped completely.")
+        # No port check here: the socket is still held for a moment after the
+        # kill, so this always warned about a "residual process" on a perfectly
+        # normal stop. The grace loop below waits it out and reports the real
+        # verdict, which is the only one worth logging.
+        log_event("✅ ComfyUI process tree killed.")
     else:
         log_event("⚠️ No ComfyUI process found to stop.")
 
