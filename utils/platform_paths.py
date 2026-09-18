@@ -15,7 +15,6 @@ import os
 import sys
 import subprocess
 
-from utils.logger import log_event
 
 APP_NAME = "ComfyLauncher"
 
@@ -55,4 +54,8 @@ def open_in_file_manager(path: str) -> None:
         else:
             subprocess.Popen(["xdg-open", path])
     except Exception as e:
+        # Imported here, not at module level: utils.logger asks this module for
+        # the app directory, and a module-level import would be circular.
+        from utils.logger import log_event
+
         log_event(f"⚠️ Failed to open path in file manager: {path} ({e})")
