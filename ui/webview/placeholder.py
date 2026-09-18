@@ -30,72 +30,83 @@ class PlaceholderWebView(WebViewBase):
         super().__init__(parent)
         self._url = url
         self._build_ui()
+        self._apply_theme()
+        THEME.themeChanged.connect(self._apply_theme)
         log_event(
             f"ℹ️ No embedded engine on this platform — placeholder shown for {url}"
         )
 
     def _build_ui(self) -> None:
-        c = THEME.colors
-
         self.setObjectName("PlaceholderWebView")
-        self.setAutoFillBackground(True)
-        self.setStyleSheet(
-            f"""
-            QWidget#PlaceholderWebView {{
-                background-color: {c["bg_header"]};
-            }}
-            """
-        )
+        # A plain QWidget subclass does not paint a stylesheet background unless
+        # it is told to: without this the panel shows the ambient (light) palette
+        # and a text_primary title turns white-on-white. It only showed up in the
+        # real app because main.py replaces the theme's application stylesheet.
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
 
         root = QVBoxLayout(self)
         root.setContentsMargins(36, 32, 36, 32)
         root.setSpacing(14)
         root.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        title = QLabel("No embedded engine on this platform")
-        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        title.setStyleSheet(
-            f"font-size: 18px; font-weight: 600; color: {c['text_primary']};"
-        )
+        self._title = QLabel("No embedded engine on this platform")
+        self._title.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        message = QLabel(
+        self._message = QLabel(
             "ComfyUI is running and reachable, but no web engine is wired up "
             "for this platform yet. Open the interface in your browser."
         )
-        message.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        message.setWordWrap(True)
-        message.setStyleSheet(f"font-size: 15px; color: {c['text_secondary']};")
+        self._message.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._message.setWordWrap(True)
 
-        address = QLabel(self._url)
-        address.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        address.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-        address.setStyleSheet(
-            f"font-size: 14px; color: {c['accent']}; background: transparent;"
+        self._address = QLabel(self._url)
+        self._address.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._address.setTextInteractionFlags(
+            Qt.TextInteractionFlag.TextSelectableByMouse
         )
 
-        open_button = QPushButton("Open in browser")
-        open_button.setCursor(Qt.CursorShape.PointingHandCursor)
-        open_button.setStyleSheet(
+        self._open_button = QPushButton("Open in browser")
+        self._open_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._open_button.clicked.connect(self._open_in_system_browser)
+
+        root.addWidget(self._title)
+        root.addWidget(self._message)
+        root.addWidget(self._address)
+        root.addWidget(self._open_button, 0, Qt.AlignmentFlag.AlignCenter)
+
+    def _apply_theme(self, *_args) -> None:
+        """(Re)apply theme colors — also on a live theme switch."""
+        c = THEME.colors
+
+        self.setStyleSheet(
+            f"""
+            QWidget#PlaceholderWebView {{
+                background-color: {c['bg_header']};
+            }}
+            """
+        )
+        self._title.setStyleSheet(
+            f"font-size: 18px; font-weight: 600; color: {c['text_primary']};"
+        )
+        self._message.setStyleSheet(f"font-size: 15px; color: {c['text_secondary']};")
+        self._address.setStyleSheet(
+            f"font-size: 14px; color: {c['accent']}; background: transparent;"
+        )
+        self._open_button.setStyleSheet(
             f"""
             QPushButton {{
-                background-color: {c["accent"]};
-                color: {c["text_inverse"]};
+                background-color: {c['accent']};
+                color: {c['text_inverse']};
                 border: none;
                 border-radius: 10px;
                 padding: 8px 18px;
                 font-size: 14px;
             }}
             QPushButton:hover {{
-                background-color: {c["accent_hover"]};
+                background-color: {c['accent_hover']};
             }}
             """
         )
-        open_button.clicked.connect(self._open_in_system_browser)
-
-        root.addWidget(title)
-        root.addWidget(message)
-        root.addWidget(address)
-        root.addWidget(open_button, 0, Qt.AlignmentFlag.AlignCenter)
 
     def _open_in_system_browser(self) -> None:
         log_event(f"🌐 Opening {self._url} in the system browser.")

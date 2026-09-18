@@ -15,16 +15,19 @@ import sys  # noqa: E402
 import types  # noqa: E402
 
 import pytest  # noqa: E402
-from PyQt6.QtWidgets import QApplication, QWidget  # noqa: E402
+from PyQt6.QtWidgets import QVBoxLayout, QWidget  # noqa: E402
+
+from ui.theme.manager import THEME  # noqa: E402
 
 from ui.webview import create_webview  # noqa: E402
 from ui.webview.base import WebViewBase  # noqa: E402
 from ui.webview.placeholder import PlaceholderWebView  # noqa: E402
 
 
-@pytest.fixture(scope="module")
-def app():
-    return QApplication.instance() or QApplication([])
+@pytest.fixture
+def app(qapp):
+    """The session-wide QApplication (see tests/conftest.py)."""
+    return qapp
 
 
 URL = "http://127.0.0.1:8188"
@@ -96,3 +99,51 @@ def test_browser_module_imports_without_an_engine(app):
     """Regression: ui.browser used to import WebView2 (and a .NET runtime)
     at module level, so it could not be imported off Windows at all."""
     assert importlib.import_module("ui.browser") is not None
+
+
+@pytest.fixture
+def wiped_theme_qss(app):
+    """Mimic main.py, which replaces the theme's application stylesheet with
+    a QToolTip-only one right after THEME.apply()."""
+    THEME.apply()
+    previous = app.styleSheet()
+    app.setStyleSheet("QToolTip { background-color: #2b2b2b; }")
+    yield
+    app.setStyleSheet(previous)
+
+
+def test_placeholder_paints_its_background_inside_a_window(app, wiped_theme_qss):
+    """Regression: the panel rendered with the ambient light palette, which made
+    the text_primary title white-on-white. A QWidget subclass only paints a
+    stylesheet background with WA_StyledBackground set, and a standalone
+    widget.grab() hides the bug — it has to be rendered through its parent.
+    """
+    view = PlaceholderWebView(URL)
+    host = QWidget()
+    host.resize(400, 300)
+    layout = QVBoxLayout(host)
+    layout.setContentsMargins(0, 0, 0, 0)
+    layout.addWidget(view, 1)
+    host.show()
+    app.processEvents()
+
+    pixel = host.grab().toImage().pixelColor(4, 150).name().lower()
+    assert pixel == THEME.colors["bg_header"].lower()
+    host.close()
+
+
+def test_placeholder_follows_a_theme_change(app):
+    """Colors are read once at build time, so the panel has to listen for
+    themeChanged — otherwise it keeps stale colors after a switch."""
+    view = PlaceholderWebView(URL)
+    before = view._title.styleSheet()
+
+    original = THEME._colors
+    try:
+        THEME._colors = dict(original, text_primary="#ABCDEF")
+        THEME.themeChanged.emit(THEME._colors)
+        assert "#ABCDEF" in view._title.styleSheet()
+        assert view._title.styleSheet() != before
+    finally:
+        THEME._colors = original
+        THEME.themeChanged.emit(original)
