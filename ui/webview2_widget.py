@@ -11,7 +11,6 @@ pythonnet.load("netfx")  # noqa: E402
 import clr  # type: ignore  # noqa: E402
 
 from PyQt6.QtCore import (  # noqa: E402
-    pyqtSignal,
     Qt,
     QTimer,
     QPropertyAnimation,
@@ -20,6 +19,7 @@ from PyQt6.QtCore import (  # noqa: E402
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel  # noqa: E402
 
 from ui.theme.manager import THEME  # noqa: E402
+from ui.webview.base import WebViewBase  # noqa: E402
 
 
 class _DownloadToast(QWidget):
@@ -114,10 +114,13 @@ def _wv2_userdata_dir(app_name: str = "ComfyLauncher") -> str:
     return str(p)
 
 
-class WebView2Widget(QWidget):
-    loaded = pyqtSignal(bool)
-    # (basename, full_path) — emitted from the WebView2 event when a download finishes
-    download_saved = pyqtSignal(str, str)
+class WebView2Widget(WebViewBase):
+    """WebView2 engine embedded via pythonnet + WinForms (Windows only).
+
+    The ``loaded`` / ``download_saved`` signals come from ``WebViewBase``;
+    ``download_saved`` is emitted from the WebView2 download event with
+    ``(basename, full_path)``.
+    """
 
     def __init__(
         self, url: str, dll_dir: str | None = None, parent: QWidget | None = None

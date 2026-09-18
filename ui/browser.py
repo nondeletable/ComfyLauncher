@@ -17,7 +17,7 @@ from ui.error_page import ErrorWidget, ErrorScreen
 from core.errors import ERRORS
 from version import __version__
 from ui.splash_video import LauncherSplashVideo
-from ui.webview2_widget import WebView2Widget
+from ui.webview import create_webview
 from utils.logger import log_event
 from utils.platform_paths import open_in_file_manager
 from utils.update_checker import UpdateService
@@ -415,7 +415,7 @@ class ComfyBrowser(QMainWindow):
             self.splash = None
 
         url = f"http://127.0.0.1:{COMFYUI_PORT}"
-        self.browser = WebView2Widget(url)
+        self.browser = create_webview(url)
         self.browser.loaded.connect(self.on_load_finished)
 
         # Replace the preloader with a browser
