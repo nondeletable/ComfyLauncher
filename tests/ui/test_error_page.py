@@ -2,9 +2,10 @@
 
 ErrorScreen is a QWidget subclass with a stylesheet background, which Qt only
 paints when WA_StyledBackground is set. It went unnoticed because the theme's
-application stylesheet used to cover every QWidget — until main.py replaced
-that stylesheet — and because grabbing the widget on its own fills from the
-palette and looks correct.
+application stylesheet covers every QWidget (and main.py used to replace that
+stylesheet outright), and because grabbing the widget on its own fills from the
+palette and looks correct. The fixture below drops the ambient stylesheet so
+the widget has to paint on its own.
 """
 
 import os
@@ -21,10 +22,12 @@ BACKDROP = "#353535"  # hardcoded in ui/error_page.py, deliberately theme-free
 
 
 @pytest.fixture
-def wiped_theme_qss(qapp):
+def no_ambient_qss(qapp):
+    """Strip the theme's application stylesheet, leaving the widget nothing to
+    inherit a background from."""
     THEME.apply()
     previous = qapp.styleSheet()
-    qapp.setStyleSheet("QToolTip { background-color: #2b2b2b; }")  # main.py does this
+    qapp.setStyleSheet("")
     yield qapp
     qapp.setStyleSheet(previous)
 
@@ -42,14 +45,14 @@ def render(app):
     return image
 
 
-def test_error_screen_paints_its_backdrop(wiped_theme_qss):
-    image = render(wiped_theme_qss)
+def test_error_screen_paints_its_backdrop(no_ambient_qss):
+    image = render(no_ambient_qss)
     # A corner is backdrop, away from the centered card.
     assert image.pixelColor(4, 250).name().lower() == BACKDROP
 
 
-def test_error_card_still_paints(wiped_theme_qss):
+def test_error_card_still_paints(no_ambient_qss):
     """The card is a plain QWidget, which paints without the attribute — this
     pins that difference down so the fix is not copied where it is not needed."""
-    image = render(wiped_theme_qss)
+    image = render(no_ambient_qss)
     assert image.pixelColor(350, 250).name().lower() == BACKDROP

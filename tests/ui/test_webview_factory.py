@@ -102,17 +102,17 @@ def test_browser_module_imports_without_an_engine(app):
 
 
 @pytest.fixture
-def wiped_theme_qss(app):
-    """Mimic main.py, which replaces the theme's application stylesheet with
-    a QToolTip-only one right after THEME.apply()."""
+def no_ambient_qss(app):
+    """Strip the theme's application stylesheet, leaving the placeholder
+    nothing to inherit a background from."""
     THEME.apply()
     previous = app.styleSheet()
-    app.setStyleSheet("QToolTip { background-color: #2b2b2b; }")
+    app.setStyleSheet("")
     yield
     app.setStyleSheet(previous)
 
 
-def test_placeholder_paints_its_background_inside_a_window(app, wiped_theme_qss):
+def test_placeholder_paints_its_background_inside_a_window(app, no_ambient_qss):
     """Regression: the panel rendered with the ambient light palette, which made
     the text_primary title white-on-white. A QWidget subclass only paints a
     stylesheet background with WA_StyledBackground set, and a standalone

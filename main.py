@@ -25,16 +25,6 @@ def launch_app():
     THEME.apply()
 
     QToolTip.setFont(QFont("Segoe UI", 9))
-    app.setStyleSheet(
-        """
-        QToolTip {
-            background-color: #2b2b2b;
-            color: white;
-            padding: 3px 6px;
-            border-radius: 4px;
-        }
-        """
-    )
 
     # ── FIRST SETUP ─────────────────────────────
     comfy_path = get_comfyui_path()

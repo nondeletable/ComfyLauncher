@@ -109,6 +109,13 @@ class ThemeManager(QObject):
             color: {t['text_inverse']};
             border-color: {t['accent']};
         }}
+        QToolTip {{
+            background-color: {t['popup_bg']};
+            color: {t['popup_text']};
+            border: 1px solid {t['border_color']};
+            border-radius: 4px;
+            padding: 3px 6px;
+        }}
         """
         app.setStyleSheet(qss)
         self.themeChanged.emit(t)  # type: ignore
