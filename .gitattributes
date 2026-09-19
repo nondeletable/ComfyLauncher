@@ -1,0 +1,9 @@
+# Text files are stored with LF in the repository and checked out with LF on
+# every platform. The project has no .bat/.cmd/.ps1 scripts that would need
+# CRLF; add an explicit `eol=crlf` line for them if that ever changes.
+* text=auto eol=lf
+
+# Binary assets: never touch these.
+*.png binary
+*.ico binary
+*.mp4 binary
