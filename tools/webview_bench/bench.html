@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>ComfyLauncher web-view bench</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #111; overflow: hidden; }
+  /* Fixed backing store AND fixed CSS size: every engine fills exactly the same
+     number of pixels, whatever its window geometry or device pixel ratio. */
+  canvas { display: block; width: 1280px; height: 720px; }
+  #hud { position: fixed; left: 8px; top: 8px; font: 12px monospace; color: #9ad; white-space: pre; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="hud">warming up…</div>
+<script>
+// Deterministic litegraph-shaped scene: rounded node boxes with a title bar,
+// port circles and bezier links. The camera runs a fixed zoom/pan script so
+// every engine renders the identical sequence of frames.
+const P = new URLSearchParams(location.search);
+const NODES  = +(P.get('nodes')  || 600);
+const FRAMES = +(P.get('frames') || 900);
+const WARMUP = +(P.get('warmup') || 60);
+// Reading a pixel back forces the engine to finish the frame, but it also
+// stalls a GPU-backed pipeline — fair only when every engine pays it, and off
+// by default so the vsync-bound fps stays the honest, user-visible metric.
+const FLUSH  = P.get('flush') === '1';
+
+let seed = 12345;
+const rnd = () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296;
+
+const nodes = [];
+for (let i = 0; i < NODES; i++) {
+  nodes.push({
+    x: (rnd() - 0.5) * 9000, y: (rnd() - 0.5) * 6000,
+    w: 140 + rnd() * 90, h: 60 + Math.floor(rnd() * 4) * 22,
+    ports: 1 + Math.floor(rnd() * 4),
+    title: 'Node ' + i,
+    hue: Math.floor(rnd() * 360),
+  });
+}
+const links = [];
+for (let i = 0; i < NODES * 1.4; i++) {
+  const a = Math.floor(rnd() * NODES), b = Math.floor(rnd() * NODES);
+  if (a !== b) links.push([a, b]);
+}
+
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d', { alpha: false });
+const DPR = 1;              // deliberately fixed, see the canvas CSS above
+const W = 1280, H = 720;
+canvas.width = W;
+canvas.height = H;
+
+function roundRect(x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y,     x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x,     y + h, r);
+  ctx.arcTo(x,     y + h, x,     y,     r);
+  ctx.arcTo(x,     y,     x + w, y,     r);
+  ctx.closePath();
+}
+
+function draw(t) {
+  // Camera script: a zoom cycle crossed with a pan orbit — zoom and pan are
+  // exactly what dropped frames on Windows, so the path exercises both.
+  const phase = t / FRAMES;
+  const zoom = 0.10 + 0.55 * (0.5 - 0.5 * Math.cos(phase * Math.PI * 4));
+  const camX = Math.sin(phase * Math.PI * 6) * 2200;
+  const camY = Math.cos(phase * Math.PI * 5) * 1500;
+
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.fillStyle = '#1e1e1e';
+  ctx.fillRect(0, 0, W, H);
+  ctx.setTransform(zoom, 0, 0, zoom, W / 2 - camX * zoom, H / 2 - camY * zoom);
+
+  ctx.lineWidth = 2 / zoom;
+  ctx.strokeStyle = '#7a9';
+  for (const [a, b] of links) {
+    const na = nodes[a], nb = nodes[b];
+    const x1 = na.x + na.w, y1 = na.y + 30, x2 = nb.x, y2 = nb.y + 30;
+    const d = Math.min(180, Math.abs(x2 - x1) * 0.5 + 40);
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.bezierCurveTo(x1 + d, y1, x2 - d, y2, x2, y2);
+    ctx.stroke();
+  }
+
+  ctx.font = '14px sans-serif';
+  ctx.textBaseline = 'middle';
+  for (const n of nodes) {
+    roundRect(n.x, n.y, n.w, n.h, 6);
+    ctx.fillStyle = '#353535';
+    ctx.fill();
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 1 / zoom;
+    ctx.stroke();
+
+    roundRect(n.x, n.y, n.w, 22, 6);
+    ctx.fillStyle = `hsl(${n.hue} 35% 32%)`;
+    ctx.fill();
+
+    ctx.fillStyle = '#e8e8e8';
+    ctx.fillText(n.title, n.x + 8, n.y + 11);
+
+    for (let p = 0; p < n.ports; p++) {
+      const py = n.y + 34 + p * 16;
+      ctx.beginPath(); ctx.arc(n.x,        py, 4, 0, 6.283); ctx.fillStyle = '#9ad'; ctx.fill();
+      ctx.beginPath(); ctx.arc(n.x + n.w,  py, 4, 0, 6.283); ctx.fill();
+    }
+  }
+}
+
+const drawMs = [], frameMs = [];
+let frame = 0, prev = performance.now(), started = 0;
+
+function tick(now) {
+  const t0 = performance.now();
+  draw(frame);
+  if (FLUSH) ctx.getImageData(0, 0, 1, 1);
+  const t1 = performance.now();
+
+  if (frame >= WARMUP) {
+    drawMs.push(t1 - t0);
+    frameMs.push(now - prev);
+    if (!started) started = now;
+  }
+  prev = now;
+  frame++;
+
+  if (frame % 60 === 0) {
+    document.getElementById('hud').textContent =
+      `frame ${frame}/${FRAMES + WARMUP}  nodes=${NODES}`;
+  }
+  if (frame < FRAMES + WARMUP) requestAnimationFrame(tick);
+  else finish(now);
+}
+
+const pct = (a, p) => {
+  const s = [...a].sort((x, y) => x - y);
+  return s[Math.min(s.length - 1, Math.floor(s.length * p))];
+};
+
+function finish(now) {
+  const result = {
+    nodes: NODES, links: links.length, frames: drawMs.length,
+    canvas: [W, H], flush: FLUSH, window: [innerWidth, innerHeight],
+    // Draw-call time; without flush it can under-report on a lazy backend.
+    draw_median_ms: +pct(drawMs, 0.5).toFixed(2),
+    draw_p95_ms:    +pct(drawMs, 0.95).toFixed(2),
+    // Primary metric: achieved fps, what the user actually feels (vsync capped).
+    fps_mean:   +(drawMs.length / ((now - started) / 1000)).toFixed(1),
+    frame_p95_ms: +pct(frameMs, 0.95).toFixed(2),
+    ua: navigator.userAgent,
+  };
+  document.getElementById('hud').textContent = JSON.stringify(result, null, 1);
+  document.title = 'DONE ' + JSON.stringify(result);
+  window.__RESULT__ = result;
+  fetch('/result', { method: 'POST', body: JSON.stringify(result) }).catch(() => {});
+}
+requestAnimationFrame(tick);
+</script>
+</body>
+</html>
