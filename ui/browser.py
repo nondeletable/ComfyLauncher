@@ -98,7 +98,10 @@ class ComfyBrowser(QMainWindow):
         self.setCentralWidget(central)
 
         self.status_label = self.header.status_label
-        QTimer.singleShot(100, lambda: self._round_corners(10))
+        # A bound method, not a lambda: PyQt drops the connection when this
+        # window is destroyed, while a lambda capturing self keeps firing into
+        # a deleted C++ object and aborts the process.
+        QTimer.singleShot(100, self._round_corners)
 
         # ── Binding signals to methods ───────────────────
         self.header.console_clicked.connect(self.open_console_logs)
@@ -400,7 +403,7 @@ class ComfyBrowser(QMainWindow):
         except Exception as e:
             log_event(f"⚠️ Failed to open console window: {e}")
 
-    def _round_corners(self, radius: int):
+    def _round_corners(self, radius: int = 10):
         path = QPainterPath()
         rect = QRectF(self.rect())
         path.addRoundedRect(rect, radius, radius)
