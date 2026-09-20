@@ -5,7 +5,7 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QLabel,
 )
-from PyQt6.QtGui import QPainterPath, QRegion
+from PyQt6.QtGui import QGuiApplication, QPainterPath, QRegion
 from PyQt6.QtCore import Qt, QTimer, QRectF, QThread
 
 import threading
@@ -65,7 +65,16 @@ class ComfyBrowser(QMainWindow):
         self.settings_window = None
 
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
-        # self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+
+        # Wayland has no shape extension, so a mask set on the *window* only
+        # narrows its input region there — the pixels stay square. A mask on a
+        # child widget is Qt's own compositing and does clip, so on Wayland the
+        # rounding moves to the central container and the window itself is made
+        # translucent for the cut-away corners to show through. Windows and X11
+        # clip the window mask natively and are left exactly as they were.
+        self._clips_window_mask = QGuiApplication.platformName() != "wayland"
+        if not self._clips_window_mask:
+            self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
 
         self._init_geometry()
 
@@ -403,12 +412,24 @@ class ComfyBrowser(QMainWindow):
         except Exception as e:
             log_event(f"⚠️ Failed to open console window: {e}")
 
-    def _round_corners(self, radius: int = 10):
+    @staticmethod
+    def _rounded_region(rect, radius: int) -> QRegion:
         path = QPainterPath()
-        rect = QRectF(self.rect())
-        path.addRoundedRect(rect, radius, radius)
-        region = QRegion(path.toFillPolygon().toPolygon())
-        self.setMask(region)
+        path.addRoundedRect(QRectF(rect), radius, radius)
+        return QRegion(path.toFillPolygon().toPolygon())
+
+    def _round_corners(self, radius: int = 10):
+        if self._clips_window_mask:
+            self.setMask(self._rounded_region(self.rect(), radius))
+            return
+
+        # Wayland: clip the container instead (see __init__). The embedded web
+        # view is a native surface and is not clipped by this, so the bottom
+        # corners stay square there — the header's top corners, which is what
+        # is actually visible as a square edge, do round off.
+        central = self.centralWidget()
+        if central is not None:
+            central.setMask(self._rounded_region(central.rect(), radius))
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
