@@ -25,9 +25,19 @@ def log_event(message: str):
     """Writes an event to the console and log file."""
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     formatted = f"[{timestamp}] {message}"
-    print(formatted)
+    # Console output is best-effort: a non-UTF-8 stdout (cp1251/cp1252 console,
+    # a redirected file) can't encode the emoji in these messages and raises
+    # UnicodeEncodeError. That must never take the app down, so swallow it —
+    # the log file below is UTF-8 and keeps the full record.
+    try:
+        print(formatted)
+    except (UnicodeEncodeError, OSError):
+        pass
     try:
         with open(LOG_FILE, "a", encoding="utf-8") as f:
             f.write(formatted + "\n")
     except Exception as e:
-        print(f"[LOGGER ERROR] {e}")
+        try:
+            print(f"[LOGGER ERROR] {e}")
+        except (UnicodeEncodeError, OSError):
+            pass
