@@ -1,6 +1,7 @@
 import json
 import os
 import shutil
+import uuid
 
 from utils.logger import log_event
 from utils.platform_paths import app_dir
@@ -173,6 +174,22 @@ def _migrate_build_flags(build: dict) -> None:
     build.pop("startup_mode", None)
 
 
+def _ensure_build_id(build: dict) -> bool:
+    """Give a legacy build a stable `id` if it has none. Returns True if changed.
+
+    Builds are matched by `id` everywhere (edit, delete, last_used_build_id), so
+    a build without one cannot be edited in place — the edit is saved as a new
+    build instead. The id must be persisted (see load_user_config): a fresh
+    random id on every load would never match the one the editor captured.
+    """
+    if not isinstance(build, dict):
+        return False
+    if not str(build.get("id", "")).strip():
+        build["id"] = str(uuid.uuid4())
+        return True
+    return False
+
+
 def load_user_config():
     _migrate_legacy_config()
 
@@ -188,9 +205,17 @@ def load_user_config():
         for key, val in DEFAULT_USER_CONFIG.items():
             data.setdefault(key, val)
 
-        # 2) Migration: fold legacy startup_mode into extra_flags
+        # 2) Migration: fold legacy startup_mode into extra_flags, and backfill
+        #    a stable id for any build that predates id-based identification.
+        needs_save = False
         for b in data.get("builds") or []:
             _migrate_build_flags(b)
+            if _ensure_build_id(b):
+                needs_save = True
+
+        # Persist backfilled ids so they stay stable across loads.
+        if needs_save:
+            save_user_config(data)
 
         return data
 

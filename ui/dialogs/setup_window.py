@@ -297,7 +297,6 @@ class SetupWindow(QDialog):
 
             extra_flags = build.get("extra_flags", [])
             self.flags_edit.setText(" ".join(extra_flags))
-            self._update_ok_state()
         layout.addStretch(1)
 
         # action buttons
@@ -330,6 +329,13 @@ class SetupWindow(QDialog):
         btn_row.addWidget(self.ok_btn)
         btn_row.addWidget(self.cancel_btn)
         layout.addLayout(btn_row)
+
+        # Now that ok_btn exists, reflect the (possibly pre-filled) fields. In
+        # edit mode name and path are already valid, so Save must be enabled at
+        # once; the earlier call in the prefill block ran before ok_btn was
+        # created and was a no-op, which left edit mode with Save disabled until
+        # the user touched a field.
+        self._update_ok_state()
 
     def _browse(self):
         directory = QFileDialog.getExistingDirectory(self, "Select ComfyUI folder")
