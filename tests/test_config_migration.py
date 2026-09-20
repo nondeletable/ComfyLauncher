@@ -154,6 +154,49 @@ def test_migrate_missing_startup_mode_only_ensures_extra_flags():
     assert "startup_mode" not in b
 
 
+# ── Build id backfill (edit-in-place fix) ─────────────────────────────
+
+
+def test_ensure_build_id_assigns_when_missing():
+    b = {"name": "Legacy", "path": "C:/x"}
+    changed = config._ensure_build_id(b)
+    assert changed is True
+    assert b.get("id")  # a non-empty id was assigned
+
+
+def test_ensure_build_id_keeps_existing():
+    b = {"id": "keep", "name": "X"}
+    changed = config._ensure_build_id(b)
+    assert changed is False
+    assert b["id"] == "keep"
+
+
+def test_ensure_build_id_treats_blank_as_missing():
+    b = {"id": "   ", "name": "X"}
+    assert config._ensure_build_id(b) is True
+    assert b["id"].strip()
+
+
+def test_load_backfills_missing_id_and_persists(tmp_path, monkeypatch):
+    new = tmp_path / "appdata" / "user_config.json"
+    new.parent.mkdir(parents=True)
+    new.write_text(
+        '{"builds": [{"name": "Legacy", "path": "C:/x", "extra_flags": []}]}',
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(config, "USER_CONFIG_PATH", str(new))
+
+    data = config.load_user_config()
+    assigned = data["builds"][0]["id"]
+    assert assigned  # id was backfilled
+
+    # Persisted to disk, and stable on the next load (a fresh random id each
+    # time would reintroduce the duplicate-on-edit bug).
+    on_disk = json.loads(new.read_text(encoding="utf-8"))["builds"][0]["id"]
+    assert on_disk == assigned
+    assert config.load_user_config()["builds"][0]["id"] == assigned
+
+
 def test_load_user_config_migrates_builds(tmp_path, monkeypatch):
     new = tmp_path / "appdata" / "user_config.json"
     new.parent.mkdir(parents=True)
