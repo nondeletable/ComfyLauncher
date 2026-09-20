@@ -8,6 +8,7 @@ with "wrapped C/C++ object of type ThemeManager has been deleted".
 """
 
 import os
+import sys
 import tempfile
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
@@ -22,6 +23,7 @@ os.environ["XDG_CONFIG_HOME"] = _TEST_APP_DIR  # Linux
 os.environ["APPDATA"] = _TEST_APP_DIR  # Windows
 
 import pytest  # noqa: E402
+from PyQt6.QtCore import Qt  # noqa: E402
 from PyQt6.QtWidgets import QApplication  # noqa: E402
 
 _APP: QApplication | None = None
@@ -50,5 +52,13 @@ def quiet_exit_config():
 def qapp():
     global _APP
     if _APP is None:
-        _APP = QApplication.instance() or QApplication([])
+        if sys.platform != "win32":
+            # Mirrors main.py: without this the QtWebEngine import inside
+            # the factory raises and every engine test silently exercises
+            # the placeholder fallback instead.
+            QApplication.setAttribute(Qt.ApplicationAttribute.AA_ShareOpenGLContexts)
+        # argv[0] is not optional: QtWebEngine hands it to Chromium's
+        # CommandLine, and an empty list aborts the process with
+        # "the program name is not passed to QCoreApplication".
+        _APP = QApplication.instance() or QApplication(sys.argv[:1])
     return _APP

@@ -33,8 +33,39 @@ def app(qapp):
 URL = "http://127.0.0.1:8188"
 
 
-def test_placeholder_on_non_windows(app, monkeypatch):
+def test_qtwebengine_on_non_windows(app, monkeypatch):
+    """The non-Windows branch must construct QtWebEngineView(url, parent=parent).
+
+    A stand-in module stands for the real engine so this also passes on
+    Windows, which stays on PyQt6 6.6.1 with no WebEngine installed.
+    """
+    calls = []
+
+    class FakeQtWebEngineView(WebViewBase):
+        def __init__(self, url, parent=None):
+            super().__init__(parent)
+            calls.append((url, parent))
+
+    fake = types.ModuleType("ui.webview.qtwebengine_view")
+    fake.QtWebEngineView = FakeQtWebEngineView
+    monkeypatch.setitem(sys.modules, "ui.webview.qtwebengine_view", fake)
     monkeypatch.setattr(sys, "platform", "linux")
+
+    view = create_webview(URL)
+    assert isinstance(view, FakeQtWebEngineView)
+    assert calls == [(URL, None)]
+
+
+def test_placeholder_when_the_engine_is_unavailable(app, monkeypatch):
+    """A broken engine install must degrade to the placeholder, not crash.
+
+    A missing PyQt6-WebEngine, a mismatched Qt6 pair or a missing system
+    library all surface here as a failed import.
+    """
+    empty = types.ModuleType("ui.webview.qtwebengine_view")  # no QtWebEngineView
+    monkeypatch.setitem(sys.modules, "ui.webview.qtwebengine_view", empty)
+    monkeypatch.setattr(sys, "platform", "linux")
+
     view = create_webview(URL)
     assert isinstance(view, PlaceholderWebView)
     assert isinstance(view, WebViewBase)

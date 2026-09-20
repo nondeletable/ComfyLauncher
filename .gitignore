@@ -11,6 +11,7 @@ venv/
 .env/
 .venv/
 .venv312/
+.venv-qt611/
 
 # --- PyInstaller / Build artifacts ---
 build/
