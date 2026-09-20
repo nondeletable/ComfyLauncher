@@ -116,12 +116,19 @@ class ColorThemesPage(QWidget):
         btn_layout.setContentsMargins(14, 0, 0, 0)
         btn_layout.setSpacing(10)
 
+        # Height is fixed, width is a floor rather than a cap: 80 px fits these
+        # labels in Segoe UI on Windows but clips "Download" in the wider
+        # default sans on Linux. A minimum keeps the Windows look identical
+        # (the hint stays under 80 there) and lets the button grow where the
+        # font needs it.
         self.btn_select = QPushButton("Select")
-        self.btn_select.setFixedSize(80, 35)
+        self.btn_select.setFixedHeight(35)
+        self.btn_select.setMinimumWidth(80)
         self.btn_select.clicked.connect(self._load_custom_theme)  # type: ignore
 
         self.btn_download = QPushButton("Download")
-        self.btn_download.setFixedSize(80, 35)
+        self.btn_download.setFixedHeight(35)
+        self.btn_download.setMinimumWidth(80)
         self.btn_download.clicked.connect(self._open_comfyui_themes)  # type: ignore
 
         for btn in (self.btn_select, self.btn_download):
