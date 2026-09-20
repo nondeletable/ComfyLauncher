@@ -145,12 +145,19 @@ def detached_rss(exe: str, started_after: float) -> tuple[int, list[psutil.Proce
 
 
 def kill_tree(proc: psutil.Process) -> None:
-    for p in [*proc.children(recursive=True), proc]:
+    # The process may already be gone (e.g. a launcher that handed off and
+    # exited), which makes proc.children() raise NoSuchProcess. Collect the
+    # targets once, defensively, and reuse them.
+    try:
+        targets = [*proc.children(recursive=True), proc]
+    except psutil.Error:
+        targets = [proc]
+    for p in targets:
         try:
             p.terminate()
         except psutil.Error:
             pass
-    _, alive = psutil.wait_procs([proc, *proc.children(recursive=True)], timeout=8)
+    _, alive = psutil.wait_procs(targets, timeout=8)
     for p in alive:
         try:
             p.kill()
@@ -257,7 +264,7 @@ def print_table(rows: list[dict]) -> None:
             continue
         print(
             f"{r['engine']:<14}{r['runs']:>5}{r['fps']:>8}{r['draw_ms']:>10}"
-            f"{r['frame_p95_ms']:>11}{r['rss_mb']:>9}  chromium {r['chromium']}"
+            f"{r['frame_p95_ms']:>11}{r['rss_mb']:>9}  {r['build']}"
         )
     print()
     print("fps: higher is better, 60 is the vsync ceiling. draw ms: time inside the")
@@ -345,7 +352,7 @@ def main() -> int:
         Path(args.json).write_text(
             "\n".join(json.dumps(r) for r in raw), encoding="utf-8"
         )
-        print(f"raw runs → {args.json}")
+        print(f"raw runs -> {args.json}")
     return 0
 
 
