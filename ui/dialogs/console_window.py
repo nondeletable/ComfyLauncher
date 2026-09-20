@@ -33,73 +33,49 @@ class ConsoleWindow(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, False)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
 
-        c = THEME.colors
-
-        # ─── Main frame ────────────────────────────────
-        main_frame = QFrame(self)
-        main_frame.setObjectName("console_main_frame")
-        main_frame.setStyleSheet(
-            f"""
-            QFrame#console_main_frame {{
-                background-color: {c['bg_header']};
-                color: {c['text_primary']};
-                border-radius: 10px;
-            }}
-        """
-        )
+        # Every themed widget below is kept as an attribute: styling them from
+        # locals here meant a theme switch only repainted what _apply_theme
+        # could still reach, leaving this window's frame, header bar, title and
+        # close icon in the previous theme while the log area changed colour.
+        self._main_frame = QFrame(self)
+        self._main_frame.setObjectName("console_main_frame")
 
         outer = QVBoxLayout(self)
         outer.setContentsMargins(15, 15, 15, 15)
-        outer.addWidget(main_frame)
+        outer.addWidget(self._main_frame)
 
         shadow = QGraphicsDropShadowEffect(self)
         shadow.setBlurRadius(30)
         shadow.setOffset(0, 0)
         shadow.setColor(QColor(0, 0, 0, 180))
-        main_frame.setGraphicsEffect(shadow)
+        self._main_frame.setGraphicsEffect(shadow)
 
-        layout = QVBoxLayout(main_frame)
+        layout = QVBoxLayout(self._main_frame)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
         # ─── Header bar ────────────────────────────────
-        header = QFrame()
-        header.setStyleSheet(
-            f"""
-            QFrame {{
-                background-color: {c['bg_header']};
-                border-top-left-radius: 10px;
-                border-top-right-radius: 10px;
-            }}
-        """
-        )
-        hbox = QHBoxLayout(header)
+        self._header = QFrame()
+        hbox = QHBoxLayout(self._header)
         hbox.setContentsMargins(12, 6, 12, 6)
         hbox.setSpacing(8)
 
-        title = QLabel("ComfyUI Console")
-        title.setStyleSheet(
-            f"color: {c['app_title_color']}; font-weight: 500; font-size: 15px;"
-        )
+        self._title = QLabel("ComfyUI Console")
 
-        hbox.addWidget(title)
+        hbox.addWidget(self._title)
         hbox.addStretch()
 
-        btn_close = QPushButton()
-
-        btn_close.setFixedSize(24, 24)
-        btn_close.setIcon(
-            colorize_svg(HEAD_ICON_PATHS["close"], c["icon_color_window"])
-        )
-        btn_close.setStyleSheet(
+        self._btn_close = QPushButton()
+        self._btn_close.setFixedSize(24, 24)
+        self._btn_close.setStyleSheet(
             """
             QPushButton { border: none; background: transparent; }
         """
         )
 
-        hbox.addWidget(btn_close)
+        hbox.addWidget(self._btn_close)
 
-        btn_close.clicked.connect(self.hide)  # type: ignore
+        self._btn_close.clicked.connect(self.hide)  # type: ignore
 
         # ─── Log area ──────────────────────────────────
         self.text_edit = QPlainTextEdit()
@@ -134,7 +110,7 @@ class ConsoleWindow(QWidget):
         hint_container.setContentsMargins(16, 0, 16, 12)
         hint_container.addWidget(self.hint_label)
 
-        layout.addWidget(header)
+        layout.addWidget(self._header)
         layout.addLayout(log_container)
         layout.addLayout(hint_container)
 
@@ -197,6 +173,30 @@ class ConsoleWindow(QWidget):
         c = THEME.colors
         self.setStyleSheet(
             f"background-color: {c['bg_header']}; color: {c['text_primary']};"
+        )
+        self._main_frame.setStyleSheet(
+            f"""
+            QFrame#console_main_frame {{
+                background-color: {c['bg_header']};
+                color: {c['text_primary']};
+                border-radius: 10px;
+            }}
+        """
+        )
+        self._header.setStyleSheet(
+            f"""
+            QFrame {{
+                background-color: {c['bg_header']};
+                border-top-left-radius: 10px;
+                border-top-right-radius: 10px;
+            }}
+        """
+        )
+        self._title.setStyleSheet(
+            f"color: {c['app_title_color']}; font-weight: 500; font-size: 15px;"
+        )
+        self._btn_close.setIcon(
+            colorize_svg(HEAD_ICON_PATHS["close"], c["icon_color_window"])
         )
         self.text_edit.setStyleSheet(self._build_text_style())
         self.hint_label.setStyleSheet(self._hint_style())
