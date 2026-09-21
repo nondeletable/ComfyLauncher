@@ -4,5 +4,8 @@ Name=Comfy Launcher
 Comment=Launcher and lightweight browser for portable ComfyUI
 Exec=ComfyLauncher
 Icon=comfylauncher
+# Ties the running window to this entry on X11: Qt sets WM_CLASS from
+# applicationName ("ComfyLauncher"), which differs from Name= above.
+StartupWMClass=ComfyLauncher
 Categories=Graphics;Utility;
 Terminal=false

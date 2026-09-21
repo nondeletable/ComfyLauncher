@@ -34,6 +34,11 @@ def launch_app():
     # profile would land in a directory named after argv[0]. Nothing else in
     # the app reads QStandardPaths, so Windows paths are unaffected.
     app.setApplicationName("ComfyLauncher")
+    # Wayland ignores StartupWMClass and matches the window's app_id against
+    # the .desktop basename instead, so this is what puts the real icon and
+    # name in the dock there. Basename only, no .desktop suffix. No-op on
+    # Windows, which never reads desktop entries.
+    app.setDesktopFileName("comfylauncher")
     app.setWindowIcon(QIcon(ICON_PATH))
     THEME.apply()
 
