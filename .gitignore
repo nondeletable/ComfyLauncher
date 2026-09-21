@@ -54,6 +54,12 @@ desktop.ini
 MANIFEST
 *.manifest
 
+# --- Linux AppImage build artifacts ---
+# build_appimage.sh emits these into packaging/linux/; dist/ and build/ above
+# only cover the PyInstaller staging dirs at the repo root.
+packaging/linux/*.AppImage
+packaging/linux/ComfyLauncher.AppDir/
+
 # --- PyTest and Coverage ---
 .cache/
 .coverage
