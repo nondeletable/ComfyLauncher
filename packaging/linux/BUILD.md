@@ -11,13 +11,16 @@ here.
 
 ## 0. Where the code is
 
-The port is on branch **`feature/linux-port`** (not yet merged to `master`):
+The port is **merged into `master`** (PR #57, 2026-09-21), so a plain clone is
+all you need:
 
 ```bash
 git clone https://github.com/nondeletable/ComfyLauncher
 cd ComfyLauncher
-git checkout feature/linux-port
 ```
+
+The `feature/linux-port` branch still exists but is now redundant — build from
+`master`.
 
 ## 1. Environment
 
@@ -172,5 +175,8 @@ differently from a source run.
   `libxcb-cursor0` on the build machine, now documented in §1.
 - No `.desktop` desktop-integration/auto-update, no code signing. Out of scope for
   1.9.0.
-- After this passes: PR `feature/linux-port` → `master`, bump `version.py` to
-  1.9.0, then build Win exe/zip + this AppImage, tag `v1.9.0`, publish.
+- ~~After this passes: PR `feature/linux-port` → `master`, bump `version.py` to
+  1.9.0.~~ **Done 2026-09-21:** merged as PR #57, `version.py` is 1.9.0, and the
+  AppImage was rebuilt from the merged tree (1.9.0 verified inside the bundle).
+  Remaining for the release: Windows exe/zip, tag `v1.9.0`, publish, then
+  `gh release upload v1.9.0 packaging/linux/ComfyLauncher-x86_64.AppImage`.
