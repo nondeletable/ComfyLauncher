@@ -11,6 +11,8 @@ import threading
 from datetime import datetime
 from utils.console_buffer import ConsoleBuffer
 from utils.logger import log_event
+from utils.python_resolver import resolve_interpreter, build_env
+from utils.process_launch import spawn_comfy, external_console_supported
 from config import (
     COMFYUI_PORT,
     CHECK_INTERVAL,
@@ -175,21 +177,6 @@ def restore_browser_auto_launch(comfy_path: str):
         log_event(f"❌ Failed to restore browser launch: {e}")
 
 
-def resolve_python_exe(base_dir: str) -> str:
-    """
-    Returns the path to the embedded Python inside the portable build, if present.
-    Supports both spellings: python_embeded / python_embedded.
-    Otherwise, it uses 'python' (the system interpreter).
-    """
-    cand = os.path.join(base_dir, "python_embeded", "python.exe")
-    if os.path.exists(cand):
-        return cand
-    cand = os.path.join(base_dir, "python_embedded", "python.exe")
-    if os.path.exists(cand):
-        return cand
-    return "python"
-
-
 def ensure_comfyui_running(comfy_path: str, port: int = 8188):
     """
     1) Checks if the server is running.
@@ -205,7 +192,6 @@ def ensure_comfyui_running(comfy_path: str, port: int = 8188):
 
     cfg = load_user_config()
     show_cmd = cfg.get("show_cmd", True)
-    use_internal_console = not show_cmd
 
     registry = cfg.get("browser_patch_registry", {})
     entry = registry.get(comfy_path, {})
@@ -241,43 +227,26 @@ def ensure_comfyui_running(comfy_path: str, port: int = 8188):
     log_event(f"🚀 Starting ComfyUI with flags: {' '.join(flags) or '(none)'}")
 
     # --- Launch ------------------------------------------------------
-    base_dir = os.path.dirname(comfy_path)
-    python_exe = resolve_python_exe(base_dir)
-    python_home = os.path.dirname(python_exe) if python_exe != "python" else ""
+    interp = resolve_interpreter(comfy_path)
+    log_event(f"🐍 Interpreter: {interp.kind} → {interp.exe}")
 
-    args = [python_exe, "-s", "-u", os.path.join(comfy_path, "main.py")] + flags
+    args = [interp.exe, "-s", "-u", os.path.join(comfy_path, "main.py")] + flags
 
-    env = os.environ.copy()
-    env["PYTHONUNBUFFERED"] = "1"
-    env["PYTHONIOENCODING"] = "utf-8"
-    if python_home:
-        env["PYTHONHOME"] = python_home
-        env["PYTHONPATH"] = comfy_path
-        env["PATH"] = python_home + ";" + env["PATH"]
+    env = build_env(interp, comfy_path)
 
-    if show_cmd:
-        _comfy_process = subprocess.Popen(
-            ["cmd.exe", "/k"] + args,
-            cwd=comfy_path,
-            env=env,
-            creationflags=subprocess.CREATE_NEW_CONSOLE,
-        )
-    else:
-        _comfy_process = subprocess.Popen(
-            args,
-            cwd=comfy_path,
-            env=env,
-            creationflags=subprocess.CREATE_NO_WINDOW,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            bufsize=1,
+    if show_cmd and not external_console_supported():
+        log_event(
+            "ℹ️ External console not supported on this OS — using internal console."
         )
 
-    # --- Read output only in internal console mode -------------------
-    if use_internal_console and _comfy_process:
+    _comfy_process, piped = spawn_comfy(
+        args, comfy_path, env, external_console=show_cmd
+    )
+
+    # --- Drain stdout whenever we own the pipe -----------------------
+    # Piped means the internal console is in use (always on posix; the
+    # hidden-window mode on Windows). The external cmd.exe console is not piped.
+    if piped and _comfy_process:
         threading.Thread(
             target=_read_process_output, args=(_comfy_process,), daemon=True
         ).start()
@@ -364,11 +333,11 @@ def stop_comfyui_hard(comfy_path: str, _grace_period=5):
             continue
 
     if killed:
-        if not is_port_open(COMFYUI_PORT):
-            log_event("🟢 Port 8188 closed — server fully stopped.")
-        else:
-            log_event("⚠️ Port still busy — possible residual process.")
-        log_event("✅ ComfyUI stopped completely.")
+        # No port check here: the socket is still held for a moment after the
+        # kill, so this always warned about a "residual process" on a perfectly
+        # normal stop. The grace loop below waits it out and reports the real
+        # verdict, which is the only one worth logging.
+        log_event("✅ ComfyUI process tree killed.")
     else:
         log_event("⚠️ No ComfyUI process found to stop.")
 

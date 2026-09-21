@@ -9,6 +9,7 @@ os.environ["QT_FFMPEG_HWACCEL"] = "none"
 # importing this module strips Mark-of-the-Web from bundled DLLs as a side effect.
 from utils import motw_unblock  # noqa: F401
 
+from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QApplication, QToolTip, QDialog
 from PyQt6.QtGui import QFont, QIcon
 from ui.browser import ComfyBrowser
@@ -20,21 +21,23 @@ from config import get_comfyui_path, ICON_PATH, load_user_config, save_user_conf
 
 
 def launch_app():
+    if sys.platform != "win32":
+        # QtWebEngine (the Linux/macOS engine) refuses to import once a
+        # QCoreApplication exists. Setting this attribute first is the
+        # documented way out, and it is cheap — it lets ui.webview.factory
+        # keep importing the engine lazily instead of pulling ~120 MB of
+        # Chromium in at startup. Windows uses WebView2 and is left alone.
+        QApplication.setAttribute(Qt.ApplicationAttribute.AA_ShareOpenGLContexts)
+
     app = QApplication(sys.argv)
+    # Qt derives per-app storage locations from this; without it QtWebEngine's
+    # profile would land in a directory named after argv[0]. Nothing else in
+    # the app reads QStandardPaths, so Windows paths are unaffected.
+    app.setApplicationName("ComfyLauncher")
     app.setWindowIcon(QIcon(ICON_PATH))
     THEME.apply()
 
     QToolTip.setFont(QFont("Segoe UI", 9))
-    app.setStyleSheet(
-        """
-        QToolTip {
-            background-color: #2b2b2b;
-            color: white;
-            padding: 3px 6px;
-            border-radius: 4px;
-        }
-        """
-    )
 
     # ── FIRST SETUP ─────────────────────────────
     comfy_path = get_comfyui_path()

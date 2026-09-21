@@ -11,6 +11,7 @@ venv/
 .env/
 .venv/
 .venv312/
+.venv-qt611/
 
 # --- PyInstaller / Build artifacts ---
 build/
@@ -53,6 +54,12 @@ desktop.ini
 MANIFEST
 *.manifest
 
+# --- Linux AppImage build artifacts ---
+# build_appimage.sh emits these into packaging/linux/; dist/ and build/ above
+# only cover the PyInstaller staging dirs at the repo root.
+packaging/linux/*.AppImage
+packaging/linux/ComfyLauncher.AppDir/
+
 # --- PyTest and Coverage ---
 .cache/
 .coverage
@@ -83,6 +90,7 @@ tests/__pycache__/
 .claude/
 CLAUDE.md
 PROGRESS.md
+HANDOFF.md
 
 # --- Secrets (never commit) ---
 git-token.txt

@@ -1,5 +1,11 @@
-from PyQt6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QLabel
-from PyQt6.QtGui import QPainterPath, QRegion
+from PyQt6.QtWidgets import (
+    QApplication,
+    QMainWindow,
+    QWidget,
+    QVBoxLayout,
+    QLabel,
+)
+from PyQt6.QtGui import QGuiApplication, QPainterPath, QRegion
 from PyQt6.QtCore import Qt, QTimer, QRectF, QThread
 
 import threading
@@ -17,8 +23,9 @@ from ui.error_page import ErrorWidget, ErrorScreen
 from core.errors import ERRORS
 from version import __version__
 from ui.splash_video import LauncherSplashVideo
-from ui.webview2_widget import WebView2Widget
+from ui.webview import create_webview
 from utils.logger import log_event
+from utils.platform_paths import open_in_file_manager
 from utils.update_checker import UpdateService
 from launcher import (
     ensure_comfyui_running,
@@ -58,7 +65,18 @@ class ComfyBrowser(QMainWindow):
         self.settings_window = None
 
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
-        # self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+
+        # Wayland has no shape extension, so a mask set on the *window* only
+        # narrows its input region there — the pixels stay square. A mask on a
+        # child widget is Qt's own compositing and does clip, so on Wayland the
+        # rounding moves to the central container and the window itself is made
+        # translucent for the cut-away corners to show through. Windows and X11
+        # clip the window mask natively and are left exactly as they were.
+        self._clips_window_mask = QGuiApplication.platformName() != "wayland"
+        if not self._clips_window_mask:
+            self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+
+        self._init_geometry()
 
         # Status check timer
         self.status_timer = QTimer(self)
@@ -89,7 +107,10 @@ class ComfyBrowser(QMainWindow):
         self.setCentralWidget(central)
 
         self.status_label = self.header.status_label
-        QTimer.singleShot(100, lambda: self._round_corners(10))
+        # A bound method, not a lambda: PyQt drops the connection when this
+        # window is destroyed, while a lambda capturing self keeps firing into
+        # a deleted C++ object and aborts the process.
+        QTimer.singleShot(100, self._round_corners)
 
         # ── Binding signals to methods ───────────────────
         self.header.console_clicked.connect(self.open_console_logs)
@@ -101,6 +122,26 @@ class ComfyBrowser(QMainWindow):
 
         self.ui_state = "STARTING_COMFY"
         self._start_comfyui()
+
+    def _init_geometry(self):
+        """Give the window a usable size for when it is not maximized.
+
+        The window is always shown maximized, and nothing ever set a normal
+        size — so its restore geometry (drag a maximized window off the top,
+        or press the restore button) was Qt's 640x480 default, and its size
+        hint is just the header strip. The minimum is capped against the
+        normal size so it still fits on a small screen.
+        """
+        screen = QApplication.primaryScreen()
+        if screen is None:
+            return
+
+        available = screen.availableGeometry()
+        normal_w = int(available.width() * 0.8)
+        normal_h = int(available.height() * 0.8)
+
+        self.setMinimumSize(min(900, normal_w), min(600, normal_h))
+        self.resize(normal_w, normal_h)
 
     # ──────────────────────────────────────────────
     def restart_comfy(self):
@@ -188,7 +229,7 @@ class ComfyBrowser(QMainWindow):
         log_event("🟥 ComfyUI completely stopped by the user.")
 
     def open_folder(self):
-        os.startfile(self.comfyui_path)
+        open_in_file_manager(self.comfyui_path)
 
     def open_settings(self):
         log_event("🧩 Opening settings window...")
@@ -247,7 +288,7 @@ class ComfyBrowser(QMainWindow):
         output_dir = os.path.join(comfy_path, "output")
 
         if os.path.exists(output_dir):
-            os.startfile(output_dir)
+            open_in_file_manager(output_dir)
         else:
             log_event(f"⚠️ Output folder not found: {output_dir}")
 
@@ -283,6 +324,20 @@ class ComfyBrowser(QMainWindow):
         if self.poll_callback:
             QTimer.singleShot(1000, self.poll_callback)
 
+    def _shutdown_webview(self):
+        """Tear the embedded web view down before the window is destroyed.
+
+        Must run on every exit path that accepts the close, not just the auto
+        one: QtWebEngine aborts at exit if its page/profile are released out of
+        order by Qt's own destruction instead of shut down synchronously here.
+        Best-effort — a failure here must never block the close.
+        """
+        try:
+            if hasattr(self, "browser") and self.browser:
+                self.browser.shutdown()
+        except Exception:
+            pass
+
     def closeEvent(self, event):
         """Reaction to closing depending on user settings"""
         # If a duplicate closeEvent fires while we're already processing exit
@@ -314,6 +369,7 @@ class ComfyBrowser(QMainWindow):
                 self._restore_comfy_on_exit()
                 self._close_settings_if_open()
                 save_user_config(user_config)
+                self._shutdown_webview()
                 event.accept()
                 return
 
@@ -323,6 +379,7 @@ class ComfyBrowser(QMainWindow):
                 self._restore_comfy_on_exit()
                 self._close_settings_if_open()
                 save_user_config(user_config)  # ← важно!
+                self._shutdown_webview()
                 event.accept()
                 return
 
@@ -352,12 +409,7 @@ class ComfyBrowser(QMainWindow):
         save_user_config(user_config)
         self._close_settings_if_open()
 
-        try:
-            if hasattr(self, "browser") and self.browser:
-                self.browser.shutdown()
-        except Exception:
-            pass
-
+        self._shutdown_webview()
         event.accept()
 
     def open_console_logs(self):
@@ -371,12 +423,24 @@ class ComfyBrowser(QMainWindow):
         except Exception as e:
             log_event(f"⚠️ Failed to open console window: {e}")
 
-    def _round_corners(self, radius: int):
+    @staticmethod
+    def _rounded_region(rect, radius: int) -> QRegion:
         path = QPainterPath()
-        rect = QRectF(self.rect())
-        path.addRoundedRect(rect, radius, radius)
-        region = QRegion(path.toFillPolygon().toPolygon())
-        self.setMask(region)
+        path.addRoundedRect(QRectF(rect), radius, radius)
+        return QRegion(path.toFillPolygon().toPolygon())
+
+    def _round_corners(self, radius: int = 10):
+        if self._clips_window_mask:
+            self.setMask(self._rounded_region(self.rect(), radius))
+            return
+
+        # Wayland: clip the container instead (see __init__). The embedded web
+        # view is a native surface and is not clipped by this, so the bottom
+        # corners stay square there — the header's top corners, which is what
+        # is actually visible as a square edge, do round off.
+        central = self.centralWidget()
+        if central is not None:
+            central.setMask(self._rounded_region(central.rect(), radius))
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
@@ -414,7 +478,7 @@ class ComfyBrowser(QMainWindow):
             self.splash = None
 
         url = f"http://127.0.0.1:{COMFYUI_PORT}"
-        self.browser = WebView2Widget(url)
+        self.browser = create_webview(url)
         self.browser.loaded.connect(self.on_load_finished)
 
         # Replace the preloader with a browser

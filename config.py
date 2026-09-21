@@ -4,6 +4,7 @@ import shutil
 import uuid
 
 from utils.logger import log_event
+from utils.platform_paths import app_dir
 
 # ── Base paths ──────────────────────────────
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -21,9 +22,9 @@ CHECK_INTERVAL = 1
 MAX_WAIT_TIME = 90
 
 # ── User data directories ─────────────────────────────
-APP_DATA_DIR = os.path.join(
-    os.environ.get("APPDATA", os.path.expanduser("~")), "ComfyLauncher"
-)
+# Single per-user directory (see utils/platform_paths). On Windows this is the
+# same %APPDATA%/ComfyLauncher as before — existing installs keep their data.
+APP_DATA_DIR = app_dir()
 THEMES_DIR = os.path.join(APP_DATA_DIR, "themes")
 
 # ── Shared resources ─────────────────────────────

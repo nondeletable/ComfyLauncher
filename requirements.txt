@@ -1,8 +1,27 @@
-PyQt6==6.6.1
-PyQt6-Qt6==6.6.1
+# Qt is pinned per-OS on purpose.
+#
+# Windows stays on 6.6.1 with WebView2 as the engine: the upgrade below has
+# not been validated there (WebView2 reparenting via win32gui.SetParent, the
+# PyInstaller .spec bundle and its hooks all need a real check on Windows).
+#
+# Linux/macOS need 6.11.0 for QtWebEngine: 6.6.1 ships Chromium 112, which
+# renders the litegraph canvas at 21 fps, while 6.11.0 (Chromium 140) reaches
+# 56 fps — within a few percent of a system Chromium at half its memory.
+# Measured on this project's own bench, see tools/webview_bench/.
+#
+# PyQt6-WebEngine-Qt6 is pinned explicitly: pip otherwise resolves it to the
+# newest release independently of PyQt6-Qt6, and the mismatched pair fails at
+# import with "libQt6QmlMeta.so.6: cannot open shared object file".
+PyQt6==6.6.1 ; sys_platform == 'win32'
+PyQt6-Qt6==6.6.1 ; sys_platform == 'win32'
+PyQt6==6.11.0 ; sys_platform != 'win32'
+PyQt6-Qt6==6.11.0 ; sys_platform != 'win32'
+PyQt6-WebEngine==6.11.0 ; sys_platform != 'win32'
+PyQt6-WebEngine-Qt6==6.11.0 ; sys_platform != 'win32'
+
 psutil==7.1.0
 requests==2.32.4
 PyInstaller==6.10.0
-pythonnet==3.0.5
-pywin32==311; sys_platform == 'win32'
+pythonnet==3.0.5 ; sys_platform == 'win32'
+pywin32==311 ; sys_platform == 'win32'
 pyinstaller-hooks-contrib==2025.9

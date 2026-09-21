@@ -1,0 +1,11 @@
+#!/bin/sh
+# AppImage entry point. Resolves the mounted AppDir and launches the
+# PyInstaller onedir bundle inside it.
+HERE="$(dirname "$(readlink -f "${0}")")"
+
+# Chromium's sandbox needs kernel user namespaces / a SUID helper that an
+# AppImage cannot provide portably; QtWebEngine aborts at startup otherwise.
+# Disabling the sandbox is the standard fix for bundled Qt apps.
+export QTWEBENGINE_DISABLE_SANDBOX=1
+
+exec "${HERE}/usr/bin/ComfyLauncher/ComfyLauncher" "$@"
