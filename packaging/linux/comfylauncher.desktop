@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=ComfyLauncher
+Comment=Launcher and lightweight browser for portable ComfyUI
+Exec=ComfyLauncher
+Icon=comfylauncher
+Categories=Graphics;Utility;
+Terminal=false
