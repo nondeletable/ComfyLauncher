@@ -324,6 +324,20 @@ class ComfyBrowser(QMainWindow):
         if self.poll_callback:
             QTimer.singleShot(1000, self.poll_callback)
 
+    def _shutdown_webview(self):
+        """Tear the embedded web view down before the window is destroyed.
+
+        Must run on every exit path that accepts the close, not just the auto
+        one: QtWebEngine aborts at exit if its page/profile are released out of
+        order by Qt's own destruction instead of shut down synchronously here.
+        Best-effort — a failure here must never block the close.
+        """
+        try:
+            if hasattr(self, "browser") and self.browser:
+                self.browser.shutdown()
+        except Exception:
+            pass
+
     def closeEvent(self, event):
         """Reaction to closing depending on user settings"""
         # If a duplicate closeEvent fires while we're already processing exit
@@ -355,6 +369,7 @@ class ComfyBrowser(QMainWindow):
                 self._restore_comfy_on_exit()
                 self._close_settings_if_open()
                 save_user_config(user_config)
+                self._shutdown_webview()
                 event.accept()
                 return
 
@@ -364,6 +379,7 @@ class ComfyBrowser(QMainWindow):
                 self._restore_comfy_on_exit()
                 self._close_settings_if_open()
                 save_user_config(user_config)  # ← важно!
+                self._shutdown_webview()
                 event.accept()
                 return
 
@@ -393,12 +409,7 @@ class ComfyBrowser(QMainWindow):
         save_user_config(user_config)
         self._close_settings_if_open()
 
-        try:
-            if hasattr(self, "browser") and self.browser:
-                self.browser.shutdown()
-        except Exception:
-            pass
-
+        self._shutdown_webview()
         event.accept()
 
     def open_console_logs(self):

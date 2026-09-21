@@ -98,19 +98,36 @@ class QtWebEngineView(WebViewBase):
         item.accept()
 
     # ─── WebViewBase contract ────────────────────────────
+    def _alive(self) -> bool:
+        """False once shutdown() has deleted the underlying view/page.
+
+        Guards the navigation methods: calling into a sip-deleted QWebEngineView
+        raises RuntimeError, so a stray navigate/reload during or after teardown
+        would crash instead of quietly no-op'ing. Mirrors shutdown()'s own check.
+        """
+        return self._profile is not None
+
     def navigate(self, url: str) -> None:
         self._url = url
+        if not self._alive():
+            return
         self._view.setUrl(QUrl(url))
 
     def reload(self) -> None:
+        if not self._alive():
+            return
         self._view.reload()
 
     def go_back(self) -> None:
+        if not self._alive():
+            return
         history = self._view.history()
         if history.canGoBack():
             history.back()
 
     def go_forward(self) -> None:
+        if not self._alive():
+            return
         history = self._view.history()
         if history.canGoForward():
             history.forward()
