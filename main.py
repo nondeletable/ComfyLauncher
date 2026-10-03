@@ -17,7 +17,13 @@ from ui.dialogs.setup_window import SetupWindow
 from ui.dialogs.build_manager_dialog import BuildManagerDialog
 from ui.theme.manager import THEME
 from launcher import comfy_exists
-from config import get_comfyui_path, ICON_PATH, load_user_config, save_user_config
+from config import (
+    get_comfyui_path,
+    ICON_PATH,
+    load_user_config,
+    save_user_config,
+    backup_user_config,
+)
 
 
 def launch_app():
@@ -43,6 +49,8 @@ def launch_app():
     THEME.apply()
 
     QToolTip.setFont(QFont("Segoe UI", 9))
+
+    backup_user_config()
 
     # ── FIRST SETUP ─────────────────────────────
     comfy_path = get_comfyui_path()

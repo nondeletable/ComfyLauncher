@@ -1,10 +1,11 @@
 import json
 import os
 import shutil
+import sys
 import uuid
 
 from utils.logger import log_event
-from utils.platform_paths import app_dir
+from utils.platform_paths import APP_NAME, app_dir
 
 # ── Base paths ──────────────────────────────
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -102,6 +103,12 @@ OTHER_ICONS = {
 USER_CONFIG_PATH = os.path.join(APP_DATA_DIR, "user_config.json")
 LEGACY_USER_CONFIG_PATH = os.path.join(BASE_DIR, "user_config.json")
 
+# ── User config backup ────────────────────────
+# %APPDATA% does not survive a Windows reinstall, so every save is mirrored to
+# a backup outside it: the app folder when it is writable, else Documents.
+BACKUP_DIR_NAME = "backup"
+BACKUP_FILE_NAME = "user_config.json"
+
 # ── Startup-mode → flags migration table ──────
 # Legacy `startup_mode` was replaced by a plain `extra_flags` list (the single
 # source of truth). This table only drives the one-time fold in the config
@@ -144,6 +151,106 @@ def _migrate_legacy_config():
         log_event(f"🗂 Migrated user config to {USER_CONFIG_PATH}")
     except Exception as e:
         log_event(f"⚠️ Failed to migrate user config: {e}")
+
+
+def _app_backup_dir():
+    """Backup folder next to the exe of a frozen build; None from source.
+
+    From source the "app folder" is the git checkout, and a backup there would
+    show up as an untracked folder, so a dev run goes straight to Documents.
+    """
+    if not getattr(sys, "frozen", False):
+        return None
+    return os.path.join(os.path.dirname(sys.executable), BACKUP_DIR_NAME)
+
+
+def _documents_backup_dir():
+    """Documents/ComfyLauncher/backup, or None if the OS reports no Documents.
+
+    QStandardPaths resolves the real Documents folder (SHGetKnownFolderPath on
+    Windows, so a relocated or OneDrive-redirected one is honoured).
+    """
+    from PyQt6.QtCore import QStandardPaths
+
+    docs = QStandardPaths.writableLocation(
+        QStandardPaths.StandardLocation.DocumentsLocation
+    )
+    if not docs:
+        return None
+    return os.path.join(docs, APP_NAME, BACKUP_DIR_NAME)
+
+
+def _backup_paths() -> list:
+    """Backup file locations in order of preference."""
+    dirs = (_app_backup_dir(), _documents_backup_dir())
+    return [os.path.join(d, BACKUP_FILE_NAME) for d in dirs if d]
+
+
+def _has_builds(raw: bytes) -> bool:
+    """True if raw is a JSON config with at least one build.
+
+    A config without builds is the first-run default (or a wiped file), and
+    backing it up would overwrite a backup that still holds the user's builds.
+    """
+    try:
+        data = json.loads(raw.decode("utf-8"))
+    except Exception:
+        return False
+    return isinstance(data, dict) and bool(data.get("builds"))
+
+
+def _read_bytes(path: str):
+    try:
+        with open(path, "rb") as f:
+            return f.read()
+    except OSError:
+        return None
+
+
+def _write_verified(path: str, raw: bytes) -> bool:
+    """Atomically write raw to path and confirm by reading it back. Never raises.
+
+    The temp file is checked before it replaces the target, so a bad write
+    never takes the place of a good file; the target is checked again after.
+    """
+    tmp = path + ".tmp"
+    try:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(tmp, "wb") as f:
+            f.write(raw)
+            f.flush()
+            os.fsync(f.fileno())
+        if _read_bytes(tmp) != raw:
+            raise OSError("temp file content does not match")
+        os.replace(tmp, path)
+        if _read_bytes(path) != raw:
+            raise OSError("written file content does not match")
+        return True
+    except OSError as e:
+        log_event(f"⚠️ Could not write {path}: {e}")
+        try:
+            os.remove(tmp)
+        except OSError:
+            pass
+        return False
+
+
+def backup_user_config():
+    """Mirror user_config.json to the first backup location that verifies.
+
+    Returns the backup path, or None if there was nothing to back up or no
+    location could be written and verified. Never raises and never shows UI —
+    it runs inside save_user_config, which background threads call too.
+    """
+    raw = _read_bytes(USER_CONFIG_PATH)
+    if raw is None or not _has_builds(raw):
+        return None
+    for path in _backup_paths():
+        if _write_verified(path, raw):
+            log_event(f"💾 User config backed up to {path}")
+            return path
+    log_event("⚠️ User config backup failed: no location could be written")
+    return None
 
 
 def _migrate_build_flags(build: dict) -> None:
@@ -234,11 +341,12 @@ def save_user_config(data: dict) -> bool:
         os.makedirs(os.path.dirname(USER_CONFIG_PATH), exist_ok=True)
         with open(USER_CONFIG_PATH, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=4, ensure_ascii=False)
-        return True
     except Exception as e:
         print(f"⚠️ Failed to save config: {e}")
         log_event(f"⚠️ Failed to save config: {e}")
         return False
+    backup_user_config()
+    return True
 
 
 def get_comfyui_path() -> str:
