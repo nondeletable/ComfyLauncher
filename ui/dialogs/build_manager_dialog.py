@@ -38,7 +38,14 @@ class BuildManagerDialog(QDialog):
         self.setModal(True)
         self.setFixedSize(730, 550)
         self.setObjectName("BuildManagerDialog")
-        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
+        flags = Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog
+        if sys.platform == "win32":
+            # Without WS_MINIMIZEBOX a taskbar click cannot minimize the window.
+            flags |= (
+                Qt.WindowType.WindowSystemMenuHint
+                | Qt.WindowType.WindowMinimizeButtonHint
+            )
+        self.setWindowFlags(flags)
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
 
