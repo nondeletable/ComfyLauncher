@@ -11,6 +11,7 @@ from PyQt6.QtCore import Qt, QTimer, QRectF, QThread
 import threading
 import webbrowser
 import os
+import sys
 import time
 from datetime import datetime
 
@@ -64,7 +65,16 @@ class ComfyBrowser(QMainWindow):
         self.comfyui_path = get_comfyui_path()
         self.settings_window = None
 
-        self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
+        flags = Qt.WindowType.FramelessWindowHint
+        if sys.platform == "win32":
+            # A frameless window loses WS_MINIMIZEBOX, and without it Windows
+            # restores the window from a taskbar click but never minimizes it.
+            flags |= (
+                Qt.WindowType.WindowSystemMenuHint
+                | Qt.WindowType.WindowMinimizeButtonHint
+                | Qt.WindowType.WindowMaximizeButtonHint
+            )
+        self.setWindowFlags(flags)
 
         # Wayland has no shape extension, so a mask set on the *window* only
         # narrows its input region there — the pixels stay square. A mask on a
