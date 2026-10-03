@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import os
+import sys
 from typing import Optional
 
-from PyQt6.QtCore import Qt, QSize
+from PyQt6.QtCore import Qt, QSize, QPoint
 from PyQt6.QtGui import QColor, QIcon, QFontMetrics
 from PyQt6.QtWidgets import (
     QDialog,
@@ -42,6 +43,7 @@ class BuildManagerDialog(QDialog):
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
 
         self.MAX_LIST_H = 450
+        self._drag_pos: QPoint | None = None
 
         self.selected_build_id: Optional[str] = None
 
@@ -290,6 +292,26 @@ class BuildManagerDialog(QDialog):
         h.addWidget(btn)
 
         return row
+
+    # ── Dragging the window by any empty spot ──────
+    def mousePressEvent(self, event):
+        if event.button() != Qt.MouseButton.LeftButton:
+            return
+        # Wayland ignores move(); the compositor has to run the drag there.
+        handle = self.windowHandle()
+        if sys.platform != "win32" and handle is not None and handle.startSystemMove():
+            return
+        self._drag_pos = event.globalPosition().toPoint()
+
+    def mouseMoveEvent(self, event):
+        if self._drag_pos is None or event.buttons() != Qt.MouseButton.LeftButton:
+            return
+        pos = event.globalPosition().toPoint()
+        self.move(self.pos() + pos - self._drag_pos)
+        self._drag_pos = pos
+
+    def mouseReleaseEvent(self, event):
+        self._drag_pos = None
 
     def _launch(self, build_id: str):
         self.selected_build_id = build_id
