@@ -6,7 +6,7 @@ from PyQt6.QtWidgets import (
     QLabel,
 )
 from PyQt6.QtGui import QGuiApplication, QPainterPath, QRegion
-from PyQt6.QtCore import Qt, QTimer, QRectF, QThread
+from PyQt6.QtCore import Qt, QTimer, QRectF, QThread, QEvent
 
 import threading
 import webbrowser
@@ -25,6 +25,8 @@ from core.errors import ERRORS
 from version import __version__
 from ui.splash_video import LauncherSplashVideo
 from ui.webview import create_webview
+from ui.window_resize import EdgeResizer, RESIZE_MARGIN
+from ui.theme.manager import THEME
 from utils.logger import log_event
 from utils.platform_paths import open_in_file_manager
 from utils.update_checker import UpdateService
@@ -99,14 +101,6 @@ class ComfyBrowser(QMainWindow):
 
         # central container
         central = QWidget(self)
-        central.setObjectName("CentralContainer")
-        central.setStyleSheet(
-            """
-            QWidget#CentralContainer {
-                background-color: #353535;
-            }
-        """
-        )
         vbox = QVBoxLayout(central)
         vbox.setContentsMargins(0, 0, 0, 0)
         vbox.setSpacing(0)
@@ -114,7 +108,11 @@ class ComfyBrowser(QMainWindow):
         vbox.addWidget(self.header)  # header on top
         vbox.addStretch(1)
 
-        self.setCentralWidget(central)
+        self.resizer = EdgeResizer(self)
+        self.resizer.watch(self)
+        self.resizer.watch(self.header)
+        self._set_central(central)
+        THEME.themeChanged.connect(self._paint_resize_border)
 
         self.status_label = self.header.status_label
         # A bound method, not a lambda: PyQt drops the connection when this
@@ -452,6 +450,38 @@ class ComfyBrowser(QMainWindow):
         if central is not None:
             central.setMask(self._rounded_region(central.rect(), radius))
 
+    def _set_central(self, central):
+        central.setObjectName("CentralContainer")
+        self.setCentralWidget(central)
+        self.resizer.watch(central)
+        self._paint_resize_border()
+        self._fit_resize_border()
+
+    def _paint_resize_border(self, *args):
+        """The resize strip shows the container, so it takes the header colour."""
+        central = self.centralWidget()
+        if central is None:
+            return
+        central.setStyleSheet(
+            f"QWidget#CentralContainer {{ background-color: {THEME.colors['bg_header']}; }}"
+        )
+
+    def _fit_resize_border(self):
+        """Leave a grabbable strip around the content unless maximized.
+
+        The top edge is the header itself, which the resizer also watches.
+        """
+        central = self.centralWidget()
+        if central is None or central.layout() is None:
+            return
+        m = 0 if self.isMaximized() or self.isFullScreen() else RESIZE_MARGIN
+        central.layout().setContentsMargins(m, 0, m, m)
+
+    def changeEvent(self, event):
+        super().changeEvent(event)
+        if event.type() == QEvent.Type.WindowStateChange:
+            self._fit_resize_border()
+
     def resizeEvent(self, event):
         super().resizeEvent(event)
         # recalculate the mask only if the window is already visible
@@ -500,7 +530,7 @@ class ComfyBrowser(QMainWindow):
         vbox.addWidget(self.header)
         vbox.addWidget(self.browser, 1)
 
-        self.setCentralWidget(central)
+        self._set_central(central)
 
         # We carefully complete the worker
         self.worker.stop()
@@ -528,14 +558,6 @@ class ComfyBrowser(QMainWindow):
         error_screen = ErrorScreen(error_widget)
 
         central = QWidget(self)
-        central.setObjectName("CentralContainer")
-        central.setStyleSheet(
-            """
-            QWidget#CentralContainer {
-                background-color: #353535;
-            }
-        """
-        )
 
         vbox = QVBoxLayout(central)
         vbox.setContentsMargins(0, 0, 0, 0)
@@ -544,7 +566,7 @@ class ComfyBrowser(QMainWindow):
         vbox.addWidget(self.header)
         vbox.addWidget(error_screen, 1)
 
-        self.setCentralWidget(central)
+        self._set_central(central)
 
         # We carefully stop the worker.
         if hasattr(self, "worker"):
