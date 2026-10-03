@@ -15,6 +15,7 @@ from PyQt6.QtGui import QFont, QIcon
 from ui.browser import ComfyBrowser
 from ui.dialogs.setup_window import SetupWindow
 from ui.dialogs.build_manager_dialog import BuildManagerDialog
+from ui.dialogs.webview2_setup import ensure_webview2_runtime
 from ui.theme.manager import THEME
 from launcher import comfy_exists
 from config import get_comfyui_path, ICON_PATH, load_user_config, save_user_config
@@ -43,6 +44,11 @@ def launch_app():
     THEME.apply()
 
     QToolTip.setFont(QFont("Segoe UI", 9))
+
+    # The web view on Windows needs the WebView2 Runtime; check before any
+    # window that depends on it, and offer to install it if it is missing.
+    if sys.platform == "win32" and not ensure_webview2_runtime():
+        sys.exit(0)
 
     # ── FIRST SETUP ─────────────────────────────
     comfy_path = get_comfyui_path()
