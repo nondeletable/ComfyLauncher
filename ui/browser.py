@@ -286,13 +286,17 @@ class ComfyBrowser(QMainWindow):
     def _on_settings_destroyed(self, *args):
         self.settings_window = None
 
-    def _close_settings_if_open(self):
-        if self.settings_window is not None:
-            try:
-                self.settings_window.close()
-            except RuntimeError:
-                pass
+    def _close_settings_if_open(self) -> bool:
+        """Close Settings; False if it stayed open (Cancel on its unsaved prompt)."""
+        if self.settings_window is None:
+            return True
+        try:
+            closed = self.settings_window.close()
+        except RuntimeError:
+            closed = True
+        if closed:
             self.settings_window = None
+        return closed
 
     @staticmethod
     def open_output():
@@ -364,6 +368,15 @@ class ComfyBrowser(QMainWindow):
 
         self._exit_in_progress = True  # mark close sequence started
 
+        # Settings goes first: its unsaved prompt may apply edits to the config,
+        # and the snapshot below is written back whole on exit. Cancel there
+        # keeps Settings open, so the launcher stays open too.
+        if not self._close_settings_if_open():
+            log_event("ℹ️ Exit cancelled from the Settings window.")
+            self._exit_in_progress = False
+            event.ignore()
+            return
+
         user_config = load_user_config()
         ask = user_config.get("ask_on_exit", True)
         mode = user_config.get("exit_mode", "always_stop")
@@ -383,7 +396,6 @@ class ComfyBrowser(QMainWindow):
                 log_event("🟥 User chose: YES — stopping ComfyUI and exiting.")
                 stop_comfyui_hard(self.comfyui_path)
                 self._restore_comfy_on_exit()
-                self._close_settings_if_open()
                 save_user_config(user_config)
                 self._shutdown_webview()
                 event.accept()
@@ -393,7 +405,6 @@ class ComfyBrowser(QMainWindow):
             elif choice == "no":
                 log_event("🟢 User chose: NO — exiting without stopping ComfyUI.")
                 self._restore_comfy_on_exit()
-                self._close_settings_if_open()
                 save_user_config(user_config)  # ← важно!
                 self._shutdown_webview()
                 event.accept()
@@ -423,7 +434,6 @@ class ComfyBrowser(QMainWindow):
         # Save user config anyway (important!)
         self._restore_comfy_on_exit()
         save_user_config(user_config)
-        self._close_settings_if_open()
 
         self._shutdown_webview()
         event.accept()

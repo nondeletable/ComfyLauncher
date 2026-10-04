@@ -20,7 +20,7 @@ from ui.settings.settings_window import SettingsWindow  # noqa: E402
 def window(qapp):
     w = SettingsWindow(None)
     yield w
-    w._dirty_any = False
+    w._dirty_pages = lambda: []
     w.close()
 
 

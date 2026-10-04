@@ -21,6 +21,7 @@ from ui.settings.page_startapp import StartAppSettingsPage
 from ui.theme.manager import THEME
 from ui.dialogs.messagebox import MessageBox as MB
 from config import ICON_PATH
+from utils.logger import log_event
 
 
 # ──────────────────────────────────────────────
@@ -212,23 +213,18 @@ class SettingsWindow(QWidget):
             LogsSettingsPage,
             AboutSettingsPage,
         ]
+        self._themes_page = self._page_classes.index(ColorThemesPage)
         self._built_pages = set()
         for _ in self._page_classes:
             self.pages.addWidget(QWidget())
 
         # ─── Logic and signals ─────────────────────────────────
         self.menu.currentRowChanged.connect(self._show_page)  # type: ignore
-        self.menu.currentRowChanged.connect(self._on_page_changed)  # type: ignore
+        self.menu.currentRowChanged.connect(self._sync_footer)  # type: ignore
         self.menu.setCurrentRow(0)
-
-        self._dirty_any = False
-        self.btn_apply.setEnabled(False)
 
         self.btn_apply.clicked.connect(self._apply_current)  # type: ignore
         self.btn_close.clicked.connect(self.close)  # type: ignore
-
-        # ─── Home page ───────────────────────────────
-        self._on_page_changed(0)
 
         # ─── Centering and formatting──────────────────
         self.center()
@@ -266,73 +262,68 @@ class SettingsWindow(QWidget):
             self.pages.insertWidget(index, page)
             self.pages.removeWidget(placeholder)
             placeholder.deleteLater()
+            # Every built page keeps reporting, not just the visible one: its
+            # edits survive a switch to another page and must reach closeEvent.
+            if hasattr(page, "dirtyChanged"):
+                page.dirtyChanged.connect(self._sync_footer)  # type: ignore
         self.pages.setCurrentIndex(index)
 
-    def _on_page_changed(self, index: int):
-        """We connect the active page's dirtyChanged
-        and update the bottom buttons"""
-        # Unsubscribe from the previous page
+    def _is_dirty(self, page: QWidget) -> bool:
+        # An exception here would escape closeEvent, and PyQt6 aborts on that.
         try:
-            if (
-                hasattr(self, "_current_connected_page")
-                and self._current_connected_page
-            ):
-                if hasattr(self._current_connected_page, "dirtyChanged"):
-                    self._current_connected_page.dirtyChanged.disconnect(
-                        self._on_dirty_changed
-                    )
-        except Exception:
-            pass
+            return hasattr(page, "is_dirty") and bool(page.is_dirty())  # type: ignore
+        except Exception as e:
+            log_event(f"Settings: is_dirty failed on {type(page).__name__}: {e}")
+            return False
 
-        # New page
-        page = self.pages.widget(index)
-        self._current_connected_page = page
+    def _dirty_pages(self) -> list[int]:
+        """Built pages holding unsaved changes; a page never visited has none."""
+        return [
+            i for i in sorted(self._built_pages) if self._is_dirty(self.pages.widget(i))
+        ]
 
-        # Connect the dirtyChanged signal, if it exists.
-        if hasattr(page, "dirtyChanged"):
-            page.dirtyChanged.connect(self._on_dirty_changed)  # type: ignore
+    def _sync_footer(self, *args):
+        """Apply is for the page on screen, so it follows that page only."""
+        self.btn_apply.setEnabled(self._is_dirty(self._current_page()))
 
-        # Synchronize the bottom buttons with the current page
-        self._sync_footer_by_page(page)
-
-    def _sync_footer_by_page(self, page: QWidget | None = None):
-        """Updates the state of the bottom buttons (Apply/Reset)"""
-        if page is None:
-            page = getattr(self, "_current_connected_page", None)
-        dirty = False
-        if hasattr(page, "is_dirty"):
-            try:
-                dirty = bool(page.is_dirty())  # type: ignore
-            except Exception:
-                dirty = False
-        self.btn_apply.setEnabled(dirty)
-        self._dirty_any = dirty
-
-    def _on_dirty_changed(self, dirty: bool):
-        """Reacting to the dirtyChanged signal from the current page"""
-        self.btn_apply.setEnabled(dirty)
-        self._dirty_any = dirty
+    def _apply_page(self, page: QWidget) -> bool:
+        if hasattr(page, "apply"):
+            return bool(page.apply())  # type: ignore
+        if hasattr(page, "apply_changes"):
+            return bool(page.apply_changes())  # type: ignore
+        return False
 
     def _apply_current(self):
-        page = getattr(self, "_current_connected_page", None)
-        if not page:
-            return
-        ok = None
-        if hasattr(page, "apply"):
-            ok = page.apply()  # type: ignore
-        elif hasattr(page, "apply_changes"):
-            ok = page.apply_changes()  # type: ignore
-        if ok:
-            self._sync_footer_by_page(page)
+        if self._apply_page(self._current_page()):
+            self._sync_footer()
 
     def closeEvent(self, e):
-        if getattr(self, "_dirty_any", False):
-            reply = MB.ask_yes_no(
+        dirty = self._dirty_pages()
+        if dirty:
+            names = ", ".join(self.menu.item(i).text() for i in dirty)
+            answer = MB.choose(
                 self.window(),
                 "Unsaved changes",
-                "Discard unsaved changes and close Settings?",
+                f"Unsaved changes on: {names}.\n\nApply them before closing Settings?",
+                "ask_yes_no",
+                [("Apply", "apply"), ("Discard", "discard"), ("Cancel", "cancel")],
             )
-            if not reply:
+            if answer == "apply":
+                # Every page is applied even if one fails; a failed page has
+                # shown its own warning and stays dirty, so Settings stays open.
+                # Color Themes goes last and only if the rest saved: applying a
+                # theme closes Settings on its own, which would ask again.
+                results = []
+                for i in sorted(dirty, key=lambda i: i == self._themes_page):
+                    if i == self._themes_page and not all(results):
+                        results.append(False)
+                        continue
+                    results.append(self._apply_page(self.pages.widget(i)))
+                self._sync_footer()
+                if not all(results):
+                    e.ignore()
+                    return
+            elif answer != "discard":
                 e.ignore()
                 return
         e.accept()
