@@ -6,7 +6,7 @@ from PyQt6.QtWidgets import QApplication
 from config import backup_user_config
 from ui.theme.tokens import THEMES
 from ui.theme.theme_registry import REGISTRY
-from config import USER_CONFIG_PATH as CONFIG_PATH
+from config import USER_CONFIG_PATH as CONFIG_PATH, load_user_config
 from utils.logger import log_event
 
 _ = REGISTRY
@@ -173,14 +173,16 @@ class ThemeManager(QObject):
         backup_user_config()
 
     def _load_last_theme(self) -> str:
-        """Loads the theme from user_config.json."""
-        try:
-            with open(CONFIG_PATH, "r", encoding="utf-8") as f:
-                data = json.load(f)
-            theme = data.get("theme", "dark")
-            return theme if theme in self._themes else "dark"
-        except Exception:
-            return "dark"
+        """Loads the theme from user_config.json.
+
+        Through ``load_user_config()``, not a direct read: this runs at import,
+        before anything else touches the config, so it has to be the one that
+        migrates a pre-%APPDATA% config — or the first start after updating
+        from 1.7.0 or older shows the dark theme whatever the user had picked.
+        """
+        theme = load_user_config().get("theme", "dark")
+        # A hand-edited config can hold anything here; never fail the import.
+        return theme if isinstance(theme, str) and theme in self._themes else "dark"
 
 
 # Singleton

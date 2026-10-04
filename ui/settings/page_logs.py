@@ -3,7 +3,7 @@ from PyQt6.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QLabel,
-    QTextEdit,
+    QPlainTextEdit,
     QPushButton,
     QHBoxLayout,
     QFrame,
@@ -34,7 +34,7 @@ class LogsSettingsPage(QWidget):
         layout.addWidget(title)
 
         # ─── Log text field ─────────────────────────
-        self.text_edit = QTextEdit()
+        self.text_edit = QPlainTextEdit()
         self.text_edit.setReadOnly(True)
         self.text_edit.setStyleSheet(self._build_textedit_style())
         log_container = QHBoxLayout()
@@ -121,7 +121,7 @@ class LogsSettingsPage(QWidget):
     def _build_textedit_style(self) -> str:
         c = THEME.colors
         return f"""
-            QTextEdit {{
+            QPlainTextEdit {{
                 background-color: {c['bg_input']};
                 color: {c['text_secondary']};
                 border: 1px solid {c['border_color']};
@@ -130,7 +130,7 @@ class LogsSettingsPage(QWidget):
                 font-size: 12px;
                 padding: 10px;
             }}
-            QTextEdit:focus {{
+            QPlainTextEdit:focus {{
                 border-color: {c['accent']};
             }}
         """
