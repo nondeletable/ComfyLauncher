@@ -177,7 +177,7 @@ def _documents_backup_dir():
     )
     if not docs:
         return None
-    return os.path.join(docs, APP_NAME, BACKUP_DIR_NAME)
+    return os.path.join(os.path.normpath(docs), APP_NAME, BACKUP_DIR_NAME)
 
 
 def _backup_paths() -> list:
