@@ -205,7 +205,7 @@ class MessageBox(QDialog):
             "Failed to save the settings. Make sure the app can write to your "
             "AppData folder, then try again.",
         )
-      
+
     @staticmethod
     def choose(parent, title: str, text: str, kind: str, buttons) -> str | None:
         """Ask with any set of buttons; ``buttons`` is ``[(label, key), ...]``.
