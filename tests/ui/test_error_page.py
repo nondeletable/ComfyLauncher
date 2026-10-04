@@ -56,3 +56,11 @@ def test_error_card_still_paints(no_ambient_qss):
     pins that difference down so the fix is not copied where it is not needed."""
     image = render(no_ambient_qss)
     assert image.pixelColor(350, 250).name().lower() == BACKDROP
+
+
+def test_report_button_appears_only_with_a_handler(qapp):
+    clicked = []
+    widget = ErrorWidget("Title", "Message", on_report=lambda: clicked.append(1))
+    widget.report_button.click()
+    assert clicked == [1]
+    assert not hasattr(ErrorWidget("Title", "Message"), "report_button")

@@ -1,0 +1,290 @@
+import json
+import os
+import sys
+from urllib.parse import parse_qs, urlparse
+
+import pytest
+
+from utils import bug_report as br
+from utils.console_buffer import ConsoleBuffer
+
+HOME_TOKEN = "%USERPROFILE%" if sys.platform == "win32" else "~"
+
+
+@pytest.fixture
+def scrub():
+    return br.Scrubber(r"C:\Users\Jane.Doe", "Jane.Doe", "JANE-PC")
+
+
+def test_home_folder_is_replaced_in_any_spelling(scrub):
+    for path in (
+        r"C:\Users\Jane.Doe\ComfyUI\main.py",
+        "C:/Users/Jane.Doe/ComfyUI/main.py",
+        r"c:\users\jane.doe\ComfyUI\main.py",
+        r"C:\\Users\\Jane.Doe\\ComfyUI\\main.py",
+    ):
+        out = scrub(path)
+        assert "Jane" not in out and "jane" not in out
+        assert out.startswith(HOME_TOKEN)
+
+
+def test_home_prefix_of_a_longer_folder_is_not_mistaken_for_home(scrub):
+    out = scrub(r"C:\Users\Jane.Doe2\file.txt")
+    assert out == r"C:\Users\<user>\file.txt"
+
+
+def test_other_profile_folders_lose_the_owner_name(scrub):
+    assert scrub(r"D:\x C:\Users\Bob\a") == r"D:\x C:\Users\<user>\a"
+    assert scrub("/home/bob/ComfyUI") == "/home/<user>/ComfyUI"
+
+
+def test_user_and_host_names_are_replaced(scrub):
+    out = scrub("user jane.doe on JANE-PC, jane-pc again")
+    assert out == "user <user> on <host>, <host> again"
+
+
+def test_names_inside_flags_and_words_survive():
+    scrub = br.Scrubber(None, "max", "box")
+    assert scrub("--max-upload-size 10 maximize sandbox") == (
+        "--max-upload-size 10 maximize sandbox"
+    )
+    assert scrub("hello max") == "hello <user>"
+
+
+def test_linux_home_is_replaced():
+    scrub = br.Scrubber("/home/jane", None, None)
+    assert scrub("/home/jane/ComfyUI") == f"{HOME_TOKEN}/ComfyUI"
+
+
+def test_scrub_data_reaches_keys_and_nested_values(scrub):
+    data = {r"C:\Users\Jane.Doe\b": [{"path": "C:/Users/Jane.Doe/x"}], "n": 3}
+    out = scrub.scrub_data(data)
+    assert json.dumps(out).count("Jane") == 0
+    assert out["n"] == 3
+
+
+@pytest.mark.parametrize(
+    "text, expected",
+    [
+        (r"c:\users\bob\x.py", r"c:\users\<user>\x.py"),
+        (r"C:\USERS\Bob\x", r"C:\USERS\<user>\x"),
+        (r"\\SERVER\c$\Users\Bob\file", r"\\SERVER\c$\Users\<user>\file"),
+        ("//server/c$/Users/Bob/file", "//server/c$/Users/<user>/file"),
+        (
+            r"cwd=C:\Users\Bob, retrying in 5 seconds",
+            r"cwd=C:\Users\<user>, retrying in 5 seconds",
+        ),
+        (r"C:\Users\Bob retrying", r"C:\Users\<user> retrying"),
+        (r"C:\Users\John Smith\x", r"C:\Users\<user>\x"),
+        ("/Users/bob/Library", "/Users/<user>/Library"),
+    ],
+)
+def test_other_profiles_in_every_form(scrub, text, expected):
+    assert scrub(text) == expected
+
+
+def test_profile_name_match_is_capped(scrub):
+    out = scrub("C:/Users/" + "a" * 200)
+    assert out.startswith("C:/Users/<user>") and len(out) > 100
+
+
+def test_home_rule_is_anchored_and_knows_short_names():
+    linux = br.Scrubber("/home/max", None, None)
+    assert linux("/mnt/b/home/max/y") == "/mnt/b/home/<user>/y"
+    win = br.Scrubber(r"C:\Users\Jane Doe", None, None)
+    assert win(r"C:\Users\JANEDO~1\AppData") == HOME_TOKEN + r"\AppData"
+    assert win(r"C:\Users\Jane Doe\AppData") == HOME_TOKEN + r"\AppData"
+
+
+def test_onedrive_org_email_and_domain_account():
+    scrub = br.Scrubber(None, None, None, domains=("CONTOSO",))
+    assert scrub(r"D:\OneDrive - Contoso Ltd\x") == r"D:\OneDrive - <org>\x"
+    assert scrub("mail jane.doe+x@corp.example.com now") == "mail <email> now"
+    assert scrub(r"run as CONTOSO\svc_build") == r"run as <domain>\<user>"
+    assert scrub("joined contoso") == "joined <domain>"
+
+
+@pytest.mark.parametrize(
+    "text, expected",
+    [
+        ("http://192.168.1.20:8188", "http://<ip>:8188"),
+        ("http://127.0.0.1:8188", "http://127.0.0.1:8188"),
+        ("--listen 0.0.0.0", "--listen 0.0.0.0"),
+        ("localhost:8188", "localhost:8188"),
+        ("WebView2 130.0.2849.80", "WebView2 130.0.2849.80"),
+        ("addr fe80::1c2b:3a4d:5e6f:7a8b here", "addr <ip> here"),
+        ("bind [::1]:8188", "bind [::1]:8188"),
+        ("[2026-10-04 12:30:45] ok", "[2026-10-04 12:30:45] ok"),
+        ("std::vector", "std::vector"),
+    ],
+)
+def test_ip_addresses(text, expected):
+    assert br.Scrubber(None, None, None)(text) == expected
+
+
+@pytest.fixture
+def fake_env(tmp_path, monkeypatch):
+    """A config, a log and a console buffer that all leak the user name."""
+    home = tmp_path / "Users" / "Jane"
+    build = home / "ComfyUI_portable" / "ComfyUI"
+    build.mkdir(parents=True)
+    cfg_path = tmp_path / "user_config.json"
+    cfg_path.write_text(
+        json.dumps(
+            {
+                "comfyui_path": str(build),
+                "last_used_build_id": "b1",
+                "builds": [{"id": "b1", "path": str(build), "extra_flags": ["--cpu"]}],
+                "update_etag": "W/secret",
+                "last_update_check": "2026-01-01",
+                "theme": "dracula",
+                "show_cmd": False,
+            }
+        ),
+        encoding="utf-8",
+    )
+    log_path = tmp_path / "launcher.log"
+    log_path.write_text(
+        "".join(f"line {i}\n" for i in range(br.LOG_TAIL_LINES + 50))
+        + f"opened {build}\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr("config.USER_CONFIG_PATH", str(cfg_path))
+    monkeypatch.setattr("utils.logger.LOG_FILE", str(log_path))
+    ConsoleBuffer.clear()
+    ConsoleBuffer.add(f"Total VRAM 24564 MB, cwd {build}\n")
+    yield br.Scrubber(str(home), "Jane", "JANE-PC")
+    ConsoleBuffer.clear()
+
+
+def test_collected_report_is_scrubbed_everywhere(fake_env):
+    report = br.collect_report(
+        "error_screen", "PROCESS_START_FAILED", scrubber=fake_env
+    )
+    text = br.render_report(report, comment="it broke")
+    assert "Jane" not in text
+    assert "W/secret" not in text and "last_update_check" not in text
+    assert '"theme": "dracula"' in text
+    assert "Total VRAM 24564 MB" in text
+    assert "it broke" in text
+
+
+def test_summary_carries_the_diagnosis_fields(fake_env):
+    report = br.collect_report("manual", scrubber=fake_env)
+    summary = dict(report.summary)
+    assert summary["Launch flags"] == "--cpu"
+    assert summary["Theme"] == "dracula"
+    assert summary["Console"] == "internal"
+    assert summary["Where"] == "Reported manually"
+    assert summary["Launcher version"]
+
+
+def test_log_is_cut_to_its_tail(fake_env):
+    report = br.collect_report("manual", scrubber=fake_env)
+    log = report.sections[br.SECTION_LOG]
+    assert len(log.splitlines()) == br.LOG_TAIL_LINES
+    assert "line 0\n" not in log
+
+
+def test_sections_can_be_left_out(fake_env):
+    report = br.collect_report("exception", traceback_text="Traceback: boom")
+    text = br.render_report(report, include={br.SECTION_CONFIG})
+    assert "== TRACEBACK ==" in text and "boom" in text
+    assert "== CONFIG ==" in text
+    assert "LAUNCHER LOG" not in text and "COMFYUI CONSOLE" not in text
+
+
+def test_empty_sections_are_marked_not_dropped(fake_env):
+    ConsoleBuffer.clear()
+    text = br.render_report(br.collect_report("manual", scrubber=fake_env))
+    assert br.extract_section(text, br.SECTION_CONSOLE) == "(empty)"
+
+
+def test_missing_config_and_log_do_not_raise(tmp_path, monkeypatch):
+    monkeypatch.setattr("config.USER_CONFIG_PATH", str(tmp_path / "none.json"))
+    monkeypatch.setattr("utils.logger.LOG_FILE", str(tmp_path / "none.log"))
+    text = br.render_report(br.collect_report("manual"))
+    assert "(no config file)" in text and "(no log file)" in text
+
+
+def test_extract_section_returns_one_body(fake_env):
+    text = br.render_report(br.collect_report("manual", scrubber=fake_env))
+    summary = br.extract_section(text, br.SECTION_SUMMARY)
+    assert summary.startswith("Launcher version:")
+    assert "== " not in summary
+    assert br.extract_section(text, "NOPE") == ""
+
+
+def test_issue_url_is_prefilled():
+    url = br.github_issue_url("[Report] x", "body text")
+    parts = urlparse(url)
+    assert parts.netloc == "github.com"
+    assert parts.path == f"/{br.GITHUB_REPO}/issues/new"
+    q = parse_qs(parts.query)
+    assert q["title"] == ["[Report] x"]
+    assert q["body"] == ["body text"]
+    assert q["labels"] == ["bug,report"]
+
+
+@pytest.mark.parametrize("line", ["x" * 200, "ж" * 200])
+def test_long_issue_body_is_cut_to_the_limit(line):
+    body = "\n".join([line] * 200)
+    url = br.github_issue_url("t", body, limit=3000)
+    assert len(url) <= 3000
+    assert (
+        "full text is in the attached file" in parse_qs(urlparse(url).query)["body"][0]
+    )
+
+
+def test_single_huge_line_is_cut_too():
+    url = br.github_issue_url("t", "y" * 20000, limit=2000)
+    assert len(url) <= 2000
+
+
+def test_cut_inside_the_code_block_closes_it():
+    body = br.issue_body("== SUMMARY ==\n" + "Line: value\n" * 400, "r.txt")
+    url = br.github_issue_url("t", body, limit=2000)
+    assert len(url) <= 2000
+    assert parse_qs(urlparse(url).query)["body"][0].count("```") == 2
+
+
+def summary_with_error(error):
+    return (
+        f"x\n\n== SUMMARY ==\nLauncher version: 1\nError:   {error}\n\n== CONFIG ==\n"
+    )
+
+
+def test_issue_title_comes_from_the_shown_error_line():
+    assert br.issue_title(summary_with_error("Boom")) == "[Report] Boom"
+    assert br.issue_title(summary_with_error("(none)")) == "[Report] Problem report"
+    assert br.issue_title(summary_with_error("")) == "[Report] Problem report"
+    assert br.issue_title("no summary at all") == "[Report] Problem report"
+    assert len(br.issue_title(summary_with_error("z" * 300))) == 100
+
+
+def test_issue_body_carries_only_the_summary():
+    body = br.issue_body("== SUMMARY ==\nA: b\n\n== CONFIG ==\n{}\n", "r.txt")
+    assert "r.txt" in body and "A: b" in body and "CONFIG" not in body
+
+
+def test_save_report_writes_utf8(tmp_path):
+    path = br.save_report("отчёт\n", str(tmp_path))
+    assert os.path.basename(path).startswith("comfylauncher-report-")
+    assert path.endswith(".txt")
+    with open(path, encoding="utf-8") as f:
+        assert f.read() == "отчёт\n"
+
+
+def test_save_report_never_overwrites(tmp_path):
+    first = br.save_report("one", str(tmp_path))
+    second = br.save_report("two", str(tmp_path))
+    assert first != second
+    with open(first, encoding="utf-8") as f:
+        assert f.read() == "one"
+
+
+def test_unwritable_desktop_falls_back_to_home(tmp_path, monkeypatch):
+    monkeypatch.setattr(br, "default_save_dir", lambda: str(tmp_path / "missing"))
+    monkeypatch.setattr(br.os.path, "expanduser", lambda p: str(tmp_path))
+    path = br.save_report("x")
+    assert os.path.dirname(path) == str(tmp_path)

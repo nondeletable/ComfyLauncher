@@ -20,6 +20,7 @@ from config import (
 )
 import webbrowser
 from utils.update_checker import UpdateService
+from ui.dialogs.bug_report_dialog import open_bug_report
 
 
 class AnimatedLogo(QWidget):
@@ -207,6 +208,14 @@ class AboutSettingsPage(QWidget):
         right_layout.setContentsMargins(0, 0, 0, 0)
         right_layout.setAlignment(Qt.AlignmentFlag.AlignRight)  # Кнопка прижата вправо
 
+        self.report_btn = QPushButton("Report a problem")
+        self.report_btn.setMinimumWidth(130)
+        self.report_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.report_btn.clicked.connect(  # type: ignore
+            lambda: open_bug_report(self.window(), "manual")
+        )
+        right_layout.addWidget(self.report_btn)
+
         self.update_btn = QPushButton("Check for updates")
         # Рекомендую все же добавить минимальную ширину, чтобы кнопка не была слишком узкой
         self.update_btn.setMinimumWidth(130)
@@ -228,6 +237,7 @@ class AboutSettingsPage(QWidget):
             }}
         """
         )
+        self.report_btn.setStyleSheet(self.update_btn.styleSheet())
         self.update_btn.clicked.connect(self._manual_update_check)  # type: ignore
         right_layout.addWidget(self.update_btn)
         footer_layout.addWidget(right_container, 1)

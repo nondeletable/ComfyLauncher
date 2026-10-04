@@ -20,6 +20,7 @@ from workers.comfy_loader import ComfyLoaderWorker
 from ui.settings.settings_window import SettingsWindow
 from ui.dialogs.messagebox import MessageBox as MB
 from ui.dialogs.console_window import ConsoleWindow
+from ui.dialogs.bug_report_dialog import open_bug_report
 from ui.error_page import ErrorWidget, ErrorScreen
 from core.errors import ERRORS
 from version import __version__
@@ -127,6 +128,7 @@ class ComfyBrowser(QMainWindow):
         self.header.folder_clicked.connect(self.open_folder)
         self.header.settings_clicked.connect(self.open_settings)
         self.header.output_clicked.connect(self.open_output)
+        self.header.report_clicked.connect(self.open_bug_report)
 
         self.ui_state = "STARTING_COMFY"
         self._start_comfyui()
@@ -274,6 +276,12 @@ class ComfyBrowser(QMainWindow):
             log_event("❌ Settings window failed to open:")
             traceback.print_exc()
             log_event(f"❌ Exception type: {type(e).__name__}, message: {e}")
+
+    def open_bug_report(self):
+        open_bug_report(self, "manual")
+
+    def _report_startup_error(self):
+        open_bug_report(self, "error_screen", getattr(self, "_startup_error", ""))
 
     def _on_settings_destroyed(self, *args):
         self.settings_window = None
@@ -548,11 +556,13 @@ class ComfyBrowser(QMainWindow):
             self.splash = None
 
         error = ERRORS[error_code]
+        self._startup_error = f"{error_code}: {error.title} - {error.message}"
 
         error_widget = ErrorWidget(
             title=error.title,
             message=error.message,
             hint=error.hint,
+            on_report=self._report_startup_error,
         )
 
         error_screen = ErrorScreen(error_widget)
