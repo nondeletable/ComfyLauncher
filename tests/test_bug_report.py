@@ -63,6 +63,65 @@ def test_scrub_data_reaches_keys_and_nested_values(scrub):
     assert out["n"] == 3
 
 
+@pytest.mark.parametrize(
+    "text, expected",
+    [
+        (r"c:\users\bob\x.py", r"c:\users\<user>\x.py"),
+        (r"C:\USERS\Bob\x", r"C:\USERS\<user>\x"),
+        (r"\\SERVER\c$\Users\Bob\file", r"\\SERVER\c$\Users\<user>\file"),
+        ("//server/c$/Users/Bob/file", "//server/c$/Users/<user>/file"),
+        (
+            r"cwd=C:\Users\Bob, retrying in 5 seconds",
+            r"cwd=C:\Users\<user>, retrying in 5 seconds",
+        ),
+        (r"C:\Users\Bob retrying", r"C:\Users\<user> retrying"),
+        (r"C:\Users\John Smith\x", r"C:\Users\<user>\x"),
+        ("/Users/bob/Library", "/Users/<user>/Library"),
+    ],
+)
+def test_other_profiles_in_every_form(scrub, text, expected):
+    assert scrub(text) == expected
+
+
+def test_profile_name_match_is_capped(scrub):
+    out = scrub("C:/Users/" + "a" * 200)
+    assert out.startswith("C:/Users/<user>") and len(out) > 100
+
+
+def test_home_rule_is_anchored_and_knows_short_names():
+    linux = br.Scrubber("/home/max", None, None)
+    assert linux("/mnt/b/home/max/y") == "/mnt/b/home/<user>/y"
+    win = br.Scrubber(r"C:\Users\Jane Doe", None, None)
+    assert win(r"C:\Users\JANEDO~1\AppData") == HOME_TOKEN + r"\AppData"
+    assert win(r"C:\Users\Jane Doe\AppData") == HOME_TOKEN + r"\AppData"
+
+
+def test_onedrive_org_email_and_domain_account():
+    scrub = br.Scrubber(None, None, None, domains=("CONTOSO",))
+    assert scrub(r"D:\OneDrive - Contoso Ltd\x") == r"D:\OneDrive - <org>\x"
+    assert scrub("mail jane.doe+x@corp.example.com now") == "mail <email> now"
+    assert scrub(r"run as CONTOSO\svc_build") == r"run as <domain>\<user>"
+    assert scrub("joined contoso") == "joined <domain>"
+
+
+@pytest.mark.parametrize(
+    "text, expected",
+    [
+        ("http://192.168.1.20:8188", "http://<ip>:8188"),
+        ("http://127.0.0.1:8188", "http://127.0.0.1:8188"),
+        ("--listen 0.0.0.0", "--listen 0.0.0.0"),
+        ("localhost:8188", "localhost:8188"),
+        ("WebView2 130.0.2849.80", "WebView2 130.0.2849.80"),
+        ("addr fe80::1c2b:3a4d:5e6f:7a8b here", "addr <ip> here"),
+        ("bind [::1]:8188", "bind [::1]:8188"),
+        ("[2026-10-04 12:30:45] ok", "[2026-10-04 12:30:45] ok"),
+        ("std::vector", "std::vector"),
+    ],
+)
+def test_ip_addresses(text, expected):
+    assert br.Scrubber(None, None, None)(text) == expected
+
+
 @pytest.fixture
 def fake_env(tmp_path, monkeypatch):
     """A config, a log and a console buffer that all leak the user name."""

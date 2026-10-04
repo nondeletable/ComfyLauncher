@@ -14,6 +14,7 @@ lose their owner's name, and the user and machine names become ``<user>`` and
 from __future__ import annotations
 
 import getpass
+import ipaddress
 import json
 import os
 import platform
@@ -55,42 +56,118 @@ _CONFIG_DROP_KEYS = ("update_etag", "last_update_check")
 _HEADER_RE = re.compile(r"^== (.+?) ==$", re.MULTILINE)
 
 
-class Scrubber:
-    """Replaces the home folder, profile folders, user and host names."""
+# Where a path component ends in log text.
+_END = r"(?=$|[\\/\s,;'\"()\[\]=])"
+# One folder name: stops at separators and the punctuation that ends a path in
+# a log line, capped so a runaway match cannot swallow the rest of the line.
+# Spaces are allowed only when the path visibly goes on after the name.
+_NAME = r"[^\\/:*?\"<>|\r\n,;']{1,64}?(?=[\\/])|[^\\/:*?\"<>|\s,;']{1,64}"
+# C:\Users\, c:/users/, \\SERVER\c$\Users\, //server/c$/Users/
+_PROFILE_ROOT = r"(?:\b[A-Za-z]:|(?:\\\\|//)[^\\/\s]+[\\/]+[A-Za-z]\$)[\\/]+Users[\\/]+"
+_EMAIL_RE = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
+_IPV4_RE = re.compile(r"(?<![\w.])(?:\d{1,3}\.){3}\d{1,3}(?!\w|\.\d)")
+_IPV6_RE = re.compile(r"(?<![\w:.])[0-9A-Fa-f:]{2,39}(?![\w:])")
+_KEEP_IPS = {"127.0.0.1", "0.0.0.0", "::1", "::"}
 
-    def __init__(self, home: str | None, user: str | None, host: str | None):
-        self._rules: list[tuple[re.Pattern, str]] = []
+
+def _ipv4_repl(m: re.Match) -> str:
+    ip = m.group(0)
+    if ip in _KEEP_IPS or ip.startswith("127."):
+        return ip
+    if any(int(octet) > 255 for octet in ip.split(".")):
+        return ip  # a version number, not an address
+    return "<ip>"
+
+
+def _ipv6_repl(m: re.Match) -> str:
+    text = m.group(0)
+    if text.count(":") < 2 or text in _KEEP_IPS:
+        return text
+    try:
+        ipaddress.IPv6Address(text)
+    except ValueError:
+        return text  # a timestamp, a C++ scope, anything else with colons
+    return "<ip>"
+
+
+def _word(name: str) -> str:
+    return r"(?<![\w-])" + re.escape(name) + r"(?![\w-])"
+
+
+class Scrubber:
+    r"""Removes personal data from report text.
+
+    Replaced: the home folder (also by its 8.3 short name, ``JANE~1``), the
+    owner of any other profile folder (``X:\Users\<name>``,
+    ``\\server\c$\Users\<name>``, ``/home/<name>``, ``/Users/<name>``), the
+    OneDrive organisation folder, the user, computer and domain names,
+    ``DOMAIN\account`` pairs, e-mail addresses and IP addresses other than
+    loopback and ``0.0.0.0``.
+    """
+
+    def __init__(
+        self,
+        home: str | None,
+        user: str | None,
+        host: str | None,
+        domains: tuple[str, ...] = (),
+    ):
+        self._rules: list[tuple[re.Pattern, object]] = [
+            (_EMAIL_RE, "<email>"),
+            (_IPV4_RE, _ipv4_repl),
+            (_IPV6_RE, _ipv6_repl),
+        ]
         home_token = "%USERPROFILE%" if sys.platform == "win32" else "~"
 
         parts = [p for p in re.split(r"[\\/]+", home or "") if p]
         # A bare drive or "/" is no home folder worth replacing.
         if len(parts) >= 2:
+            *parents, last = parts
             lead = r"[\\/]+" if (home or "").startswith(("/", "\\")) else ""
-            pattern = lead + r"[\\/]+".join(re.escape(p) for p in parts)
-            self._rules.append(
-                (re.compile(pattern + r"(?![\w.-])", re.IGNORECASE), home_token)
+            last_re = re.escape(last)
+            short = re.sub(r"\W", "", last)[:6]
+            if short:
+                last_re = f"(?:{last_re}|{re.escape(short)}~\\d+)"
+            pattern = (
+                r"(?<![\w.~$-])"
+                + lead
+                + "".join(re.escape(p) + r"[\\/]+" for p in parents)
+                + last_re
+                + _END
             )
+            self._rules.append((re.compile(pattern, re.IGNORECASE), home_token))
 
-        # Any other profile folder (another account, an 8.3 short name).
-        self._rules.append(
+        self._rules += [
             (
-                re.compile(r"(\b[A-Za-z]:[\\/]+Users[\\/]+)[^\\/:*?\"<>|\r\n]+"),
+                re.compile(r"(OneDrive - )[^\\/\r\n\"',;]{1,64}", re.IGNORECASE),
+                r"\1<org>",
+            ),
+            (
+                re.compile(f"({_PROFILE_ROOT})(?:{_NAME})", re.IGNORECASE),
                 r"\1<user>",
-            )
-        )
-        self._rules.append((re.compile(r"(/home/)[^/\s]+"), r"\1<user>"))
+            ),
+            (
+                # Not after "C:" or "c$": those are Windows profiles, done above.
+                re.compile(r"(?<![:$])(/(?:home|Users)/)[^/\s,;'\"]{1,64}"),
+                r"\1<user>",
+            ),
+        ]
 
-        for name, token in ((user, "<user>"), (host, "<host>")):
-            if name and len(name) >= 2:
-                self._rules.append(
-                    (
-                        re.compile(
-                            r"(?<![\w-])" + re.escape(name) + r"(?![\w-])",
-                            re.IGNORECASE,
-                        ),
-                        token,
-                    )
+        domains = tuple(d for d in domains if d and len(d) >= 2)
+        for d in domains:
+            # DOMAIN\account names an account even when it is not ours.
+            self._rules.append(
+                (
+                    re.compile(_word(d) + r"\\[\w.$-]+", re.IGNORECASE),
+                    r"<domain>\\<user>",
                 )
+            )
+        names = [(user, "<user>"), (host, "<host>")] + [
+            (d, "<domain>") for d in domains
+        ]
+        for name, token in names:
+            if name and len(name) >= 2:
+                self._rules.append((re.compile(_word(name), re.IGNORECASE), token))
 
     @classmethod
     def for_current_user(cls) -> "Scrubber":
@@ -102,7 +179,8 @@ class Scrubber:
             host = socket.gethostname()
         except Exception:
             host = os.environ.get("COMPUTERNAME")
-        return cls(os.path.expanduser("~"), user, host)
+        domains = tuple(os.environ.get(k, "") for k in ("USERDOMAIN", "USERDNSDOMAIN"))
+        return cls(os.path.expanduser("~"), user, host, domains)
 
     def __call__(self, text: str) -> str:
         for pattern, repl in self._rules:
