@@ -7,6 +7,7 @@ for restore.
 """
 
 import json
+import os
 import sys
 
 import pytest
@@ -163,3 +164,157 @@ def test_save_user_config_succeeds_even_if_backup_fails(paths, monkeypatch):
     monkeypatch.setattr(config, "_backup_paths", lambda: [])
 
     assert config.save_user_config(CONFIG_WITH_BUILDS) is True
+
+
+# ── Restore offer ─────────────────────────────
+
+
+def _set_mtime(path, ts):
+    os.utime(path, (ts, ts))
+
+
+def test_restore_offered_when_config_missing_and_backup_exists(paths):
+    _write_json(paths["docs"] / "user_config.json", CONFIG_WITH_BUILDS)
+
+    assert config.user_config_restore_candidate() == str(
+        paths["docs"] / "user_config.json"
+    )
+
+
+def test_restore_not_offered_when_config_has_builds(paths):
+    _write_json(paths["config"], {"builds": [{"id": "current"}]})
+    _write_json(paths["app"] / "user_config.json", CONFIG_WITH_BUILDS)
+
+    assert config.user_config_restore_candidate() is None
+
+
+def test_restore_offered_over_a_default_config_without_builds(paths):
+    # The first load_user_config() writes the defaults when nothing is there;
+    # that must not hide the backup.
+    _write_json(paths["config"], config.DEFAULT_USER_CONFIG)
+    _write_json(paths["app"] / "user_config.json", CONFIG_WITH_BUILDS)
+
+    assert config.user_config_restore_candidate() == str(
+        paths["app"] / "user_config.json"
+    )
+
+
+def test_restore_not_offered_without_backup(paths):
+    assert config.user_config_restore_candidate() is None
+
+
+def test_restore_not_offered_for_backup_without_builds(paths):
+    _write_json(paths["app"] / "user_config.json", {"builds": []})
+
+    assert config.user_config_restore_candidate() is None
+
+
+def test_restore_offers_the_newest_backup(paths):
+    app = paths["app"] / "user_config.json"
+    docs = paths["docs"] / "user_config.json"
+    _write_json(app, CONFIG_WITH_BUILDS)
+    _write_json(docs, CONFIG_WITH_BUILDS)
+    _set_mtime(app, 1_000_000)
+    _set_mtime(docs, 2_000_000)
+
+    assert config.user_config_restore_candidate() == str(docs)
+
+
+def test_legacy_config_wins_over_older_backup(paths):
+    backup = paths["app"] / "user_config.json"
+    _write_json(backup, CONFIG_WITH_BUILDS)
+    _write_json(paths["legacy"], CONFIG_WITH_BUILDS)
+    _set_mtime(backup, 1_000_000)
+    _set_mtime(paths["legacy"], 2_000_000)
+
+    assert config.user_config_restore_candidate() is None
+
+
+def test_backup_newer_than_stale_legacy_config_is_offered(paths):
+    backup = paths["app"] / "user_config.json"
+    _write_json(backup, CONFIG_WITH_BUILDS)
+    _write_json(paths["legacy"], {"builds": [{"id": "stale"}]})
+    _set_mtime(paths["legacy"], 1_000_000)
+    _set_mtime(backup, 2_000_000)
+
+    assert config.user_config_restore_candidate() == str(backup)
+
+
+# ── Restore ───────────────────────────────────
+
+
+def test_restore_copies_backup_into_appdata(paths):
+    backup = paths["docs"] / "user_config.json"
+    _write_json(backup, CONFIG_WITH_BUILDS)
+
+    assert config.restore_user_config(str(backup)) is True
+    assert paths["config"].read_bytes() == backup.read_bytes()
+    assert config.load_user_config()["builds"][0]["id"] == "b1"
+
+
+def test_restore_reports_failure_when_backup_unreadable(paths):
+    assert config.restore_user_config(str(paths["docs"] / "missing.json")) is False
+    assert not paths["config"].exists()
+
+
+def test_theme_reload_picks_up_restored_config(paths, monkeypatch):
+    import ui.theme.manager as manager
+
+    original = manager.THEME.name
+    _write_json(paths["config"], {"theme": "dracula"})
+    monkeypatch.setattr(manager, "CONFIG_PATH", str(paths["config"]))
+    try:
+        manager.THEME.reload()
+        assert manager.THEME.name == "dracula"
+        assert manager.THEME.colors is manager.THEMES["dracula"]
+    finally:
+        monkeypatch.undo()
+        manager.THEME.reload()
+        assert manager.THEME.name == original
+
+
+# ── Startup dialog ────────────────────────────
+
+
+def test_declining_the_offer_leaves_the_config_alone(paths, monkeypatch):
+    import main
+
+    _write_json(paths["app"] / "user_config.json", CONFIG_WITH_BUILDS)
+    asked = []
+    monkeypatch.setattr(
+        main.MessageBox, "ask_yes_no", lambda *a: asked.append(a) or False
+    )
+
+    main.offer_config_restore()
+
+    assert len(asked) == 1
+    assert not paths["config"].exists()
+
+
+def test_accepting_the_offer_restores_and_reloads_theme(paths, monkeypatch):
+    import main
+
+    _write_json(paths["app"] / "user_config.json", CONFIG_WITH_BUILDS)
+    reloaded = []
+    monkeypatch.setattr(main.MessageBox, "ask_yes_no", lambda *a: True)
+    monkeypatch.setattr(main.THEME, "reload", lambda: reloaded.append(True))
+    monkeypatch.setattr(main.THEME, "apply", lambda: None)
+
+    main.offer_config_restore()
+
+    assert json.loads(paths["config"].read_text(encoding="utf-8")) == (
+        CONFIG_WITH_BUILDS
+    )
+    assert reloaded == [True]
+
+
+def test_no_dialog_without_a_backup(paths, monkeypatch):
+    import main
+
+    monkeypatch.setattr(
+        main.MessageBox,
+        "ask_yes_no",
+        lambda *a: pytest.fail("restore offered without a backup"),
+    )
+
+    main.offer_config_restore()

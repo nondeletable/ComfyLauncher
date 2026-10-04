@@ -15,6 +15,7 @@ from PyQt6.QtGui import QFont, QIcon
 from ui.browser import ComfyBrowser
 from ui.dialogs.setup_window import SetupWindow
 from ui.dialogs.build_manager_dialog import BuildManagerDialog
+from ui.dialogs.messagebox import MessageBox
 from ui.theme.manager import THEME
 from launcher import comfy_exists
 from config import (
@@ -23,7 +24,38 @@ from config import (
     load_user_config,
     save_user_config,
     backup_user_config,
+    restore_user_config,
+    user_config_restore_candidate,
 )
+
+
+def offer_config_restore():
+    """Offer to restore settings from a backup when the config has no builds.
+
+    Runs before the setup flow, so everything after it reads the restored
+    config. The theme singleton read the config at import, so it is reloaded.
+    Declining leads to the normal first-run setup.
+    """
+    backup = user_config_restore_candidate()
+    if not backup:
+        return
+    if not MessageBox.ask_yes_no(
+        None,
+        "Restore settings?",
+        f"No saved builds were found, but there is a backup:\n{backup}\n\n"
+        "Restore your builds and settings from it?",
+    ):
+        return
+    if restore_user_config(backup):
+        THEME.reload()
+        THEME.apply()
+    else:
+        MessageBox.warning(
+            None,
+            "Restore failed",
+            "Could not restore settings from the backup. "
+            "The launcher will start with default settings.",
+        )
 
 
 def launch_app():
@@ -50,6 +82,7 @@ def launch_app():
 
     QToolTip.setFont(QFont("Segoe UI", 9))
 
+    offer_config_restore()
     backup_user_config()
 
     # ── FIRST SETUP ─────────────────────────────

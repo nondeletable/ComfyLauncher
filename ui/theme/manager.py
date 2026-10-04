@@ -146,6 +146,15 @@ class ThemeManager(QObject):
                     pass
 
     # ─── Saving and loading ─────────────────────────
+    def reload(self):
+        """Re-reads the saved theme, e.g. after user_config.json was restored.
+
+        The singleton reads the config at import time, before main.py can
+        restore it from a backup. Call apply() afterwards to show it.
+        """
+        self._active_name = self._load_last_theme()
+        self._colors = self._themes.get(self._active_name, self._themes["dark"])
+
     def _save_last_theme(self):
         """Saves the selected theme to user_config.json."""
         try:

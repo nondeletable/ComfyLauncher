@@ -253,6 +253,42 @@ def backup_user_config():
     return None
 
 
+def user_config_restore_candidate():
+    """The backup to offer for restore on startup, or None.
+
+    Offered only when %APPDATA% holds no builds: either no config at all, or
+    one without builds — the default that the first load_user_config() writes,
+    which may already have run by the time main.py gets here. With several
+    backups the newest wins. A legacy in-app config (which
+    _migrate_legacy_config would copy in) takes precedence unless the backup
+    is newer: the legacy file is copied, not moved, so on an upgraded install
+    it can be a stale leftover.
+    """
+    current = _read_bytes(USER_CONFIG_PATH)
+    if current is not None and _has_builds(current):
+        return None
+    found = []
+    for path in _backup_paths():
+        raw = _read_bytes(path)
+        if raw is not None and _has_builds(raw):
+            found.append(path)
+    newest = max(found, key=os.path.getmtime, default=None)
+    if newest and os.path.exists(LEGACY_USER_CONFIG_PATH):
+        if os.path.getmtime(LEGACY_USER_CONFIG_PATH) >= os.path.getmtime(newest):
+            return None
+    return newest
+
+
+def restore_user_config(backup_path: str) -> bool:
+    """Copy a backup into %APPDATA%, verified. Returns True on success."""
+    raw = _read_bytes(backup_path)
+    if raw is None or not _write_verified(USER_CONFIG_PATH, raw):
+        log_event(f"⚠️ Failed to restore user config from {backup_path}")
+        return False
+    log_event(f"🗂 Restored user config from {backup_path}")
+    return True
+
+
 def _migrate_build_flags(build: dict) -> None:
     """Fold a legacy `startup_mode` into `extra_flags` (single source of truth).
 
