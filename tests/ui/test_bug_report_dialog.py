@@ -51,6 +51,14 @@ def test_preview_shows_the_report_and_follows_the_boxes(qapp):
     assert "my words" in dlg.report_text()
 
 
+def test_typing_a_comment_rebuilds_the_preview_once_typing_pauses(qapp):
+    dlg = dlg_mod.BugReportDialog(report=make_report())
+    dlg.comment.setPlainText("typed")
+    assert "typed" not in dlg.preview.toPlainText()
+    assert dlg._rebuild_timer.isActive()
+    assert "typed" in dlg.report_text()  # sending never misses the last keys
+
+
 def test_automatic_route_is_shown_but_disabled(qapp):
     dlg = dlg_mod.BugReportDialog(report=make_report())
     assert not dlg.route_buttons["automatic"].isEnabled()

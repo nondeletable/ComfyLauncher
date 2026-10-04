@@ -12,7 +12,7 @@ from __future__ import annotations
 import os
 import webbrowser
 
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QColor, QFont, QIcon
 from PyQt6.QtWidgets import (
     QCheckBox,
@@ -137,7 +137,12 @@ class BugReportDialog(QDialog):
             "What were you doing, and what did you expect to happen? (optional)"
         )
         self.comment.setFixedHeight(60)
-        self.comment.textChanged.connect(self._rebuild_preview)  # type: ignore
+        # Re-rendering ~130 KB of text on every keystroke makes typing lag.
+        self._rebuild_timer = QTimer(self)
+        self._rebuild_timer.setSingleShot(True)
+        self._rebuild_timer.setInterval(300)
+        self._rebuild_timer.timeout.connect(self._rebuild_preview)  # type: ignore
+        self.comment.textChanged.connect(self._rebuild_timer.start)  # type: ignore
         layout.addWidget(self.comment)
 
         checks = QHBoxLayout()
@@ -270,6 +275,9 @@ class BugReportDialog(QDialog):
 
     def report_text(self) -> str:
         """What the user sees is what is sent, edits included."""
+        if self._rebuild_timer.isActive():
+            self._rebuild_timer.stop()
+            self._rebuild_preview()
         return self.preview.toPlainText()
 
     def _send(self, route: str) -> None:
