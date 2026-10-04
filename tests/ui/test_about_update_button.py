@@ -30,3 +30,17 @@ def test_release_page_button_is_bold_in_the_primary_text_color(page):
     assert btn.font().bold() is True
     text_color = btn.palette().color(QPalette.ColorRole.ButtonText).name()
     assert text_color == THEME.colors["text_primary"].lower()
+
+
+def test_emphasis_follows_a_theme_change_and_is_never_stacked(page, monkeypatch):
+    btn = page.update_btn
+    page._on_manual_update_found("9.9.9", "https://example.invalid/release")
+    page._on_manual_update_found("9.9.9", "https://example.invalid/release")
+    assert btn.styleSheet().count("font-weight: bold") == 1
+
+    colors = dict(THEME.colors, text_primary="#123456", border_color="#654321")
+    monkeypatch.setattr(THEME, "_colors", colors)
+    page._apply_theme()
+    assert "color: #123456;" in btn.styleSheet()
+    assert "#654321" in page.report_btn.styleSheet()
+    assert "font-weight: bold" not in page.report_btn.styleSheet()
