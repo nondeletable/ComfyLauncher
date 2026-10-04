@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import os
+import sys
 from typing import Optional
 
-from PyQt6.QtCore import Qt, QSize
+from PyQt6.QtCore import Qt, QSize, QPoint
 from PyQt6.QtGui import QColor, QIcon, QFontMetrics
 from PyQt6.QtWidgets import (
     QDialog,
@@ -18,9 +19,10 @@ from PyQt6.QtWidgets import (
     QGraphicsDropShadowEffect,
 )
 from ui.theme.manager import THEME
-from config import load_user_config, ICON_PATH, ICON_PATHS
+from config import load_user_config, save_user_config, ICON_PATH, ICON_PATHS
 from ui.dialogs.setup_window import SetupWindow
 from ui.header import colorize_svg
+from ui.window_resize import EdgeResizer
 
 try:
     from config import DOODLE_ICON_PATHS, DEFAULT_DOODLE_ID
@@ -30,24 +32,38 @@ except Exception:
 
 
 class BuildManagerDialog(QDialog):
+    WIDTH = 730
+    DEFAULT_HEIGHT = 550
+    MIN_HEIGHT = 300
+    HEIGHT_KEY = "build_manager_height"
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("ComfyLauncher")
         self.setWindowIcon(QIcon(ICON_PATH))
         self.setModal(True)
-        self.setFixedSize(730, 550)
         self.setObjectName("BuildManagerDialog")
-        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
+        flags = Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog
+        if sys.platform == "win32":
+            # Without WS_MINIMIZEBOX a taskbar click cannot minimize the window.
+            flags |= (
+                Qt.WindowType.WindowSystemMenuHint
+                | Qt.WindowType.WindowMinimizeButtonHint
+            )
+        self.setWindowFlags(flags)
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
-
-        self.MAX_LIST_H = 450
 
         self.selected_build_id: Optional[str] = None
 
         data = load_user_config()
         self.builds = data.get("builds", []) or []
         self.last_used_id = data.get("last_used_build_id", "")
+
+        self.setFixedWidth(self.WIDTH)
+        self.setMinimumHeight(self.MIN_HEIGHT)
+        self.resize(self.WIDTH, self._saved_height(data))
+        self._drag_pos: QPoint | None = None
 
         root = QVBoxLayout(self)
         root.setContentsMargins(15, 15, 15, 15)
@@ -56,6 +72,16 @@ class BuildManagerDialog(QDialog):
         self.main_frame = QFrame(self)
         self.main_frame.setObjectName("build_manager_main_frame")
         root.addWidget(self.main_frame)
+
+        # Height only: the rows are laid out for this width. Edges are measured
+        # from the visible frame, not the transparent shadow margin around it.
+        self.resizer = EdgeResizer(
+            self,
+            allowed=Qt.Edge.TopEdge | Qt.Edge.BottomEdge,
+            area=self.main_frame.geometry,
+        )
+        self.resizer.watch(self)
+        self.resizer.watch(self.main_frame)
 
         shadow = QGraphicsDropShadowEffect(self)
         shadow.setBlurRadius(30)
@@ -140,8 +166,7 @@ class BuildManagerDialog(QDialog):
         self.scroll.setWidget(container)
         # Let the scroll area flex to the space between title and the bottom bar
         # instead of a hard-coded height that overran the frame and pushed the
-        # "Close" row out from under it. MAX_LIST_H stays as an upper bound only.
-        self.scroll.setMaximumHeight(self.MAX_LIST_H)
+        # "Close" row out from under it.
 
         layout.addWidget(self.scroll, 1)
 
@@ -290,6 +315,46 @@ class BuildManagerDialog(QDialog):
         h.addWidget(btn)
 
         return row
+
+    def _saved_height(self, data: dict) -> int:
+        try:
+            height = int(data.get(self.HEIGHT_KEY, self.DEFAULT_HEIGHT))
+        except (TypeError, ValueError):
+            height = self.DEFAULT_HEIGHT
+        screen = self.screen()
+        if screen is not None:
+            height = min(height, screen.availableGeometry().height())
+        return max(height, self.MIN_HEIGHT)
+
+    def done(self, result):
+        data = load_user_config()
+        # A failed read comes back as the defaults, with no builds; writing
+        # that back to store a height would wipe the user's builds.
+        lost_builds = self.builds and not data.get("builds")
+        if not lost_builds and data.get(self.HEIGHT_KEY) != self.height():
+            data[self.HEIGHT_KEY] = self.height()
+            save_user_config(data)
+        super().done(result)
+
+    # ── Dragging the window by any empty spot ──────
+    def mousePressEvent(self, event):
+        if event.button() != Qt.MouseButton.LeftButton:
+            return
+        # Wayland ignores move(); the compositor has to run the drag there.
+        handle = self.windowHandle()
+        if sys.platform != "win32" and handle is not None and handle.startSystemMove():
+            return
+        self._drag_pos = event.globalPosition().toPoint()
+
+    def mouseMoveEvent(self, event):
+        if self._drag_pos is None or event.buttons() != Qt.MouseButton.LeftButton:
+            return
+        pos = event.globalPosition().toPoint()
+        self.move(self.pos() + pos - self._drag_pos)
+        self._drag_pos = pos
+
+    def mouseReleaseEvent(self, event):
+        self._drag_pos = None
 
     def _launch(self, build_id: str):
         self.selected_build_id = build_id

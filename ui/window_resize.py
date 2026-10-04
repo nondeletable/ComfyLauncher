@@ -41,11 +41,22 @@ def edges_at(pos: QPoint, rect: QRect, margin: int = RESIZE_MARGIN) -> Qt.Edge:
 
 
 class EdgeResizer(QObject):
-    """Event filter that resizes ``window`` from the edges of watched widgets."""
+    """Event filter that resizes ``window`` from the edges of watched widgets.
 
-    def __init__(self, window):
+    ``allowed`` limits which edges resize, and ``area`` gives the rectangle the
+    edges are measured from, in window coordinates (the whole window if unset)
+    — for a window whose visible frame sits inside a transparent shadow margin.
+    """
+
+    ALL_EDGES = (
+        Qt.Edge.LeftEdge | Qt.Edge.RightEdge | Qt.Edge.TopEdge | Qt.Edge.BottomEdge
+    )
+
+    def __init__(self, window, allowed=ALL_EDGES, area=None):
         super().__init__(window)
         self.window = window
+        self.allowed = allowed
+        self.area = area
         self._resizing = False
 
     def watch(self, widget):
@@ -56,7 +67,8 @@ class EdgeResizer(QObject):
         if self.window.isMaximized() or self.window.isFullScreen():
             return Qt.Edge(0)
         pos = self.window.mapFromGlobal(event.globalPosition().toPoint())
-        return edges_at(pos, self.window.rect())
+        rect = self.area() if self.area else self.window.rect()
+        return edges_at(pos, rect) & self.allowed
 
     def eventFilter(self, obj, event):
         kind = event.type()
