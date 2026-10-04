@@ -19,10 +19,7 @@ import ui.dialogs.setup_window as sw  # noqa: E402
 
 
 @pytest.fixture
-def dialog(qapp, monkeypatch):
-    monkeypatch.setattr(sw, "load_user_config", lambda: {"builds": []})
-    # Windows moves the window itself; elsewhere the compositor would.
-    monkeypatch.setattr(sys, "platform", "win32")
+def dialog(qapp):
     dlg = sw.SetupWindow()
     dlg.move(100, 100)
     dlg.show()
@@ -30,6 +27,12 @@ def dialog(qapp, monkeypatch):
     yield dlg
     dlg.close()
     dlg.deleteLater()
+
+
+@pytest.fixture
+def manual_move(monkeypatch):
+    # Windows moves the window itself; elsewhere the compositor would.
+    monkeypatch.setattr(sys, "platform", "win32")
 
 
 def send(kind, target, local, buttons):
@@ -56,13 +59,13 @@ def drag(target, local, delta=QPoint(40, 30)):
     send(QMouseEvent.Type.MouseButtonRelease, target, local + delta, left)
 
 
-def test_drag_by_an_empty_spot_moves_the_window(dialog):
+def test_drag_by_an_empty_spot_moves_the_window(dialog, manual_move):
     start = dialog.pos()
     drag(dialog.main_frame, QPoint(dialog.main_frame.width() - 20, 250))
     assert dialog.pos() - start == QPoint(40, 30)
 
 
-def test_drag_on_the_info_label_moves_the_window(dialog):
+def test_drag_on_the_info_label_moves_the_window(dialog, manual_move):
     # The rich-text hint at the top is the most natural spot to grab.
     info = next(
         label
@@ -103,3 +106,4 @@ def test_owned_window_gets_no_minimize_box(qapp):
     owner = QWidget()
     dlg = sw.SetupWindow(owner)
     assert not dlg.windowFlags() & Qt.WindowType.WindowMinimizeButtonHint
+    owner.deleteLater()
