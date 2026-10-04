@@ -99,3 +99,7 @@ def test_bootstrapper_run_has_a_timeout(tmp_path, monkeypatch):
     with pytest.raises(runtime.subprocess.TimeoutExpired):
         runtime.run_bootstrapper(exe)
     assert seen["timeout"] == runtime.INSTALL_TIMEOUT_S
+
+
+def test_a_source_checkout_finds_the_loader():
+    assert runtime.LOADER_DLL.is_file()
