@@ -1,7 +1,10 @@
+from typing import Callable
+
 from PyQt6.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QLabel,
+    QPushButton,
 )
 from PyQt6.QtCore import Qt
 
@@ -44,12 +47,19 @@ class ErrorWidget(QWidget):
         message: str,
         hint: str | None = None,
         parent: QWidget | None = None,
+        on_report: Callable[[], None] | None = None,
     ):
         super().__init__(parent)
 
-        self._build_ui(title, message, hint)
+        self._build_ui(title, message, hint, on_report)
 
-    def _build_ui(self, title: str, message: str, hint: str | None):
+    def _build_ui(
+        self,
+        title: str,
+        message: str,
+        hint: str | None,
+        on_report: Callable[[], None] | None,
+    ):
         root = QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(0)
@@ -108,6 +118,28 @@ class ErrorWidget(QWidget):
         if hint_label:
             card_layout.addSpacing(6)
             card_layout.addWidget(hint_label)
+
+        if on_report is not None:
+            self.report_button = QPushButton("Report this problem")
+            self.report_button.setCursor(Qt.CursorShape.PointingHandCursor)
+            self.report_button.setStyleSheet(
+                """
+                QPushButton {
+                    background-color: transparent;
+                    color: #d0d0d0;
+                    border: 1px solid #6a6a6a;
+                    border-radius: 6px;
+                    padding: 7px 18px;
+                    font-size: 14px;
+                }
+                QPushButton:hover {
+                    background-color: #4a4a4a;
+                }
+                """
+            )
+            self.report_button.clicked.connect(on_report)  # type: ignore
+            card_layout.addSpacing(10)
+            card_layout.addWidget(self.report_button, 0, Qt.AlignmentFlag.AlignHCenter)
 
         # Card style (inline, no theme)
         card.setStyleSheet(

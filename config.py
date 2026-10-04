@@ -46,6 +46,7 @@ ICON_PATHS = {
     "terminal": os.path.join(ICONS_DIR, "terminal.svg"),
     "plus": os.path.join(ICONS_DIR, "plus.svg"),
     "delete": os.path.join(ICONS_DIR, "delete.svg"),
+    "bug": os.path.join(ICONS_DIR, "bug.svg"),
 }
 
 # ── Set of icons for header bar ──────────────────
