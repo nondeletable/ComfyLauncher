@@ -14,12 +14,21 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 import pytest  # noqa: E402
 
 import ui.settings.page_colortheme as page_module  # noqa: E402
-from config import THEMES_DIR  # noqa: E402
+from ui.theme.theme_registry import ThemeRegistry  # noqa: E402
 from ui.theme.tokens import THEMES  # noqa: E402
 
 
 @pytest.fixture
-def page(qapp, monkeypatch):
+def themes_dir(tmp_path, monkeypatch):
+    """Imported themes land here, not in the session's shared themes folder."""
+    path = tmp_path / "themes"
+    path.mkdir()
+    monkeypatch.setattr(ThemeRegistry, "STORAGE_DIR", str(path))
+    return path
+
+
+@pytest.fixture
+def page(qapp, monkeypatch, themes_dir):
     saved = dict(THEMES)
     warnings = []
     monkeypatch.setattr(
@@ -44,10 +53,6 @@ def _import(page, monkeypatch, tmp_path, content, filename="my theme.json"):
     page._load_custom_theme()
 
 
-def _saved_theme_files():
-    return sorted(os.listdir(THEMES_DIR)) if os.path.isdir(THEMES_DIR) else []
-
-
 @pytest.mark.parametrize(
     "content",
     [
@@ -69,9 +74,10 @@ def _saved_theme_files():
         ),
     ],
 )
-def test_a_broken_file_is_refused_with_a_message(page, monkeypatch, tmp_path, content):
+def test_a_broken_file_is_refused_with_a_message(
+    page, monkeypatch, tmp_path, themes_dir, content
+):
     themes_before = dict(THEMES)
-    files_before = _saved_theme_files()
     cards_before = set(page.cards)
 
     _import(page, monkeypatch, tmp_path, content)
@@ -81,12 +87,12 @@ def test_a_broken_file_is_refused_with_a_message(page, monkeypatch, tmp_path, co
     assert title == "Theme not imported"
     assert "my theme.json" in text
     assert THEMES == themes_before
-    assert _saved_theme_files() == files_before
+    assert os.listdir(themes_dir) == []
     assert set(page.cards) == cards_before
     assert not page.is_dirty()
 
 
-def test_a_good_file_is_imported_and_selected(page, monkeypatch, tmp_path):
+def test_a_good_file_is_imported_and_selected(page, monkeypatch, tmp_path, themes_dir):
     base = {"bg-color": "#101010", "fg-color": "#eee", "drag-text": "#abc"}
     _import(
         page,
@@ -99,7 +105,7 @@ def test_a_good_file_is_imported_and_selected(page, monkeypatch, tmp_path):
     assert page.warnings == []
     assert page.selected_theme == "fine"
     assert THEMES["fine"]["icon_color_window"] == "#aabbcc"
-    os.remove(os.path.join(THEMES_DIR, "fine.json"))
+    assert os.listdir(themes_dir) == ["fine.json"]
 
 
 def test_a_theme_that_fails_to_apply_says_so(page, monkeypatch):
