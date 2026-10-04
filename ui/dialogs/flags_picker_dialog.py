@@ -4,7 +4,9 @@ Opens from the Setup Window's "Add" button. Shows the curated catalog
 (assets/data/flags.json) as grouped, clickable chips and syncs the result back
 to the caller's flags text field live: clicking a chip inserts the flag,
 clicking again removes it. Value/choice flags carry an inline editor pre-filled
-with a sensible default so no dangling ``--port`` can be produced. The flags
+with a sensible default so no dangling ``--port`` can be produced; a cleared
+value falls back to that default, unless argparse accepts the flag bare
+(``value_optional`` in the catalog, e.g. ``--listen``). The flags
 string stays the single source of truth: it is parsed on open and rebuilt on
 every change, preserving unknown/manual tokens (e.g. ``--windows-standalone-build``)
 in place.
@@ -180,6 +182,13 @@ class FlagsPickerDialog(QDialog):
                 continue
             flag = e["flag"]
             value = e.get("value")
+            if value == "":
+                spec = self.by_flag.get(flag, {})
+                if not spec.get("value_optional"):
+                    # a bare value flag makes ComfyUI's argparse exit at start
+                    value = self._default_value(spec)
+                    if value == "":
+                        continue
             parts.append(flag)
             if value not in (None, ""):
                 parts.append(str(value))

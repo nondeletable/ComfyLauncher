@@ -284,7 +284,8 @@
           "default": "0.0.0.0",
           "choices": null,
           "exclusive_group": null,
-          "description": "Listen on a given IP (bare = all interfaces)."
+          "description": "Listen on a given IP (bare = all interfaces).",
+          "value_optional": true
         },
         {
           "flag": "--port",
@@ -302,7 +303,8 @@
           "default": "*",
           "choices": null,
           "exclusive_group": null,
-          "description": "Enable CORS; optional origin, default '*'."
+          "description": "Enable CORS; optional origin, default '*'.",
+          "value_optional": true
         }
       ]
     },

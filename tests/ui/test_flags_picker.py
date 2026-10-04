@@ -86,3 +86,25 @@ def test_parse_value_flag_with_value(app):
     assert d._is_active("--port") is True
     assert d._value_of("--port") == "7000"
     assert d._build_string() == "--port 7000"
+
+
+def test_value_flag_cleared_falls_back_to_default(app):
+    # a bare --port / --reserve-vram makes ComfyUI's argparse exit at start
+    d = make(app, "")
+    d._add("--port")
+    d._on_value_edited("--port", "")
+    assert d._build_string() == "--port 8188"
+    d._on_value_edited("--port", "   ")
+    assert d._build_string() == "--port 8188"
+
+
+def test_parse_bare_value_flag_gets_default(app):
+    d = make(app, "--reserve-vram --fast")
+    assert d._build_string() == "--reserve-vram 2 --fast"
+
+
+def test_cleared_value_flag_without_default_is_dropped(app):
+    d = make(app, "--port 7000 --fast")
+    d.by_flag["--port"] = dict(d.by_flag["--port"], default=None)
+    d._on_value_edited("--port", "")
+    assert d._build_string() == "--fast"
