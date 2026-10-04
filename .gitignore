@@ -79,6 +79,8 @@ tests/__pycache__/
 # --- Optional: ignore executable builds ---
 *.exe
 *.dll
+# The WebView2 SDK DLLs are vendored, see vendor/webview2/LICENSE.txt
+!vendor/webview2/*.dll
 *.so
 
 
