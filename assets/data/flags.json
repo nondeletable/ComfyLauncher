@@ -288,15 +288,6 @@
           "value_optional": true
         },
         {
-          "flag": "--port",
-          "type": "value",
-          "value_type": "int",
-          "default": 8188,
-          "choices": null,
-          "exclusive_group": null,
-          "description": "Server listen port."
-        },
-        {
           "flag": "--enable-cors-header",
           "type": "value",
           "value_type": "str",
