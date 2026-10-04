@@ -1,5 +1,6 @@
 import pytest
 
+from ui.theme.theme_registry import theme_problems
 from ui.theme.tokens import DARK_THEME
 from ui.theme.theme_importer import (
     ThemeImporter,
@@ -14,11 +15,6 @@ from ui.theme.theme_importer import (
 def test_rgba_to_hex_valid():
     result = _rgba_to_hex("rgba(40,42,54,0.95)")
     assert result == "#282A36"
-
-
-def test_rgba_to_hex_no_valid():
-    result = _rgba_to_hex("rgba(40,42)")
-    assert result == "#000000"
 
 
 def test_normalize_color_returns_none():
@@ -189,13 +185,56 @@ def test_load_refuses_a_required_color_set_to_null(importer, tmp_path):
         importer.load(_theme_file(tmp_path, _comfy(base)))
 
 
-@pytest.mark.parametrize(
-    "value", ["red", "#12", "#abcd", "#zzzzzz", "", 42, [1, 2], "rgb(300, 0, 0)"]
-)
-def test_load_refuses_a_bad_color_string(importer, tmp_path, value):
-    base = {**VALID_BASE, "border-color": value}
-    with pytest.raises(ThemeImportError, match="border-color"):
+BAD_COLORS = [
+    "#12",
+    "#abcd",
+    "#zzzzzz",
+    "",
+    42,
+    [1, 2],
+    "rgb(300, 0, 0)",
+    "rgb(-1, 0, 0)",
+    "rgb(10%, 0, 0)",
+    "rgb(1, 2)",
+    "hsl(0, 0%, 0%)",
+]
+
+
+@pytest.mark.parametrize("value", BAD_COLORS)
+def test_load_refuses_a_bad_required_color(importer, tmp_path, value):
+    base = {**VALID_BASE, "drag-text": value}
+    with pytest.raises(ThemeImportError, match="drag-text"):
         importer.load(_theme_file(tmp_path, _comfy(base)))
+
+
+@pytest.mark.parametrize("value", [*BAD_COLORS, None])
+def test_load_drops_a_bad_optional_color_as_before(importer, tmp_path, value):
+    """Only stylesheets read border-color; Qt skips a missing value there."""
+    base = {**VALID_BASE, "border-color": value}
+    theme = importer.load(_theme_file(tmp_path, _comfy(base)))
+    assert theme["border_color"] is None
+    assert theme_problems(theme) == []
+
+
+def test_load_drops_an_unreadable_error_color_to_the_default(importer, tmp_path):
+    base = {**VALID_BASE, "error-text": "hsl(0, 100%, 50%)"}
+    theme = importer.load(_theme_file(tmp_path, _comfy(base)))
+    assert theme["error"] == DARK_THEME["error"]
+
+
+def test_load_treats_a_null_like_a_missing_key(importer, tmp_path):
+    base = {**VALID_BASE, "comfy-menu-secondary-bg": None, "comfy-menu-bg": "#111"}
+    theme = importer.load(_theme_file(tmp_path, _comfy(base)))
+    assert theme["bg_menu"] == "#111111"
+
+
+def test_load_keeps_a_color_name_qt_knows(importer, tmp_path):
+    base = {**VALID_BASE, "drag-text": "white"}
+    base["comfy-menu-hover-bg"] = "transparent"
+    theme = importer.load(_theme_file(tmp_path, _comfy(base)))
+    assert theme["icon_color_window"] == "white"
+    assert theme["bg_hover"] == "transparent"
+    assert theme_problems(theme) == []
 
 
 def test_load_accepts_short_hex_and_fills_the_painted_colors(importer, tmp_path):
@@ -222,6 +261,11 @@ def test_load_keeps_an_unknown_key_out_of_the_check(importer, tmp_path):
         ("#AABBCC", "#AABBCC"),
         ("#11223344", "#112233"),
         ("rgb(1, 2, 3)", "#010203"),
+        ("rgba(40, 42, 54, .95)", "#282A36"),
+        (" #abc ", "#aabbcc"),
+        ("red", "red"),
+        ("rgb(-1, 2, 3)", None),
+        ("rgba(1, 2, 3, 50%)", None),
         (None, None),
         (7, None),
     ],

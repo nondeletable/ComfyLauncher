@@ -1,6 +1,6 @@
 import os
 import json
-from PyQt6.QtGui import QColor
+from ui.theme.theme_importer import is_qt_color
 from ui.theme.tokens import DARK_THEME, THEMES
 from utils.logger import log_event
 from config import THEMES_DIR
@@ -29,9 +29,7 @@ def theme_problems(theme) -> list[str]:
     ]
     for key in _PAINTED_KEYS:
         value = theme.get(key)
-        if key in theme and not (
-            isinstance(value, str) and QColor.isValidColorName(value)
-        ):
+        if key in theme and not is_qt_color(value):
             problems.append(f'"{key}" is not a color: {value!r}')
     return problems
 

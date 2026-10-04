@@ -2,6 +2,8 @@ import json
 import re
 from typing import Optional
 
+from PyQt6.QtGui import QColor
+
 from ui.theme.tokens import DARK_THEME
 
 # ───────────────────────────────────────────────
@@ -9,6 +11,16 @@ from ui.theme.tokens import DARK_THEME
 # ───────────────────────────────────────────────
 
 _HEX_RE = re.compile(r"#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})")
+_CHANNEL = r"\s*(\d{1,3}(?:\.\d+)?)\s*"
+_RGB_RE = re.compile(
+    rf"rgba?\({_CHANNEL},{_CHANNEL},{_CHANNEL}(?:,\s*(?:\d*\.)?\d+\s*)?\)"
+)
+
+
+def is_qt_color(value) -> bool:
+    """Whether Qt can paint this value. The one test for every color that goes
+    through QColor - None or a non-string there kills the launcher."""
+    return isinstance(value, str) and QColor.isValidColorName(value)
 
 
 def _rgba_to_hex(rgba: str) -> str:
@@ -17,17 +29,16 @@ def _rgba_to_hex(rgba: str) -> str:
     Uses only RGB part.
     """
     match = re.findall(r"\d+(?:\.\d+)?", rgba)
-    if len(match) < 3:
-        return "#000000"
     r, g, b = map(float, match[:3])
     return "#{:02X}{:02X}{:02X}".format(int(r), int(g), int(b))
 
 
 def _normalize_color(value) -> Optional[str]:
     """
-    Accepts "#rgb", "#rrggbb", "#rrggbbaa" (CSS order) or "rgb(...)" / "rgba(...)",
-    the forms ComfyUI palettes use - its own default palette is written in "#rgb".
-    Returns normalized "#rrggbb" (alpha dropped) or None if value is invalid.
+    "#rgb", "#rrggbb", "#rrggbbaa" (CSS order) and "rgb(...)" / "rgba(...)" -
+    the forms ComfyUI palettes use, its own default palette is written in "#rgb" -
+    become "#rrggbb" (alpha dropped). Any other color Qt knows ("white",
+    "transparent") is kept as written. Anything else is None.
     """
     if not isinstance(value, str):
         return None
@@ -37,11 +48,13 @@ def _normalize_color(value) -> Optional[str]:
         if len(digits) == 3:
             digits = "".join(ch * 2 for ch in digits)
         return "#" + digits[:6]
-    if value.startswith("rgb"):
-        channels = re.findall(r"\d+(?:\.\d+)?", value)
-        if len(channels) < 3 or any(float(c) > 255 for c in channels[:3]):
+    match = _RGB_RE.fullmatch(value)
+    if match:
+        if any(float(c) > 255 for c in match.groups()):
             return None
         return _rgba_to_hex(value)
+    if is_qt_color(value):
+        return value
     return None
 
 
@@ -152,17 +165,16 @@ class ThemeImporter:
             raise ThemeImportError(
                 "Required colors are missing: " + ", ".join(missing) + "."
             )
-        used = {ck for keys in THEME_MAP.values() for ck in keys}
+        # Only the required colors are refused when unreadable; any other one
+        # is dropped to None, as before - the stylesheet just skips it.
         invalid = [
             f"{k} = {comfy_base[k]!r}"
-            for k in sorted(used)
-            if k in comfy_base and _normalize_color(comfy_base[k]) is None
+            for k in REQUIRED_COMFY_KEYS
+            if _normalize_color(comfy_base[k]) is None
         ]
         if invalid:
             raise ThemeImportError(
-                "These colors are not valid (expected #hex or rgb()/rgba()): "
-                + ", ".join(invalid)
-                + "."
+                "These required colors are not valid: " + ", ".join(invalid) + "."
             )
 
     def _map_to_tokens(self, comfy_base):
@@ -171,7 +183,7 @@ class ThemeImporter:
         for my_key, comfy_keys in THEME_MAP.items():
             value = None
             for ck in comfy_keys:
-                if ck in comfy_base:
+                if comfy_base.get(ck) is not None:
                     value = comfy_base[ck]
                     break
 
@@ -181,10 +193,7 @@ class ThemeImporter:
         return result
 
     def _apply_fallbacks(self, t):
-        # accent_hover
-        if not t.get("accent"):
-            t["accent"] = DARK_THEME["accent"]
-
+        # accent_hover (accent comes from the required drag-text)
         t["accent_hover"] = _lighten(t["accent"], 15)
 
         # error paints the error message box badge; None there kills the app
@@ -200,10 +209,5 @@ class ThemeImporter:
         # Ensure popup_border exists
         if not t.get("popup_border"):
             t["popup_border"] = t.get("border_color", "#444444")
-
-        # Final normalization
-        for k, v in t.items():
-            if isinstance(v, str) and v.startswith("rgba"):
-                t[k] = _normalize_color(v)
 
         return t
