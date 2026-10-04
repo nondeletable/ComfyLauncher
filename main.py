@@ -16,11 +16,14 @@ from ui.browser import ComfyBrowser
 from ui.dialogs.setup_window import SetupWindow
 from ui.dialogs.build_manager_dialog import BuildManagerDialog
 from ui.theme.manager import THEME
+from ui.exception_hook import install_exception_hooks, enable_report_window
 from launcher import comfy_exists
 from config import get_comfyui_path, ICON_PATH, load_user_config, save_user_config
 
 
 def launch_app():
+    install_exception_hooks()
+
     if sys.platform != "win32":
         # QtWebEngine (the Linux/macOS engine) refuses to import once a
         # QCoreApplication exists. Setting this attribute first is the
@@ -41,6 +44,7 @@ def launch_app():
     app.setDesktopFileName("comfylauncher")
     app.setWindowIcon(QIcon(ICON_PATH))
     THEME.apply()
+    enable_report_window()
 
     QToolTip.setFont(QFont("Segoe UI", 9))
 
