@@ -1,21 +1,20 @@
 import pytest
+
+from ui.theme.theme_registry import theme_problems
+from ui.theme.tokens import DARK_THEME
 from ui.theme.theme_importer import (
     ThemeImporter,
     _rgba_to_hex,
     _normalize_color,
     _lighten,
     _inverse_bw,
+    ThemeImportError,
 )
 
 
 def test_rgba_to_hex_valid():
     result = _rgba_to_hex("rgba(40,42,54,0.95)")
     assert result == "#282A36"
-
-
-def test_rgba_to_hex_no_valid():
-    result = _rgba_to_hex("rgba(40,42)")
-    assert result == "#000000"
 
 
 def test_normalize_color_returns_none():
@@ -107,3 +106,176 @@ def test_map_to_tokens_key_fit_value_valid(importer):
 def test_map_to_tokens_key_fit_value_no_valid(importer):
     result = importer._map_to_tokens({"bg-color": "rgba(1,1,1,1)"})
     assert result["bg_header"] == "#010101"
+
+
+# ─── A file that is not a usable theme is refused with a reason ───
+# Regression: the importer used to raise raw JSONDecodeError / AttributeError /
+# ValueError into a Qt slot (PyQt aborts the process on that), or to return a
+# theme full of None that crashed the launcher once applied - and on every
+# start after, since the theme was already saved.
+
+VALID_BASE = {"bg-color": "#202020", "fg-color": "#fff", "drag-text": "#ccc"}
+
+
+def _theme_file(tmp_path, content):
+    path = tmp_path / "theme.json"
+    path.write_text(content, encoding="utf8")
+    return str(path)
+
+
+def _comfy(base):
+    import json
+
+    return json.dumps({"colors": {"comfy_base": base}})
+
+
+@pytest.mark.parametrize(
+    "content, reason",
+    [
+        ("{bad", "not valid JSON"),
+        ("", "not valid JSON"),
+        ("[1, 2]", "colors.comfy_base"),
+        ('{"x": 1}', "colors.comfy_base"),
+        ('{"colors": []}', "colors.comfy_base"),
+        ('{"colors": {"comfy_base": "dark"}}', "colors.comfy_base"),
+        ('{"colors": {"comfy_base": {}}}', "colors.comfy_base"),
+    ],
+)
+def test_load_refuses_a_file_that_is_not_a_theme(importer, tmp_path, content, reason):
+    with pytest.raises(ThemeImportError, match=reason):
+        importer.load(_theme_file(tmp_path, content))
+
+
+def test_load_refuses_a_file_that_cannot_be_read(importer):
+    with pytest.raises(ThemeImportError, match="could not be read"):
+        importer.load("несуществующий/путь/theme.json")
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        "[" * 100_000 + "]" * 100_000,
+        '{"colors": {"comfy_base": {"bg-color": ' + "9" * 5000 + "}}}",
+        b"\xff\xfe{}",
+    ],
+    ids=["deep-nesting", "huge-int", "bad-encoding"],
+)
+def test_load_refuses_a_file_the_json_parser_chokes_on(importer, tmp_path, content):
+    """RecursionError and the int-digit ValueError are not JSONDecodeError -
+    they used to escape into the Qt slot and kill the launcher."""
+    path = tmp_path / "theme.json"
+    if isinstance(content, bytes):
+        path.write_bytes(content)
+    else:
+        path.write_text(content, encoding="utf8")
+    with pytest.raises(ThemeImportError, match="could not be read"):
+        importer.load(str(path))
+
+
+@pytest.mark.parametrize("key", ["bg-color", "fg-color", "drag-text"])
+def test_load_refuses_a_theme_without_a_required_color(importer, tmp_path, key):
+    base = {k: v for k, v in VALID_BASE.items() if k != key}
+    with pytest.raises(ThemeImportError, match=f"missing: {key}"):
+        importer.load(_theme_file(tmp_path, _comfy(base)))
+
+
+def test_load_refuses_a_required_color_set_to_null(importer, tmp_path):
+    base = {**VALID_BASE, "drag-text": None}
+    with pytest.raises(ThemeImportError, match="missing: drag-text"):
+        importer.load(_theme_file(tmp_path, _comfy(base)))
+
+
+BAD_COLORS = [
+    "#12",
+    "#abcd",
+    "#zzzzzz",
+    "",
+    42,
+    [1, 2],
+    "rgb(300, 0, 0)",
+    "rgb(-1, 0, 0)",
+    "rgb(10%, 0, 0)",
+    "rgb(1, 2)",
+    "hsl(0, 0%, 0%)",
+]
+
+
+@pytest.mark.parametrize("value", BAD_COLORS)
+def test_load_refuses_a_bad_required_color(importer, tmp_path, value):
+    base = {**VALID_BASE, "drag-text": value}
+    with pytest.raises(ThemeImportError, match="drag-text"):
+        importer.load(_theme_file(tmp_path, _comfy(base)))
+
+
+@pytest.mark.parametrize("value", [*BAD_COLORS, None])
+def test_load_drops_a_bad_optional_color_as_before(importer, tmp_path, value):
+    """Only stylesheets read border-color; Qt skips a missing value there."""
+    base = {**VALID_BASE, "border-color": value}
+    theme = importer.load(_theme_file(tmp_path, _comfy(base)))
+    assert theme["border_color"] is None
+    assert theme_problems(theme) == []
+
+
+def test_load_drops_an_unreadable_error_color_to_the_default(importer, tmp_path):
+    base = {**VALID_BASE, "error-text": "hsl(0, 100%, 50%)"}
+    theme = importer.load(_theme_file(tmp_path, _comfy(base)))
+    assert theme["error"] == DARK_THEME["error"]
+
+
+def test_load_treats_a_null_like_a_missing_key(importer, tmp_path):
+    base = {**VALID_BASE, "comfy-menu-secondary-bg": None, "comfy-menu-bg": "#111"}
+    theme = importer.load(_theme_file(tmp_path, _comfy(base)))
+    assert theme["bg_menu"] == "#111111"
+
+
+def test_load_keeps_a_color_name_qt_knows(importer, tmp_path):
+    base = {**VALID_BASE, "drag-text": "white"}
+    base["comfy-menu-hover-bg"] = "transparent"
+    theme = importer.load(_theme_file(tmp_path, _comfy(base)))
+    assert theme["icon_color_window"] == "white"
+    assert theme["bg_hover"] == "transparent"
+    assert theme_problems(theme) == []
+
+
+def test_load_accepts_short_hex_and_fills_the_painted_colors(importer, tmp_path):
+    theme = importer.load(_theme_file(tmp_path, _comfy(VALID_BASE)))
+    assert theme["bg_header"] == "#202020"
+    assert theme["text_primary"] == "#ffffff"
+    assert theme["icon_color_window"] == "#cccccc"
+    assert theme["accent"] == "#cccccc"
+    assert theme["error"] == DARK_THEME["error"]
+
+
+def test_load_keeps_an_unknown_key_out_of_the_check(importer, tmp_path):
+    """Palettes carry plenty of keys the launcher never reads (bar-shadow is
+    "rgba(16, 16, 16, 0.5) 0 0 0.5rem" in ComfyUI's own) - they must not fail it."""
+    base = {**VALID_BASE, "bar-shadow": "rgba(16, 16, 16, 0.5) 0 0 0.5rem"}
+    base["tr-even-bg-color"] = "not a color"
+    assert importer.load(_theme_file(tmp_path, _comfy(base)))["bg_header"]
+
+
+@pytest.mark.parametrize(
+    "value, expected",
+    [
+        ("#abc", "#aabbcc"),
+        ("#AABBCC", "#AABBCC"),
+        ("#11223344", "#112233"),
+        ("rgb(1, 2, 3)", "#010203"),
+        ("rgba(40, 42, 54, .95)", "#282A36"),
+        (" #abc ", "#aabbcc"),
+        ("red", "red"),
+        ("rgb(-1, 2, 3)", None),
+        ("rgba(1, 2, 3, 50%)", None),
+        (None, None),
+        (7, None),
+    ],
+)
+def test_normalize_color_forms(value, expected):
+    assert _normalize_color(value) == expected
+
+
+def test_load_reads_a_file_saved_with_a_bom(importer, tmp_path):
+    """Windows Notepad saves "UTF-8 with BOM"; json.load refuses the BOM."""
+    path = tmp_path / "theme.json"
+    path.write_text(_comfy(VALID_BASE), encoding="utf-8-sig")
+    assert importer.load(str(path))["bg_header"] == "#202020"
