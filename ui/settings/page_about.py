@@ -293,7 +293,8 @@ class AboutSettingsPage(QWidget):
         self.update_btn.setEnabled(True)
         # Добавляем визуальный акцент
         self.update_btn.setStyleSheet(
-            self.update_btn.styleSheet() + "font-weight: bold; color: white;"
+            self.update_btn.styleSheet()
+            + f"QPushButton {{ font-weight: bold; color: {THEME.colors['text_primary']}; }}"
         )
 
     def _on_manual_update_none(self, *args):
