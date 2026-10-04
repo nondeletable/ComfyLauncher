@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import shutil
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
@@ -26,11 +27,12 @@ DOWNLOAD_PAGE_URL = "https://developer.microsoft.com/microsoft-edge/webview2/"
 INSTALL_TIMEOUT_S = 15 * 60
 
 _ROOT = Path(__file__).resolve().parent.parent
-_BUNDLED_DLL_DIR = _ROOT / "ui" / "webview2_dll"
 # A frozen build carries the SDK DLLs in ui/webview2_dll; a source checkout
 # has them in vendor/webview2.
 DLL_DIR = (
-    _BUNDLED_DLL_DIR if _BUNDLED_DLL_DIR.is_dir() else _ROOT / "vendor" / "webview2"
+    _ROOT / "ui" / "webview2_dll"
+    if getattr(sys, "frozen", False)
+    else _ROOT / "vendor" / "webview2"
 )
 LOADER_DLL = DLL_DIR / "WebView2Loader.dll"
 
