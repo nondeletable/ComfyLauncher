@@ -10,14 +10,17 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import pytest  # noqa: E402
 from PyQt6.QtGui import QPalette  # noqa: E402
+from PyQt6.QtWidgets import QWidget  # noqa: E402
 
-from ui.settings.page_about import AboutSettingsPage  # noqa: E402
+import ui.settings.page_about as page_about  # noqa: E402
 from ui.theme.manager import THEME  # noqa: E402
 
 
 @pytest.fixture
-def page(qapp):
-    p = AboutSettingsPage()
+def page(qapp, monkeypatch):
+    # the logo's looping video decoder can kill a headless run (exit 127)
+    monkeypatch.setattr(page_about, "AnimatedLogo", QWidget)
+    p = page_about.AboutSettingsPage()
     yield p
     p.deleteLater()
 
