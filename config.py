@@ -292,9 +292,19 @@ def _is_untouched_default() -> bool:
 
 
 def restore_user_config(backup_path: str) -> bool:
-    """Copy a backup into %APPDATA%, verified. Returns True on success."""
+    """Copy a backup into %APPDATA%, verified. Returns True on success.
+
+    A config already in place is first kept as user_config.json.before-restore;
+    if that copy cannot be made, nothing is restored.
+    """
     raw = _read_bytes(backup_path)
-    if raw is None or not _write_verified(USER_CONFIG_PATH, raw):
+    ok = raw is not None and _has_builds(raw)
+    if ok and os.path.exists(USER_CONFIG_PATH):
+        current = _read_bytes(USER_CONFIG_PATH)
+        ok = current is not None and _write_verified(
+            USER_CONFIG_PATH + ".before-restore", current
+        )
+    if not ok or not _write_verified(USER_CONFIG_PATH, raw):
         log_event(f"⚠️ Failed to restore user config from {backup_path}")
         return False
     log_event(f"🗂 Restored user config from {backup_path}")

@@ -293,6 +293,42 @@ def test_restore_reports_failure_when_backup_unreadable(paths):
     assert not paths["config"].exists()
 
 
+def test_restore_keeps_the_replaced_config_aside(paths):
+    backup = paths["docs"] / "user_config.json"
+    _write_json(backup, CONFIG_WITH_BUILDS)
+    _write_json(paths["config"], config.DEFAULT_USER_CONFIG)
+    replaced = paths["config"].read_bytes()
+
+    assert config.restore_user_config(str(backup)) is True
+    aside = paths["config"].parent / "user_config.json.before-restore"
+    assert aside.read_bytes() == replaced
+    assert paths["config"].read_bytes() == backup.read_bytes()
+
+
+def test_restore_aborts_when_the_current_config_cannot_be_kept(paths, monkeypatch):
+    backup = paths["docs"] / "user_config.json"
+    _write_json(backup, CONFIG_WITH_BUILDS)
+    _write_json(paths["config"], config.DEFAULT_USER_CONFIG)
+    before = paths["config"].read_bytes()
+    real_write = config._write_verified
+    monkeypatch.setattr(
+        config,
+        "_write_verified",
+        lambda p, raw: False if p.endswith(".before-restore") else real_write(p, raw),
+    )
+
+    assert config.restore_user_config(str(backup)) is False
+    assert paths["config"].read_bytes() == before
+
+
+def test_restore_refuses_a_backup_without_builds(paths):
+    backup = paths["docs"] / "user_config.json"
+    _write_json(backup, {"builds": []})
+
+    assert config.restore_user_config(str(backup)) is False
+    assert not paths["config"].exists()
+
+
 def test_theme_reload_picks_up_restored_config(paths, monkeypatch):
     original = manager.THEME.name
     _write_json(paths["config"], {"theme": "dracula"})
