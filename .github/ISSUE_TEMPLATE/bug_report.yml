@@ -1,0 +1,86 @@
+name: Bug report
+description: Something in Comfy Launcher doesn't work as expected.
+title: "[Bug]: "
+labels: ["bug", "report"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a problem.
+        If the launcher saved a report file for you (`comfylauncher-report-<date>-<time>.txt`), attach it below - it already contains versions, settings and logs, so most fields here can stay short.
+  - type: input
+    id: version
+    attributes:
+      label: Launcher version
+      description: Settings -> About, or the release you downloaded.
+      placeholder: "1.9.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Windows 11
+        - Windows 10
+        - Linux
+        - Other
+    validations:
+      required: true
+  - type: dropdown
+    id: build-type
+    attributes:
+      label: ComfyUI build type
+      options:
+        - Portable (python_embeded)
+        - Non-portable (own venv or system Python)
+        - Not sure
+    validations:
+      required: false
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you see? Include the error text if there was one.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Select build "..."
+        2. Click "..."
+        3. See the error
+    validations:
+      required: false
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+    validations:
+      required: false
+  - type: upload
+    id: report-file
+    attributes:
+      label: Report file or screenshots
+      description: The `.txt` report saved by the launcher, and screenshots if they help. Please don't attach archives.
+    validations:
+      required: false
+      accept: ".txt,.log,.png,.jpg,.jpeg"
+  - type: textarea
+    id: summary
+    attributes:
+      label: Report summary
+      description: The SUMMARY section of the report file, if you can't attach the file itself.
+      render: text
+    validations:
+      required: false
+  - type: textarea
+    id: logs
+    attributes:
+      label: Log output
+      description: If you have no report file, paste the end of `launcher.log` or the ComfyUI console here.
+      render: text
+    validations:
+      required: false
