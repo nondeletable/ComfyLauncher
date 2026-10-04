@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Report a bug on Discord
+    url: https://discord.gg/QkHc9tG74p
+    about: "The #bug-report channel on the Comfy Launcher Discord server - talk to us directly."
