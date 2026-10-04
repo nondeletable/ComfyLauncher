@@ -26,6 +26,7 @@ from ui.settings.page_startapp import StartAppSettingsPage  # noqa: E402
 from ui.settings.settings_window import SettingsWindow  # noqa: E402
 from ui.theme.manager import THEME, THEMES  # noqa: E402
 
+COLOR_THEMES = 3
 PAGE_CLASSES = (
     page_build.BuildSettingsPage,
     StartAppSettingsPage,
@@ -136,6 +137,20 @@ def test_every_built_page_takes_the_new_theme(one_build, icon_colors, window):
         assert colors & _theme(NEW), type(page).__name__
     assert window.findChildren(QFrame, "BuildRow")
     assert set(icon_colors) == {THEMES[NEW]["icon_color_window"]}
+
+
+def test_applying_a_theme_keeps_settings_open_and_repainted(window):
+    window.menu.setCurrentRow(COLOR_THEMES)
+    themes = window.pages.currentWidget()
+    themes._on_theme_selected(NEW)
+
+    window.btn_apply.click()
+    QTest.qWait(250)
+
+    assert THEME.name == NEW
+    assert not sip.isdeleted(window)
+    assert window.pages.currentWidget() is themes
+    assert _colors(window.menu, window.footer) <= _theme(NEW) | FIXED
 
 
 def _settle():

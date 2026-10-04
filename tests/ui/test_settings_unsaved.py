@@ -2,7 +2,8 @@
 
 Regression: the window tracked only the page on screen. Edit Startup, switch to
 Exit Options, Close - no question, the edit was gone. Applying a color theme
-closes the window on its own, and it dropped the other pages' edits the same way.
+closed the window on its own, and it dropped the other pages' edits the same way;
+now Settings repaints in the new theme and stays open.
 """
 
 import os
@@ -157,7 +158,7 @@ def test_clean_and_never_visited_pages_close_without_asking(window, prompts):
     assert prompts.asked == []
 
 
-def test_theme_apply_asks_before_closing_over_another_dirty_page(window, prompts):
+def test_theme_apply_keeps_settings_open_with_other_edits(window, prompts):
     _dirty_startup(window)
     window.menu.setCurrentRow(COLOR_THEMES)
     themes = window.pages.currentWidget()
@@ -168,10 +169,9 @@ def test_theme_apply_asks_before_closing_over_another_dirty_page(window, prompts
     assert THEME.name == target
     QTest.qWait(250)
 
-    assert len(prompts.asked) == 1
-    assert "Startup" in prompts.asked[0]
-    assert "Color Themes" not in prompts.asked[0]
+    assert prompts.asked == []
     assert not sip.isdeleted(window)
+    assert not themes.is_dirty()
     assert window.pages.widget(STARTUP).is_dirty()
 
 
@@ -184,13 +184,13 @@ def test_applying_a_theme_from_the_close_prompt_does_not_crash(window, prompts):
 
     assert window.close() is True
     assert THEME.name == target
-    # The theme page's own delayed close is still pending at a window that is
-    # being deleted; an exception in that slot would abort the whole process.
+    # The window repaints while it is being deleted; an exception in that slot
+    # would abort the whole process.
     QTest.qWait(250)
     assert sip.isdeleted(window)
 
 
-def test_a_theme_waits_for_the_other_pages_and_does_not_ask_twice(
+def test_a_theme_from_the_prompt_applies_while_a_failed_page_keeps_settings_open(
     window, prompts, monkeypatch
 ):
     monkeypatch.setattr(startapp, "save_user_config", lambda cfg: False)
@@ -198,16 +198,16 @@ def test_a_theme_waits_for_the_other_pages_and_does_not_ask_twice(
     startup = _dirty_startup(window)
     window.menu.setCurrentRow(COLOR_THEMES)
     themes = window.pages.currentWidget()
-    before = THEME.name
-    themes._on_theme_selected(next(name for name in THEMES if name != before))
+    target = next(name for name in THEMES if name != THEME.name)
+    themes._on_theme_selected(target)
     prompts.answer = "apply"
 
     assert window.close() is False
     QTest.qWait(250)
 
     assert len(prompts.asked) == 1
-    assert THEME.name == before
-    assert themes.is_dirty()
+    assert THEME.name == target
+    assert not themes.is_dirty()
     assert startup.is_dirty()
     assert not sip.isdeleted(window)
 

@@ -10,7 +10,7 @@ from PyQt6.QtWidgets import (
     QFileDialog,
     QPushButton,
 )
-from PyQt6.QtCore import Qt, pyqtSignal, QTimer
+from PyQt6.QtCore import Qt, pyqtSignal
 from ui.theme.manager import THEME, THEMES
 from ui.theme.theme_importer import ThemeImporter
 from ui.theme.theme_registry import REGISTRY
@@ -297,11 +297,6 @@ class ColorThemesPage(QWidget):
             THEME.switch(self.selected_theme)
             self._original_theme = self.selected_theme
             self.dirtyChanged.emit(False)  # type: ignore[attr-defined]
-
-            # 🔹 After 100 ms, we close the window - closeEvent() will be triggered
-            win = self.window()
-            QTimer.singleShot(100, win.close)
-
             return True
 
         except Exception as e:
