@@ -9,6 +9,7 @@ for restore.
 import json
 import os
 import sys
+import threading
 
 import pytest
 
@@ -118,7 +119,7 @@ def test_failed_verification_keeps_the_previous_backup(paths, monkeypatch):
 
     assert config._write_verified(str(target), b'{"builds": [{"id": "new"}]}') is False
     assert target.read_bytes() == previous
-    assert not (paths["app"] / "user_config.json.tmp").exists()
+    assert not list(paths["app"].glob("*.tmp"))
 
 
 def test_write_verified_round_trips(paths):
@@ -127,7 +128,23 @@ def test_write_verified_round_trips(paths):
 
     assert config._write_verified(str(target), raw) is True
     assert target.read_bytes() == raw
-    assert not (paths["app"] / "user_config.json.tmp").exists()
+    assert not list(paths["app"].glob("*.tmp"))
+
+
+def test_concurrent_backups_do_not_collide(paths):
+    _write_json(paths["config"], CONFIG_WITH_BUILDS)
+    results = []
+    threads = [
+        threading.Thread(target=lambda: results.append(config.backup_user_config()))
+        for _ in range(8)
+    ]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+    assert results == [str(paths["app"] / "user_config.json")] * 8
+    assert not list(paths["app"].glob("*.tmp"))
 
 
 def test_backup_returns_none_when_no_location_verifies(paths, monkeypatch):

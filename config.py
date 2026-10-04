@@ -2,6 +2,8 @@ import json
 import os
 import shutil
 import sys
+import tempfile
+import threading
 import time
 import uuid
 
@@ -109,6 +111,9 @@ LEGACY_USER_CONFIG_PATH = os.path.join(BASE_DIR, "user_config.json")
 # a backup outside it: the app folder when it is writable, else Documents.
 BACKUP_DIR_NAME = "backup"
 BACKUP_FILE_NAME = "user_config.json"
+# Saves come from the UI and from background threads (update checker); one
+# backup at a time, so an older snapshot never lands after a newer one.
+_BACKUP_LOCK = threading.Lock()
 
 # ── Startup-mode → flags migration table ──────
 # Legacy `startup_mode` was replaced by a plain `extra_flags` list (the single
@@ -214,10 +219,17 @@ def _write_verified(path: str, raw: bytes) -> bool:
     The temp file is checked before it replaces the target, so a bad write
     never takes the place of a good file; the target is checked again after.
     """
-    tmp = path + ".tmp"
+    tmp = None
     try:
         os.makedirs(os.path.dirname(path), exist_ok=True)
-        with open(tmp, "wb") as f:
+        # Unique per call: save_user_config (and so the backup) also runs on
+        # background threads, and a shared temp name would collide.
+        fd, tmp = tempfile.mkstemp(
+            dir=os.path.dirname(path),
+            prefix=os.path.basename(path) + ".",
+            suffix=".tmp",
+        )
+        with os.fdopen(fd, "wb") as f:
             f.write(raw)
             f.flush()
             os.fsync(f.fileno())
@@ -229,10 +241,11 @@ def _write_verified(path: str, raw: bytes) -> bool:
         return True
     except OSError as e:
         log_event(f"⚠️ Could not write {path}: {e}")
-        try:
-            os.remove(tmp)
-        except OSError:
-            pass
+        if tmp:
+            try:
+                os.remove(tmp)
+            except OSError:
+                pass
         return False
 
 
@@ -243,15 +256,16 @@ def backup_user_config():
     location could be written and verified. Never raises and never shows UI —
     it runs inside save_user_config, which background threads call too.
     """
-    raw = _read_bytes(USER_CONFIG_PATH)
-    if raw is None or not _has_builds(raw):
+    with _BACKUP_LOCK:
+        raw = _read_bytes(USER_CONFIG_PATH)
+        if raw is None or not _has_builds(raw):
+            return None
+        for path in _backup_paths():
+            if _write_verified(path, raw):
+                log_event(f"💾 User config backed up to {path}")
+                return path
+        log_event("⚠️ User config backup failed: no location could be written")
         return None
-    for path in _backup_paths():
-        if _write_verified(path, raw):
-            log_event(f"💾 User config backed up to {path}")
-            return path
-    log_event("⚠️ User config backup failed: no location could be written")
-    return None
 
 
 def user_config_restore_candidate():
