@@ -88,19 +88,15 @@ class BuildSettingsPage(QWidget):
         title.setStyleSheet("font-size: 20px; font-weight: 600;")
         content_layout.addWidget(title)
 
-        desc = QLabel(
+        self.desc = QLabel(
             "This section is entirely dedicated to ComfyUI builds.\n"
             "Here you can see all saved builds, edit the name or icon, and delete a build."
         )
-        desc.setStyleSheet(f"color: {THEME.colors['text_secondary']}; font-size: 13px;")
-        desc.setWordWrap(True)
-        content_layout.addWidget(desc)
+        self.desc.setWordWrap(True)
+        content_layout.addWidget(self.desc)
 
         # ─── Builds List ────────────────────────────
         self.builds_container = QWidget()
-        self.builds_container.setStyleSheet(
-            f"background-color: {THEME.colors['bg_header']};"
-        )
         self.builds_container.setSizePolicy(
             QSizePolicy.Policy.Preferred,
             QSizePolicy.Policy.Maximum,
@@ -114,54 +110,63 @@ class BuildSettingsPage(QWidget):
         content_layout.addStretch()
 
         # ---
-        info_label = QLabel("Check for ComfyUI updates and download the new version:")
-        info_label.setStyleSheet(
-            f"color: {THEME.colors['text_secondary']}; font-size: 13px; margin-top: 14px;"
+        self.info_label = QLabel(
+            "Check for ComfyUI updates and download the new version:"
         )
-        info_label.setWordWrap(True)
-        content_layout.addWidget(info_label)
+        self.info_label.setWordWrap(True)
+        content_layout.addWidget(self.info_label)
 
         btn_row = QHBoxLayout()
         btn_row.setAlignment(Qt.AlignmentFlag.AlignLeft)
         btn_row.setContentsMargins(14, 0, 0, 0)
         btn_row.setSpacing(0)
 
-        btn_download = QPushButton()
-        btn_download.setIconSize(QSize(60, 28))
-        btn_download.setFixedSize(110, 34)
-        btn_download.setIcon(
-            QIcon(
-                colorize_svg(
-                    OTHER_ICONS.get("comfyui"),
-                    THEME.colors["icon_color_window"],
-                    QSize(60, 28),
-                )
-            )
-        )
-        btn_download.setStyleSheet(
-            f"""
-            QPushButton {{
-                background-color: {THEME.colors['bg_input']};
-                border: 1px solid {THEME.colors['border_color']};
-                border-radius: 6px;
-            }}
-            QPushButton:hover {{
-                background-color: {THEME.colors['accent']};
-                border-color: {THEME.colors['accent']};
-            }}
-        """
-        )
-
-        btn_download.clicked.connect(  # type: ignore
+        self.btn_download = QPushButton()
+        self.btn_download.setIconSize(QSize(60, 28))
+        self.btn_download.setFixedSize(110, 34)
+        self.btn_download.clicked.connect(  # type: ignore
             lambda: webbrowser.open("https://www.comfy.org/download")
         )
 
-        btn_row.addWidget(btn_download)
+        btn_row.addWidget(self.btn_download)
         content_layout.addLayout(btn_row)
 
         scroll.setWidget(content)
         layout.addWidget(scroll)
 
+        self._apply_theme()
+        THEME.themeChanged.connect(self._apply_theme)
+
+    def _apply_theme(self, *args):
+        c = THEME.colors
+        self.desc.setStyleSheet(f"color: {c['text_secondary']}; font-size: 13px;")
+        self.builds_container.setStyleSheet(f"background-color: {c['bg_header']};")
+        self.info_label.setStyleSheet(
+            f"color: {c['text_secondary']}; font-size: 13px; margin-top: 14px;"
+        )
+        self.btn_download.setIcon(
+            QIcon(
+                colorize_svg(
+                    OTHER_ICONS.get("comfyui"),
+                    c["icon_color_window"],
+                    QSize(60, 28),
+                )
+            )
+        )
+        self.btn_download.setStyleSheet(
+            f"""
+            QPushButton {{
+                background-color: {c['bg_input']};
+                border: 1px solid {c['border_color']};
+                border-radius: 6px;
+            }}
+            QPushButton:hover {{
+                background-color: {c['accent']};
+                border-color: {c['accent']};
+            }}
+        """
+        )
+        # Build rows take their colors when built, so they are built again.
         self._refresh_builds_list()
 
     def _sync_footer_buttons(self):

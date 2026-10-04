@@ -97,7 +97,7 @@ class AboutSettingsPage(QWidget):
         # layout.addWidget(div1)
 
         # ─── ABOUT THE PROJECT ───────────────────────────────
-        about_project = QLabel(
+        self.about_project = QLabel(
             "ComfyLauncher is designed to make launching and configuring ComfyUI simple and intuitive.\n"
             "It brings together everything you need - from build selection and path validation to theme customization.\n"
             "The core idea is comfort, clarity, and an easy start.\n\n"
@@ -108,12 +108,12 @@ class AboutSettingsPage(QWidget):
             "If you enjoy using ComfyLauncher, you can also support me with a tip - I would greatly appreciate it.\n"
             "Your support inspires me to continue creating helpful tools and improving my applications."
         )
-        about_project.setAlignment(Qt.AlignmentFlag.AlignHCenter)
-        about_project.setWordWrap(True)
-        about_project.setStyleSheet(
+        self.about_project.setAlignment(Qt.AlignmentFlag.AlignHCenter)
+        self.about_project.setWordWrap(True)
+        self.about_project.setStyleSheet(
             f"color: {self.colors['text_primary']}; font-size: 14px;"
         )
-        layout.addWidget(about_project)
+        layout.addWidget(self.about_project)
         layout.addStretch(1)
 
         # ─── DONATION ICONS ─────────────────────────
@@ -135,27 +135,15 @@ class AboutSettingsPage(QWidget):
             ("Discord", CONTACT_ICONS["discord"], "https://discord.gg/6nvXwXp78u"),
         ]
 
+        self._link_buttons = []
         for name, icon_path, url in donations:
             btn = QPushButton()
             btn.setIcon(QIcon(icon_path))
             btn.setIconSize(QSize(40, 40))
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
             btn.setToolTip(f"{name}")
-            btn.setStyleSheet(
-                f"""
-                QPushButton {{
-                    background-color: transparent;
-                    border: 1px solid transparent;
-                    border-radius: 6px;
-                    padding: 6px;
-                }}
-                QPushButton:hover {{
-                    background-color: {self.colors['accent_hover']};
-                    border-color: {self.colors['accent']};
-                    transform: scale(1.05);
-                }}
-            """
-            )
+            btn.setStyleSheet(self._link_button_style())
+            self._link_buttons.append(btn)
             btn.clicked.connect(lambda _, link=url: self._open_link(link))  # type: ignore
             donate_layout.addWidget(btn)
 
@@ -165,21 +153,8 @@ class AboutSettingsPage(QWidget):
             btn.setIconSize(QSize(40, 40))
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
             btn.setToolTip(f"{name}")
-            btn.setStyleSheet(
-                f"""
-                QPushButton {{
-                    background-color: transparent;
-                    border: 1px solid transparent;
-                    border-radius: 6px;
-                    padding: 6px;
-                }}
-                QPushButton:hover {{
-                    background-color: {self.colors['accent_hover']};
-                    border-color: {self.colors['accent']};
-                    transform: scale(1.05);
-                }}
-            """
-            )
+            btn.setStyleSheet(self._link_button_style())
+            self._link_buttons.append(btn)
             btn.clicked.connect(lambda _, link=url: self._open_link(link))  # type: ignore
             donate_layout.addWidget(btn)
 
@@ -254,6 +229,29 @@ class AboutSettingsPage(QWidget):
     def _apply_theme(self):
         self.colors = THEME.colors
         self.setStyleSheet(f"background-color: {self.colors['bg_header']};")
+        self.about_project.setStyleSheet(
+            f"color: {self.colors['text_primary']}; font-size: 14px;"
+        )
+        self.footer_label.setStyleSheet(
+            f"color: {self.colors['text_secondary']}; font-size: 12px;"
+        )
+        for btn in self._link_buttons:
+            btn.setStyleSheet(self._link_button_style())
+
+    def _link_button_style(self) -> str:
+        return f"""
+            QPushButton {{
+                background-color: transparent;
+                border: 1px solid transparent;
+                border-radius: 6px;
+                padding: 6px;
+            }}
+            QPushButton:hover {{
+                background-color: {self.colors['accent_hover']};
+                border-color: {self.colors['accent']};
+                transform: scale(1.05);
+            }}
+        """
 
     def _manual_update_check(self):
         """Запуск проверки вручную"""

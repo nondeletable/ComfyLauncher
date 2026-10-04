@@ -75,12 +75,8 @@ class ColorThemesPage(QWidget):
         content_layout.setContentsMargins(30, 30, 30, 30)
         content_layout.setSpacing(16)
 
-        title = QLabel("Color Themes")
-        title.setStyleSheet(
-            f"color: {THEME.colors['text_primary']}; "
-            f"font-size: 20px; font-weight: 600;"
-        )
-        content_layout.addWidget(title)
+        self.title = QLabel("Color Themes")
+        content_layout.addWidget(self.title)
 
         self.grid = QGridLayout()
         self.grid.setSpacing(15)
@@ -102,14 +98,13 @@ class ColorThemesPage(QWidget):
         grid_container.setLayout(self.grid)
         content_layout.addWidget(grid_container)
 
-        desc = QLabel(
+        self.desc = QLabel(
             "Here you can select a launcher theme from a .json file.\n"
             "Or download a theme from https://www.comfyui-themes.com."
         )
-        desc.setStyleSheet(f"color: {THEME.colors['text_secondary']}; font-size: 13px;")
-        desc.setWordWrap(True)
+        self.desc.setWordWrap(True)
         content_layout.addStretch()
-        content_layout.addWidget(desc)
+        content_layout.addWidget(self.desc)
 
         btn_layout = QHBoxLayout()
         btn_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
@@ -132,22 +127,6 @@ class ColorThemesPage(QWidget):
         self.btn_download.clicked.connect(self._open_comfyui_themes)  # type: ignore
 
         for btn in (self.btn_select, self.btn_download):
-            btn.setStyleSheet(
-                f"""
-                QPushButton {{
-                    background-color: transparent;
-                    border: 1px solid {THEME.colors['border_color']};
-                    border-radius: 6px;
-                }}
-                QPushButton:hover {{
-                    background-color: {THEME.colors['accent']};
-                    border-color: {THEME.colors['accent']};
-                }}
-                QPushButton:pressed {{
-                    background-color: {THEME.colors['accent_hover']};
-                }}
-                """
-            )
             btn_layout.addWidget(btn)
 
         self.btn_select.setToolTip("Select file")
@@ -156,6 +135,33 @@ class ColorThemesPage(QWidget):
         content_layout.addLayout(btn_layout)
         scroll.setWidget(content)
         layout.addWidget(scroll)
+
+        self._apply_theme()
+        THEME.themeChanged.connect(self._apply_theme)
+
+    def _apply_theme(self, *args):
+        c = THEME.colors
+        self.title.setStyleSheet(
+            f"color: {c['text_primary']}; font-size: 20px; font-weight: 600;"
+        )
+        self.desc.setStyleSheet(f"color: {c['text_secondary']}; font-size: 13px;")
+        for btn in (self.btn_select, self.btn_download):
+            btn.setStyleSheet(
+                f"""
+                QPushButton {{
+                    background-color: transparent;
+                    border: 1px solid {c['border_color']};
+                    border-radius: 6px;
+                }}
+                QPushButton:hover {{
+                    background-color: {c['accent']};
+                    border-color: {c['accent']};
+                }}
+                QPushButton:pressed {{
+                    background-color: {c['accent_hover']};
+                }}
+                """
+            )
 
     # ────────────────────────────────
     def _create_theme_card(self, name: str) -> QFrame:
