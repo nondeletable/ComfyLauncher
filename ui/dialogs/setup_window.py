@@ -62,7 +62,17 @@ class SetupWindow(QDialog):
         self.setModal(True)
         self.setFixedSize(self.WINDOW_WIDTH, self.WINDOW_HEIGHT)
         self.setObjectName("SetupWindow")
-        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
+        flags = Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog
+        if sys.platform == "win32" and parent is None:
+            # Without WS_MINIMIZEBOX a taskbar click cannot minimize the window.
+            # Only the first-run window has a taskbar button of its own: over
+            # the selector or Settings it is an owned modal, and the box would
+            # only let Win+Down shrink it alone while its owner stays disabled.
+            flags |= (
+                Qt.WindowType.WindowSystemMenuHint
+                | Qt.WindowType.WindowMinimizeButtonHint
+            )
+        self.setWindowFlags(flags)
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
         self._drag_pos: QPoint | None = None

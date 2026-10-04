@@ -78,3 +78,16 @@ def test_drag_on_a_control_leaves_the_window_in_place(dialog, control):
     start = dialog.pos()
     drag(target, QPoint(10, 10))
     assert dialog.pos() == start
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="WS_MINIMIZEBOX is Windows-only")
+def test_first_run_window_keeps_its_minimize_box_on_windows(qapp):
+    assert sw.SetupWindow().windowFlags() & Qt.WindowType.WindowMinimizeButtonHint
+
+
+def test_owned_window_gets_no_minimize_box(qapp):
+    # Over the selector it has no taskbar button; a minimize box would only let
+    # Win+Down shrink it alone while the selector under it stays disabled.
+    owner = QWidget()
+    dlg = sw.SetupWindow(owner)
+    assert not dlg.windowFlags() & Qt.WindowType.WindowMinimizeButtonHint
