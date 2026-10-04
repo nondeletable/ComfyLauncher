@@ -12,9 +12,14 @@ Two steps, because the window needs a QApplication:
   thread. From then on an exception opens the report window.
 
 The window always opens in the GUI thread: other threads hand it over through
-a queued signal. Only one window is shown at a time, and an exception raised
-while it is open (or by the window itself) is logged, never re-reported, so a
-broken window cannot loop.
+a queued signal. Only one report window is shown at a time (a manually opened
+one counts), and an exception raised while it is open (or by the window
+itself) is logged, never re-reported, so a broken window cannot loop.
+
+A traceback that repeats - a failing paintEvent, timer or closeEvent fires on
+every tick - opens the window once per session; after that only a short line
+goes to the log, at the 2nd, 4th, 8th... repeat, so the log cannot flood and the
+app cannot get stuck behind a window that keeps coming back.
 """
 
 from __future__ import annotations
@@ -33,6 +38,8 @@ from utils.logger import log_event
 
 _dispatcher: "_Dispatcher | None" = None
 _window_open = False
+# traceback signature -> how many times it has been seen this session
+_seen: dict[tuple, int] = {}
 
 
 class _Dispatcher(QObject):
@@ -71,12 +78,27 @@ def _thread_hook(args) -> None:
     _handle(args.exc_type, args.exc_value, args.exc_traceback, args.thread)
 
 
+def _signature(exc_type, tb) -> tuple:
+    frames = traceback.extract_tb(tb) if tb is not None else []
+    return (exc_type.__qualname__,) + tuple(
+        (f.filename, f.lineno, f.name) for f in frames
+    )
+
+
 def _handle(exc_type, exc, tb, thread: threading.Thread | None = None) -> None:
     try:
+        error = f"{exc_type.__name__}: {exc}"
+        sig = _signature(exc_type, tb)
+        count = _seen.get(sig, 0) + 1
+        _seen[sig] = count
+        if count > 1:
+            if count & (count - 1) == 0:
+                log_event(f"❌ Unhandled exception repeated (x{count}): {error}")
+            return
+
         text = "".join(traceback.format_exception(exc_type, exc, tb))
         where = f" in thread {thread.name}" if thread is not None else ""
         log_event(f"❌ Unhandled exception{where}:\n{text.rstrip()}")
-        error = f"{exc_type.__name__}: {exc}"
 
         if _dispatcher is None or QApplication.instance() is None:
             _write_crash_file(error, text)
@@ -106,6 +128,9 @@ def _show_window(error: str, text: str) -> None:
     try:
         from ui.dialogs.bug_report_dialog import BugReportDialog
 
+        if BugReportDialog.active is not None:
+            log_event("A report window is already open; the exception is only logged")
+            return
         BugReportDialog("exception", error, text, QApplication.activeWindow()).exec()
     except Exception as e:
         log_event(f"❌ Report window for an unhandled exception failed: {e}")
@@ -120,7 +145,12 @@ def _write_crash_file(error: str, text: str) -> None:
 
         body = br.render_report(br.collect_report("exception", error, text))
     except Exception:
-        body = text
+        try:
+            from utils.bug_report import Scrubber
+
+            body = Scrubber.for_current_user()(text)
+        except Exception:
+            body = "The report could not be built. The traceback is in launcher.log.\n"
     path = os.path.join(
         logger.LOG_DIR, f"crash-{datetime.now().strftime('%Y%m%d-%H%M%S')}.txt"
     )

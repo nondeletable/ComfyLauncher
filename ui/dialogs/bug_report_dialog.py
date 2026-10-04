@@ -61,6 +61,9 @@ ROUTES = (
 
 
 class BugReportDialog(QDialog):
+    # The report window on screen, if any - there is never a second one.
+    active: "BugReportDialog | None" = None
+
     WINDOW_WIDTH = 760
     WINDOW_HEIGHT = 720
     BORDER_RADIUS = 9
@@ -304,6 +307,13 @@ class BugReportDialog(QDialog):
             reveal_in_file_manager(path)
         self.accept()
 
+    def exec(self) -> int:
+        BugReportDialog.active = self
+        try:
+            return super().exec()
+        finally:
+            BugReportDialog.active = None
+
     # ── Frameless window drag ────────────────────────────────────────────
 
     def mousePressEvent(self, event):
@@ -326,7 +336,15 @@ def open_bug_report(
     error_text: str = "",
     traceback_text: str = "",
 ) -> None:
-    """Collect a report and show the window. Logs instead of raising."""
+    """Collect a report and show the window. Logs instead of raising.
+
+    If a report window is already open it is brought forward instead.
+    """
+    active = BugReportDialog.active
+    if active is not None:
+        active.raise_()
+        active.activateWindow()
+        return
     try:
         BugReportDialog(source, error_text, traceback_text, parent).exec()
     except Exception as e:

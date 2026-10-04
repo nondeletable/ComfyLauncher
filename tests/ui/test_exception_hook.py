@@ -29,6 +29,7 @@ def shown(monkeypatch, tmp_path):
     monkeypatch.setattr(hook.logger, "LOG_DIR", str(tmp_path))
     monkeypatch.setattr(hook, "_window_open", False)
     monkeypatch.setattr(hook, "_dispatcher", None)
+    monkeypatch.setattr(hook, "_seen", {})
     return calls
 
 
@@ -105,6 +106,8 @@ def test_a_failing_window_falls_back_to_a_crash_file(qapp, monkeypatch, tmp_path
     monkeypatch.setattr(hook, "_window_open", False)
 
     class Broken:
+        active = None
+
         def __init__(self, *a, **k):
             raise RuntimeError("window is broken")
 
@@ -123,3 +126,76 @@ def test_a_failure_inside_the_hook_never_raises(shown, monkeypatch):
     monkeypatch.setattr(sys, "__excepthook__", lambda *a: passed.append(a[0]))
     hook._sys_hook(*boom())
     assert passed == [ValueError]
+
+
+def test_a_repeating_traceback_opens_the_window_once(qapp, shown, monkeypatch):
+    logged = []
+    monkeypatch.setattr(hook, "log_event", logged.append)
+    hook.enable_report_window()
+    for _ in range(9):
+        hook._sys_hook(*boom())
+    assert len(shown) == 1
+    repeats = [line for line in logged if "repeated" in line]
+    assert [line.split("(x")[1].split(")")[0] for line in repeats] == ["2", "4", "8"]
+
+
+def test_a_different_traceback_still_gets_its_window(qapp, shown):
+    hook.enable_report_window()
+    hook._sys_hook(*boom())
+    try:
+        raise KeyError("other")
+    except KeyError:
+        hook._sys_hook(*sys.exc_info())
+    assert len(shown) == 2
+
+
+def test_no_exception_window_over_an_open_manual_one(qapp, monkeypatch):
+    from ui.dialogs import bug_report_dialog as dlg_mod
+
+    created = []
+
+    class Fake:
+        active = object()  # a manually opened report window
+
+        def __init__(self, *a, **k):
+            created.append(a)
+
+    monkeypatch.setattr(dlg_mod, "BugReportDialog", Fake)
+    monkeypatch.setattr(hook, "_window_open", False)
+    hook._show_window("ValueError: kaboom", "Traceback ...")
+    assert created == [] and hook._window_open is False
+
+
+def test_manual_open_raises_the_window_already_open(qapp, monkeypatch):
+    from ui.dialogs import bug_report_dialog as dlg_mod
+
+    raised = []
+
+    class Open:
+        def raise_(self):
+            raised.append("raise")
+
+        def activateWindow(self):
+            raised.append("activate")
+
+    monkeypatch.setattr(dlg_mod.BugReportDialog, "active", Open())
+    dlg_mod.open_bug_report(None, "manual")
+    assert raised == ["raise", "activate"]
+
+
+def test_crash_file_fallback_is_scrubbed(shown, tmp_path, monkeypatch):
+    from utils import bug_report as br
+
+    def fail(*a, **k):
+        raise RuntimeError("collect failed")
+
+    monkeypatch.setattr(br, "collect_report", fail)
+    monkeypatch.setattr(
+        br.Scrubber,
+        "for_current_user",
+        classmethod(lambda cls: cls(r"C:\Users\Jane", "Jane", "JANE-PC")),
+    )
+    hook._write_crash_file("E", r'File "C:\Users\Jane\x.py", line 1')
+    (name,) = crash_files(tmp_path)
+    with open(os.path.join(tmp_path, name), encoding="utf-8") as f:
+        assert "Jane" not in f.read()
