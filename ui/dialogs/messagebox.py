@@ -205,6 +205,28 @@ class MessageBox(QDialog):
             "Failed to save the settings. Make sure the app can write to your "
             "AppData folder, then try again.",
         )
+      
+    @staticmethod
+    def choose(parent, title: str, text: str, kind: str, buttons) -> str | None:
+        """Ask with any set of buttons; ``buttons`` is ``[(label, key), ...]``.
+
+        Returns the key of the pressed button, or None if the box was closed.
+        """
+        dlg = MessageBox(title, text, kind, parent)
+        dlg.body.setOpenExternalLinks(True)
+        dlg._answer = None
+
+        def pick(key):
+            dlg._answer = key
+            dlg.accept()
+
+        for label, key in buttons:
+            btn = QPushButton(label)
+            btn.clicked.connect(lambda _=False, k=key: pick(k))  # type: ignore
+            dlg._buttons.addWidget(btn)
+
+        dlg.exec()
+        return dlg._answer
 
     @staticmethod
     def update_available(parent, title: str, message: str) -> bool:
