@@ -172,6 +172,7 @@ class FlagsPickerDialog(QDialog):
                 if nxt and (not nxt.startswith("-") or _NEGATIVE_NUMBER.fullmatch(nxt)):
                     value = nxt
                     i += 1
+                value = self._value_or_default(spec, value)
                 entries.append({"kind": "flag", "flag": tok, "value": value})
             elif spec and spec.get("type") == "bool":
                 entries.append({"kind": "flag", "flag": tok, "value": None})
@@ -188,13 +189,10 @@ class FlagsPickerDialog(QDialog):
                 continue
             flag = e["flag"]
             value = e.get("value")
-            if value == "":
-                spec = self.by_flag.get(flag, {})
-                if not spec.get("value_optional"):
-                    # a bare value flag makes ComfyUI's argparse exit at start
-                    value = self._default_value(spec)
-                    if value == "":
-                        continue
+            if value == "" and not self.by_flag.get(flag, {}).get("value_optional"):
+                # no default to fall back on, and a bare value flag makes
+                # ComfyUI's argparse exit at start
+                continue
             parts.append(flag)
             if value not in (None, ""):
                 parts.append(str(value))
@@ -222,6 +220,12 @@ class FlagsPickerDialog(QDialog):
             choices = spec.get("choices") or []
             return str(choices[0]) if choices else ""
         return "" if default is None else str(default)
+
+    def _value_or_default(self, spec: dict, value: str) -> str:
+        """An empty value becomes the default, unless argparse takes the flag bare."""
+        if value or spec.get("value_optional"):
+            return value
+        return self._default_value(spec)
 
     def _add(self, flag: str) -> None:
         spec = self.by_flag.get(flag)
@@ -257,7 +261,8 @@ class FlagsPickerDialog(QDialog):
             return
         for e in self.entries:
             if e["kind"] == "flag" and e["flag"] == flag:
-                e["value"] = str(value).strip()
+                spec = self.by_flag.get(flag, {})
+                e["value"] = self._value_or_default(spec, str(value).strip())
                 break
         self._emit()
 

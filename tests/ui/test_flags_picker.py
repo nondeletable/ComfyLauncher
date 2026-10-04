@@ -115,3 +115,19 @@ def test_cleared_value_flag_without_default_is_dropped(app):
 )
 def test_negative_number_is_a_value_not_a_flag(app, text):
     assert make(app, text)._build_string() == text
+
+
+def test_editor_shows_the_value_that_is_emitted(app):
+    d = make(app, "--port --fast")
+    assert d._value_of("--port") == "8188"
+    assert d._editors["--port"].text() == "8188"
+    d._on_value_edited("--port", "")
+    assert d._value_of("--port") == "8188"
+    d._toggle("--cpu")  # any refresh refills the editor from the model
+    assert d._editors["--port"].text() == "8188"
+
+
+def test_bare_optional_value_flag_stays_bare(app):
+    d = make(app, "--listen --fast")
+    assert d._value_of("--listen") == ""
+    assert d._build_string() == "--listen --fast"
