@@ -86,3 +86,48 @@ def test_parse_value_flag_with_value(app):
     assert d._is_active("--port") is True
     assert d._value_of("--port") == "7000"
     assert d._build_string() == "--port 7000"
+
+
+def test_value_flag_cleared_falls_back_to_default(app):
+    # a bare --port / --reserve-vram makes ComfyUI's argparse exit at start
+    d = make(app, "")
+    d._add("--port")
+    d._on_value_edited("--port", "")
+    assert d._build_string() == "--port 8188"
+    d._on_value_edited("--port", "   ")
+    assert d._build_string() == "--port 8188"
+
+
+def test_parse_bare_value_flag_gets_default(app):
+    d = make(app, "--reserve-vram --fast")
+    assert d._build_string() == "--reserve-vram 2 --fast"
+
+
+def test_cleared_value_flag_without_default_is_dropped(app):
+    d = make(app, "--port 7000 --fast")
+    d.by_flag["--port"] = dict(d.by_flag["--port"], default=None)
+    d._on_value_edited("--port", "")
+    assert d._build_string() == "--fast"
+
+
+@pytest.mark.parametrize(
+    "text", ["--cuda-device -1 --fast", "--reserve-vram -1", "--reserve-vram -.5"]
+)
+def test_negative_number_is_a_value_not_a_flag(app, text):
+    assert make(app, text)._build_string() == text
+
+
+def test_editor_shows_the_value_that_is_emitted(app):
+    d = make(app, "--port --fast")
+    assert d._value_of("--port") == "8188"
+    assert d._editors["--port"].text() == "8188"
+    d._on_value_edited("--port", "")
+    assert d._value_of("--port") == "8188"
+    d._toggle("--cpu")  # any refresh refills the editor from the model
+    assert d._editors["--port"].text() == "8188"
+
+
+def test_bare_optional_value_flag_stays_bare(app):
+    d = make(app, "--listen --fast")
+    assert d._value_of("--listen") == ""
+    assert d._build_string() == "--listen --fast"

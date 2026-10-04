@@ -61,3 +61,8 @@ def test_non_dict_json_returns_empty(tmp_path):
     arr = tmp_path / "arr.json"
     arr.write_text(json.dumps([1, 2, 3]), encoding="utf-8")
     assert load_flags_catalog(str(arr)) == {"groups": []}
+
+
+def test_value_optional_marks_only_flags_argparse_accepts_bare():
+    optional = {f["flag"] for f in iter_flags() if f.get("value_optional")}
+    assert optional == {"--listen", "--enable-cors-header"}

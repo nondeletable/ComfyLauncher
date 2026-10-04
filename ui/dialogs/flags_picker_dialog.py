@@ -4,13 +4,17 @@ Opens from the Setup Window's "Add" button. Shows the curated catalog
 (assets/data/flags.json) as grouped, clickable chips and syncs the result back
 to the caller's flags text field live: clicking a chip inserts the flag,
 clicking again removes it. Value/choice flags carry an inline editor pre-filled
-with a sensible default so no dangling ``--port`` can be produced. The flags
+with a sensible default so no dangling ``--port`` can be produced; a cleared
+value falls back to that default, unless argparse accepts the flag bare
+(``value_optional`` in the catalog, e.g. ``--listen``). The flags
 string stays the single source of truth: it is parsed on open and rebuilt on
 every change, preserving unknown/manual tokens (e.g. ``--windows-standalone-build``)
 in place.
 """
 
 from __future__ import annotations
+
+import re
 
 from PyQt6.QtWidgets import (
     QDialog,
@@ -33,6 +37,9 @@ from config import ICON_PATH
 from ui.theme.manager import THEME
 from utils.flags_catalog import load_flags_catalog, iter_flags
 
+
+# argparse reads a negative number after an option as its value, not a flag.
+_NEGATIVE_NUMBER = re.compile(r"-\d+(\.\d*)?|-\.\d+")
 
 # Quick presets: additively merged into the current selection (dedupe +
 # exclusive-group aware). Each is a list of flags to switch on.
@@ -161,9 +168,11 @@ class FlagsPickerDialog(QDialog):
             spec = self.by_flag.get(tok)
             if spec and spec.get("type") in ("value", "choice"):
                 value = ""
-                if i + 1 < len(tokens) and not tokens[i + 1].startswith("-"):
-                    value = tokens[i + 1]
+                nxt = tokens[i + 1] if i + 1 < len(tokens) else ""
+                if nxt and (not nxt.startswith("-") or _NEGATIVE_NUMBER.fullmatch(nxt)):
+                    value = nxt
                     i += 1
+                value = self._value_or_default(spec, value)
                 entries.append({"kind": "flag", "flag": tok, "value": value})
             elif spec and spec.get("type") == "bool":
                 entries.append({"kind": "flag", "flag": tok, "value": None})
@@ -180,6 +189,10 @@ class FlagsPickerDialog(QDialog):
                 continue
             flag = e["flag"]
             value = e.get("value")
+            if value == "" and not self.by_flag.get(flag, {}).get("value_optional"):
+                # no default to fall back on, and a bare value flag makes
+                # ComfyUI's argparse exit at start
+                continue
             parts.append(flag)
             if value not in (None, ""):
                 parts.append(str(value))
@@ -207,6 +220,12 @@ class FlagsPickerDialog(QDialog):
             choices = spec.get("choices") or []
             return str(choices[0]) if choices else ""
         return "" if default is None else str(default)
+
+    def _value_or_default(self, spec: dict, value: str) -> str:
+        """An empty value becomes the default, unless argparse takes the flag bare."""
+        if value or spec.get("value_optional"):
+            return value
+        return self._default_value(spec)
 
     def _add(self, flag: str) -> None:
         spec = self.by_flag.get(flag)
@@ -242,7 +261,8 @@ class FlagsPickerDialog(QDialog):
             return
         for e in self.entries:
             if e["kind"] == "flag" and e["flag"] == flag:
-                e["value"] = str(value).strip()
+                spec = self.by_flag.get(flag, {})
+                e["value"] = self._value_or_default(spec, str(value).strip())
                 break
         self._emit()
 

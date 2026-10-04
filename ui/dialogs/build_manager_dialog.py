@@ -20,7 +20,7 @@ from PyQt6.QtWidgets import (
 )
 from ui.theme.manager import THEME
 from config import load_user_config, save_user_config, ICON_PATH, ICON_PATHS
-from ui.dialogs.setup_window import SetupWindow
+from ui.dialogs.setup_window import SetupMode, SetupWindow
 from ui.header import colorize_svg
 from ui.window_resize import EdgeResizer
 
@@ -400,12 +400,20 @@ class BuildManagerDialog(QDialog):
         return widget
 
     def _edit_build(self, build: dict):
-        dlg = SetupWindow(self, build=build)
+        # Editing must not mark a build as last used: only a launch does that.
+        # The last-used build keeps MANAGER mode so comfyui_path follows its path.
+        # A config without last_used_build_id knows that build only by its path.
+        comfyui_path = load_user_config().get("comfyui_path", "")
+        is_last = str(build.get("id", "")) == self.last_used_id or (
+            bool(comfyui_path) and build.get("path") == comfyui_path
+        )
+        mode = SetupMode.MANAGER if is_last else SetupMode.SETTINGS
+        dlg = SetupWindow(self, build=build, mode=mode)
         if dlg.exec() == QDialog.DialogCode.Accepted:
             self._reload_builds()
 
     def _add_build(self):
-        dlg = SetupWindow(self)
+        dlg = SetupWindow(self, mode=SetupMode.SETTINGS)
         res = dlg.exec()
         if res == QDialog.DialogCode.Accepted:
             self._reload_builds()

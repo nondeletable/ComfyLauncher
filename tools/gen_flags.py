@@ -332,6 +332,9 @@ def build_curated(raw_by_flag):
                 "exclusive_group": raw["exclusive_group"],
                 "description": desc,
             }
+            if kind != "bool" and raw["nargs"] == "?":
+                # argparse accepts the flag bare, so the picker may emit it bare
+                item["value_optional"] = True
             out_flags.append(item)
         groups.append({"id": group_id, "title": title, "flags": out_flags})
     return {"groups": groups}, missing
