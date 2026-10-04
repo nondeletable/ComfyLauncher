@@ -59,3 +59,20 @@ def open_in_file_manager(path: str) -> None:
         from utils.logger import log_event
 
         log_event(f"⚠️ Failed to open path in file manager: {path} ({e})")
+
+
+def reveal_in_file_manager(path: str) -> None:
+    """Open the folder holding ``path`` with the file selected. Never raises.
+
+    Selecting is Windows-only (``explorer /select``); elsewhere the containing
+    folder is opened, since Linux file managers have no common way to do it.
+    """
+    if sys.platform != "win32":
+        open_in_file_manager(os.path.dirname(path))
+        return
+    try:
+        subprocess.Popen(f'explorer /select,"{os.path.normpath(path)}"')
+    except Exception as e:
+        from utils.logger import log_event
+
+        log_event(f"⚠️ Failed to reveal file in file manager: {path} ({e})")
