@@ -7,13 +7,26 @@
 
 #define RepoRoot AddBackslash(SourcePath) + "..\.."
 #define VersionFile FileOpen(RepoRoot + "\version.py")
-#define VersionLine FileRead(VersionFile)
+#if !VersionFile
+  #error Cannot open version.py
+#endif
+#define VersionLine ""
+#sub ReadVersionLine
+  #define Line FileRead(VersionFile)
+  #if Pos("__version__", Line) == 1
+    #define public VersionLine Line
+  #endif
+#endsub
+#for {0; VersionLine == "" && !FileEof(VersionFile); 0} ReadVersionLine
 #expr FileClose(VersionFile)
 #define VersionStart Pos('"', VersionLine) + 1
 #define VersionEnd RPos('"', VersionLine)
 
 #define MyAppName "Comfy Launcher"
 #define MyAppVersion Copy(VersionLine, VersionStart, VersionEnd - VersionStart)
+#if MyAppVersion == "" || Pos('"', MyAppVersion) > 0
+  #error Cannot parse __version__ from version.py
+#endif
 #define MyAppPublisher "nondeletable"
 #define MyAppURL "https://www.nondeletable.com/"
 #define MyAppExeName "Comfy Launcher.exe"
