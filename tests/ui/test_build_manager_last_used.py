@@ -93,3 +93,12 @@ def test_editing_the_last_used_build_moves_comfyui_path(qapp, store, saving_setu
     dlg._edit_build(build(store, "A"))
     assert store["last_used_build_id"] == "A"
     assert store["comfyui_path"] == "C:/a2"
+
+
+def test_legacy_config_finds_the_last_used_build_by_path(qapp, store, saving_setup):
+    # configs from before last_used_build_id know the current build by path only
+    del store["last_used_build_id"]
+    dlg = bm.BuildManagerDialog()
+    saving_setup["path_edit"] = "C:/a2"
+    dlg._edit_build(build(store, "A"))
+    assert store["comfyui_path"] == "C:/a2"

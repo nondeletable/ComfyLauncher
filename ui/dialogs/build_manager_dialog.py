@@ -402,7 +402,11 @@ class BuildManagerDialog(QDialog):
     def _edit_build(self, build: dict):
         # Editing must not mark a build as last used: only a launch does that.
         # The last-used build keeps MANAGER mode so comfyui_path follows its path.
-        is_last = str(build.get("id", "")) == self.last_used_id
+        # A config without last_used_build_id knows that build only by its path.
+        comfyui_path = load_user_config().get("comfyui_path", "")
+        is_last = str(build.get("id", "")) == self.last_used_id or (
+            bool(comfyui_path) and build.get("path") == comfyui_path
+        )
         mode = SetupMode.MANAGER if is_last else SetupMode.SETTINGS
         dlg = SetupWindow(self, build=build, mode=mode)
         if dlg.exec() == QDialog.DialogCode.Accepted:
