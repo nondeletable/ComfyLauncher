@@ -11,7 +11,7 @@ from PyQt6.QtWidgets import (
     QToolButton,
     QGraphicsDropShadowEffect,
 )
-from PyQt6.QtCore import Qt, QSize
+from PyQt6.QtCore import Qt, QSize, QPoint
 from PyQt6.QtGui import QIcon, QColor
 
 from config import (
@@ -29,6 +29,7 @@ from ui.dialogs.messagebox import MessageBox as MB
 from ui.dialogs.flags_picker_dialog import FlagsPickerDialog
 
 import os
+import sys
 import uuid
 from enum import Enum
 
@@ -64,6 +65,7 @@ class SetupWindow(QDialog):
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+        self._drag_pos: QPoint | None = None
 
         outer = QVBoxLayout(self)
         outer.setContentsMargins(15, 15, 15, 15)
@@ -336,6 +338,26 @@ class SetupWindow(QDialog):
         # created and was a no-op, which left edit mode with Save disabled until
         # the user touched a field.
         self._update_ok_state()
+
+    # ── Dragging the window by any empty spot ──────
+    def mousePressEvent(self, event):
+        if event.button() != Qt.MouseButton.LeftButton:
+            return
+        # Wayland ignores move(); the compositor has to run the drag there.
+        handle = self.windowHandle()
+        if sys.platform != "win32" and handle is not None and handle.startSystemMove():
+            return
+        self._drag_pos = event.globalPosition().toPoint()
+
+    def mouseMoveEvent(self, event):
+        if self._drag_pos is None or event.buttons() != Qt.MouseButton.LeftButton:
+            return
+        pos = event.globalPosition().toPoint()
+        self.move(self.pos() + pos - self._drag_pos)
+        self._drag_pos = pos
+
+    def mouseReleaseEvent(self, event):
+        self._drag_pos = None
 
     def _browse(self):
         directory = QFileDialog.getExistingDirectory(self, "Select ComfyUI folder")
