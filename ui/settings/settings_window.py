@@ -21,6 +21,7 @@ from ui.settings.page_startapp import StartAppSettingsPage
 from ui.theme.manager import THEME
 from ui.dialogs.messagebox import MessageBox as MB
 from config import ICON_PATH
+from utils.logger import log_event
 
 
 # ──────────────────────────────────────────────
@@ -268,7 +269,12 @@ class SettingsWindow(QWidget):
         self.pages.setCurrentIndex(index)
 
     def _is_dirty(self, page: QWidget) -> bool:
-        return hasattr(page, "is_dirty") and bool(page.is_dirty())  # type: ignore
+        # An exception here would escape closeEvent, and PyQt6 aborts on that.
+        try:
+            return hasattr(page, "is_dirty") and bool(page.is_dirty())  # type: ignore
+        except Exception as e:
+            log_event(f"Settings: is_dirty failed on {type(page).__name__}: {e}")
+            return False
 
     def _dirty_pages(self) -> list[int]:
         """Built pages holding unsaved changes; a page never visited has none."""

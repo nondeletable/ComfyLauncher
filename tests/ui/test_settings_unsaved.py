@@ -210,3 +210,14 @@ def test_a_theme_waits_for_the_other_pages_and_does_not_ask_twice(
     assert themes.is_dirty()
     assert startup.is_dirty()
     assert not sip.isdeleted(window)
+
+
+def test_a_page_whose_dirty_check_throws_does_not_block_closing(window, prompts):
+    startup = _dirty_startup(window)
+
+    def broken():
+        raise RuntimeError("boom")
+
+    startup.is_dirty = broken
+    assert window.close() is True
+    assert prompts.asked == []
