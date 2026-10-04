@@ -155,6 +155,27 @@ def test_load_refuses_a_file_that_cannot_be_read(importer):
         importer.load("несуществующий/путь/theme.json")
 
 
+@pytest.mark.parametrize(
+    "content",
+    [
+        "[" * 100_000 + "]" * 100_000,
+        '{"colors": {"comfy_base": {"bg-color": ' + "9" * 5000 + "}}}",
+        b"\xff\xfe{}",
+    ],
+    ids=["deep-nesting", "huge-int", "bad-encoding"],
+)
+def test_load_refuses_a_file_the_json_parser_chokes_on(importer, tmp_path, content):
+    """RecursionError and the int-digit ValueError are not JSONDecodeError -
+    they used to escape into the Qt slot and kill the launcher."""
+    path = tmp_path / "theme.json"
+    if isinstance(content, bytes):
+        path.write_bytes(content)
+    else:
+        path.write_text(content, encoding="utf8")
+    with pytest.raises(ThemeImportError, match="could not be read"):
+        importer.load(str(path))
+
+
 @pytest.mark.parametrize("key", ["bg-color", "fg-color", "drag-text"])
 def test_load_refuses_a_theme_without_a_required_color(importer, tmp_path, key):
     base = {k: v for k, v in VALID_BASE.items() if k != key}

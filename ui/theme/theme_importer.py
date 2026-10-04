@@ -131,7 +131,9 @@ class ThemeImporter:
             raise ThemeImportError(
                 f"The file is not valid JSON (line {e.lineno}, column {e.colno})."
             ) from e
-        except (OSError, UnicodeDecodeError) as e:
+        except (OSError, ValueError, RecursionError, MemoryError) as e:
+            # ValueError covers a bad encoding and an int over Python's digit
+            # limit; RecursionError a JSON nested ~1000 levels deep.
             raise ThemeImportError(f"The file could not be read: {e}") from e
 
     def _extract_comfy_base(self, data):
