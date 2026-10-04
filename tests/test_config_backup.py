@@ -49,8 +49,17 @@ def test_app_backup_dir_is_none_from_source(monkeypatch):
     assert config._app_backup_dir() is None
 
 
+@pytest.mark.parametrize("platform", ["linux", "darwin"])
+def test_app_backup_dir_is_none_off_windows(platform, tmp_path, monkeypatch):
+    monkeypatch.setattr(sys, "platform", platform)
+    monkeypatch.setattr(sys, "frozen", True, raising=False)
+    monkeypatch.setattr(sys, "executable", str(tmp_path / "ComfyLauncher"))
+    assert config._app_backup_dir() is None
+
+
 def test_app_backup_dir_is_next_to_exe_when_frozen(tmp_path, monkeypatch):
     exe = tmp_path / "Comfy Launcher" / "ComfyLauncher.exe"
+    monkeypatch.setattr(sys, "platform", "win32")
     monkeypatch.setattr(sys, "frozen", True, raising=False)
     monkeypatch.setattr(sys, "executable", str(exe))
     assert config._app_backup_dir() == str(exe.parent / "backup")

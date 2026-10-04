@@ -160,12 +160,15 @@ def _migrate_legacy_config():
 
 
 def _app_backup_dir():
-    """Backup folder next to the exe of a frozen build; None from source.
+    """Backup folder next to the exe of a frozen Windows build, else None.
 
     From source the "app folder" is the git checkout, and a backup there would
     show up as an untracked folder, so a dev run goes straight to Documents.
+    Off Windows the exe folder is no place for user data either: an AppImage
+    run with --appimage-extract-and-run lives in a temp dir that vanishes, and
+    writing into a macOS .app bundle modifies the signed bundle.
     """
-    if not getattr(sys, "frozen", False):
+    if sys.platform != "win32" or not getattr(sys, "frozen", False):
         return None
     return os.path.join(os.path.dirname(sys.executable), BACKUP_DIR_NAME)
 
