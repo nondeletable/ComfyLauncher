@@ -201,15 +201,23 @@ class SettingsWindow(QWidget):
         main_frame.setGraphicsEffect(shadow)
 
         # ─── Adding pages ───────────────────────────────
-        self.pages.addWidget(BuildSettingsPage(parent=self))
-        self.pages.addWidget(StartAppSettingsPage(parent=self))
-        self.pages.addWidget(BehaviorSettingsPage(parent=self))
-        self.pages.addWidget(ColorThemesPage(parent=self))
-        self.pages.addWidget(LogsSettingsPage(parent=self))
-        self.pages.addWidget(AboutSettingsPage(parent=self))
+        # Each page is built on its first visit, an empty placeholder holds its
+        # slot until then. Built all at once, Color Themes, Launcher Logs and
+        # About alone added a few hundred ms to every opening of the window.
+        self._page_classes = [
+            BuildSettingsPage,
+            StartAppSettingsPage,
+            BehaviorSettingsPage,
+            ColorThemesPage,
+            LogsSettingsPage,
+            AboutSettingsPage,
+        ]
+        self._built_pages = set()
+        for _ in self._page_classes:
+            self.pages.addWidget(QWidget())
 
         # ─── Logic and signals ─────────────────────────────────
-        self.menu.currentRowChanged.connect(self.pages.setCurrentIndex)  # type: ignore
+        self.menu.currentRowChanged.connect(self._show_page)  # type: ignore
         self.menu.currentRowChanged.connect(self._on_page_changed)  # type: ignore
         self.menu.setCurrentRow(0)
 
@@ -249,6 +257,16 @@ class SettingsWindow(QWidget):
 
     def _current_page(self):
         return self.pages.currentWidget()
+
+    def _show_page(self, index: int):
+        if index not in self._built_pages:
+            page = self._page_classes[index](parent=self)
+            self._built_pages.add(index)
+            placeholder = self.pages.widget(index)
+            self.pages.insertWidget(index, page)
+            self.pages.removeWidget(placeholder)
+            placeholder.deleteLater()
+        self.pages.setCurrentIndex(index)
 
     def _on_page_changed(self, index: int):
         """We connect the active page's dirtyChanged
