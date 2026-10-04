@@ -54,3 +54,20 @@ def test_apply_follows_a_page_built_late(window):
 
     page.cb_show_splash.toggle()
     assert not window.btn_apply.isEnabled()
+
+
+def test_a_page_that_failed_to_build_is_retried_on_the_next_visit(window):
+    real = window._page_classes[2]
+
+    def broken(parent=None):
+        raise RuntimeError("boom")
+
+    window._page_classes[2] = broken
+    with pytest.raises(RuntimeError):
+        window._show_page(2)
+    assert 2 not in window._built_pages
+
+    window._page_classes[2] = real
+    window._show_page(2)
+    assert isinstance(window.pages.widget(2), real)
+    assert window.pages.count() == 6

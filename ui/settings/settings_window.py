@@ -260,9 +260,10 @@ class SettingsWindow(QWidget):
 
     def _show_page(self, index: int):
         if index not in self._built_pages:
+            page = self._page_classes[index](parent=self)
             self._built_pages.add(index)
             placeholder = self.pages.widget(index)
-            self.pages.insertWidget(index, self._page_classes[index](parent=self))
+            self.pages.insertWidget(index, page)
             self.pages.removeWidget(placeholder)
             placeholder.deleteLater()
         self.pages.setCurrentIndex(index)
