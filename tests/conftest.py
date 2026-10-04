@@ -49,6 +49,25 @@ def quiet_exit_config():
 
 
 @pytest.fixture(scope="session", autouse=True)
+def isolated_config_backup():
+    """Keep config backups out of the developer's real Documents folder.
+
+    Every save_user_config() of a config with builds mirrors it to a backup,
+    and from source the backup goes to Documents/ComfyLauncher/backup.
+    """
+    import config
+
+    mp = pytest.MonkeyPatch()
+    mp.setattr(
+        config,
+        "_documents_backup_dir",
+        lambda: os.path.join(_TEST_APP_DIR, "documents-backup"),
+    )
+    yield
+    mp.undo()
+
+
+@pytest.fixture(scope="session", autouse=True)
 def qapp():
     global _APP
     if _APP is None:
