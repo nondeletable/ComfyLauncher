@@ -13,7 +13,7 @@ import sys  # noqa: E402
 import pytest  # noqa: E402
 from PyQt6.QtCore import QPoint, QPointF, Qt  # noqa: E402
 from PyQt6.QtGui import QMouseEvent  # noqa: E402
-from PyQt6.QtWidgets import QApplication, QWidget  # noqa: E402
+from PyQt6.QtWidgets import QApplication, QLabel, QWidget  # noqa: E402
 
 import ui.dialogs.setup_window as sw  # noqa: E402
 
@@ -59,6 +59,18 @@ def drag(target, local, delta=QPoint(40, 30)):
 def test_drag_by_an_empty_spot_moves_the_window(dialog):
     start = dialog.pos()
     drag(dialog.main_frame, QPoint(dialog.main_frame.width() - 20, 250))
+    assert dialog.pos() - start == QPoint(40, 30)
+
+
+def test_drag_on_the_info_label_moves_the_window(dialog):
+    # The rich-text hint at the top is the most natural spot to grab.
+    info = next(
+        label
+        for label in dialog.findChildren(QLabel)
+        if label.text().startswith("Specify the folder")
+    )
+    start = dialog.pos()
+    drag(info, QPoint(10, 10))
     assert dialog.pos() - start == QPoint(40, 30)
 
 

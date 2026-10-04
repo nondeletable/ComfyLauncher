@@ -121,6 +121,9 @@ class SetupWindow(QDialog):
         """
         )
         info.setWordWrap(True)
+        # Rich text makes the label take mouse presses; without links it has
+        # nothing to do with them, and they should drag the window instead.
+        info.setTextInteractionFlags(Qt.TextInteractionFlag.NoTextInteraction)
         layout.addWidget(info)
 
         # browse button
