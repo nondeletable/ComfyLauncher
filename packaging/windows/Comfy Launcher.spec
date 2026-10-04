@@ -5,8 +5,10 @@
 # Usage, from the repo root with the project's venv:
 #   pyinstaller "packaging/windows/Comfy Launcher.spec"
 #
-# Output: dist/Comfy Launcher/ (exe + _internal). Paths below are resolved
-# from this file's location, so the build does not depend on the machine.
+# Output: dist/Comfy Launcher/ (exe + _internal). PyInstaller puts dist/ and
+# build/ into the current directory, so run it from the repo root with the
+# default --distpath: script.iss expects the build in <repo>/dist. Paths
+# below are resolved from this file's location.
 import os
 
 ROOT = os.path.abspath(os.path.join(SPECPATH, '..', '..'))
