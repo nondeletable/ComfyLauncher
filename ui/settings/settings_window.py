@@ -212,6 +212,7 @@ class SettingsWindow(QWidget):
             LogsSettingsPage,
             AboutSettingsPage,
         ]
+        self._themes_page = self._page_classes.index(ColorThemesPage)
         self._built_pages = set()
         for _ in self._page_classes:
             self.pages.addWidget(QWidget())
@@ -304,7 +305,14 @@ class SettingsWindow(QWidget):
             if answer == "apply":
                 # Every page is applied even if one fails; a failed page has
                 # shown its own warning and stays dirty, so Settings stays open.
-                results = [self._apply_page(self.pages.widget(i)) for i in dirty]
+                # Color Themes goes last and only if the rest saved: applying a
+                # theme closes Settings on its own, which would ask again.
+                results = []
+                for i in sorted(dirty, key=lambda i: i == self._themes_page):
+                    if i == self._themes_page and not all(results):
+                        results.append(False)
+                        continue
+                    results.append(self._apply_page(self.pages.widget(i)))
                 self._sync_footer()
                 if not all(results):
                     e.ignore()

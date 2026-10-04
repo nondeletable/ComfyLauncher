@@ -188,3 +188,25 @@ def test_applying_a_theme_from_the_close_prompt_does_not_crash(window, prompts):
     # being deleted; an exception in that slot would abort the whole process.
     QTest.qWait(250)
     assert sip.isdeleted(window)
+
+
+def test_a_theme_waits_for_the_other_pages_and_does_not_ask_twice(
+    window, prompts, monkeypatch
+):
+    monkeypatch.setattr(startapp, "save_user_config", lambda cfg: False)
+    monkeypatch.setattr(MessageBox, "save_failed", staticmethod(lambda p: None))
+    startup = _dirty_startup(window)
+    window.menu.setCurrentRow(COLOR_THEMES)
+    themes = window.pages.currentWidget()
+    before = THEME.name
+    themes._on_theme_selected(next(name for name in THEMES if name != before))
+    prompts.answer = "apply"
+
+    assert window.close() is False
+    QTest.qWait(250)
+
+    assert len(prompts.asked) == 1
+    assert THEME.name == before
+    assert themes.is_dirty()
+    assert startup.is_dirty()
+    assert not sip.isdeleted(window)
