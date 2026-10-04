@@ -53,10 +53,10 @@ def test_exclusive_group_evicts_siblings(app):
 
 def test_value_flag_uses_default_then_edit(app):
     d = make(app, "")
-    d._add("--port")
-    assert d._build_string() == "--port 8188"
-    d._on_value_edited("--port", "9000")
-    assert d._build_string() == "--port 9000"
+    d._add("--cache-lru")
+    assert d._build_string() == "--cache-lru 10"
+    d._on_value_edited("--cache-lru", "40")
+    assert d._build_string() == "--cache-lru 40"
 
 
 def test_value_flag_bare_when_value_cleared(app):
@@ -82,20 +82,20 @@ def test_preset_additive_and_dedup(app):
 
 
 def test_parse_value_flag_with_value(app):
-    d = make(app, "--port 7000")
-    assert d._is_active("--port") is True
-    assert d._value_of("--port") == "7000"
-    assert d._build_string() == "--port 7000"
+    d = make(app, "--cache-lru 40")
+    assert d._is_active("--cache-lru") is True
+    assert d._value_of("--cache-lru") == "40"
+    assert d._build_string() == "--cache-lru 40"
 
 
 def test_value_flag_cleared_falls_back_to_default(app):
-    # a bare --port / --reserve-vram makes ComfyUI's argparse exit at start
+    # a bare --cache-lru / --reserve-vram makes ComfyUI's argparse exit at start
     d = make(app, "")
-    d._add("--port")
-    d._on_value_edited("--port", "")
-    assert d._build_string() == "--port 8188"
-    d._on_value_edited("--port", "   ")
-    assert d._build_string() == "--port 8188"
+    d._add("--cache-lru")
+    d._on_value_edited("--cache-lru", "")
+    assert d._build_string() == "--cache-lru 10"
+    d._on_value_edited("--cache-lru", "   ")
+    assert d._build_string() == "--cache-lru 10"
 
 
 def test_parse_bare_value_flag_gets_default(app):
@@ -104,9 +104,9 @@ def test_parse_bare_value_flag_gets_default(app):
 
 
 def test_cleared_value_flag_without_default_is_dropped(app):
-    d = make(app, "--port 7000 --fast")
-    d.by_flag["--port"] = dict(d.by_flag["--port"], default=None)
-    d._on_value_edited("--port", "")
+    d = make(app, "--cache-lru 40 --fast")
+    d.by_flag["--cache-lru"] = dict(d.by_flag["--cache-lru"], default=None)
+    d._on_value_edited("--cache-lru", "")
     assert d._build_string() == "--fast"
 
 
@@ -118,13 +118,13 @@ def test_negative_number_is_a_value_not_a_flag(app, text):
 
 
 def test_editor_shows_the_value_that_is_emitted(app):
-    d = make(app, "--port --fast")
-    assert d._value_of("--port") == "8188"
-    assert d._editors["--port"].text() == "8188"
-    d._on_value_edited("--port", "")
-    assert d._value_of("--port") == "8188"
+    d = make(app, "--cache-lru --fast")
+    assert d._value_of("--cache-lru") == "10"
+    assert d._editors["--cache-lru"].text() == "10"
+    d._on_value_edited("--cache-lru", "")
+    assert d._value_of("--cache-lru") == "10"
     d._toggle("--cpu")  # any refresh refills the editor from the model
-    assert d._editors["--port"].text() == "8188"
+    assert d._editors["--cache-lru"].text() == "10"
 
 
 def test_bare_optional_value_flag_stays_bare(app):
