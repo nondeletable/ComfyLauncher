@@ -17,6 +17,7 @@ venv/
 build/
 dist/
 *.spec
+!packaging/windows/*.spec
 
 # --- Logs, caches and temp files ---
 *.log
