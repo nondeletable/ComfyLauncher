@@ -100,3 +100,16 @@ def test_a_good_file_is_imported_and_selected(page, monkeypatch, tmp_path):
     assert page.selected_theme == "fine"
     assert THEMES["fine"]["icon_color_window"] == "#aabbcc"
     os.remove(os.path.join(THEMES_DIR, "fine.json"))
+
+
+def test_a_theme_that_fails_to_apply_says_so(page, monkeypatch):
+    def broken_switch(name):
+        raise ValueError(f"Theme '{name}' is broken: \"accent\" is not a color")
+
+    monkeypatch.setattr(page_module.THEME, "switch", broken_switch)
+    page.selected_theme = "light"
+
+    assert page.apply() is False
+    assert len(page.warnings) == 1
+    assert page.warnings[0][1] == "Theme not applied"
+    assert "accent" in page.warnings[0][2]

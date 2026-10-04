@@ -312,6 +312,7 @@ class ColorThemesPage(QWidget):
 
         except Exception as e:
             log_event(f"Theme switch failed: {e}")
+            MB.warning(self, "Theme not applied", str(e))
             return False
 
     def reset(self):
