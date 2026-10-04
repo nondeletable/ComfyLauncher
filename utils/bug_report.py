@@ -239,7 +239,7 @@ def _build_python_version(exe: str) -> str:
             [exe, "--version"],
             capture_output=True,
             text=True,
-            timeout=5,
+            timeout=2,
             **kwargs,
         )
         return (out.stdout or out.stderr).strip() or "unknown"
@@ -427,13 +427,32 @@ def default_save_dir() -> str:
     return desktop if os.path.isdir(desktop) else os.path.expanduser("~")
 
 
+def _write_new(text: str, directory: str) -> str:
+    """Write under a fresh name - an existing file is never overwritten."""
+    stem = report_filename()[: -len(".txt")]
+    for n in range(1, 100):
+        path = os.path.join(directory, f"{stem}.txt" if n == 1 else f"{stem}-{n}.txt")
+        try:
+            with open(path, "x", encoding="utf-8", newline="\n") as f:
+                f.write(text)
+            return path
+        except FileExistsError:
+            continue
+    raise FileExistsError(f"no free report name in {directory}")
+
+
 def save_report(text: str, directory: str | None = None) -> str:
-    """Write the report and return its path. Raises OSError on failure."""
-    directory = directory or default_save_dir()
-    path = os.path.join(directory, report_filename())
-    with open(path, "w", encoding="utf-8", newline="\n") as f:
-        f.write(text)
-    return path
+    """Write the report and return its path. Raises OSError on failure.
+
+    Without ``directory`` it goes to the desktop, or to the home folder when
+    the desktop cannot be written to.
+    """
+    if directory:
+        return _write_new(text, directory)
+    try:
+        return _write_new(text, default_save_dir())
+    except OSError:
+        return _write_new(text, os.path.expanduser("~"))
 
 
 def github_issue_url(title: str, body: str, limit: int = MAX_ISSUE_URL) -> str:
@@ -456,18 +475,34 @@ def github_issue_url(title: str, body: str, limit: int = MAX_ISSUE_URL) -> str:
         return url
 
     note = "\n\n(cut to fit the link - the full text is in the attached file)"
+
+    def finish(cut: str) -> str:
+        # A cut inside the code block must not leave it open.
+        if cut.count("```") % 2:
+            cut += "\n```"
+        return cut + note
+
     lines = body.split("\n")
-    while len(lines) > 1 and len(build("\n".join(lines) + note)) > limit:
+    while len(lines) > 1 and len(build(finish("\n".join(lines)))) > limit:
         lines.pop()
     cut = "\n".join(lines)
-    while cut and len(build(cut + note)) > limit:
+    while cut and len(build(finish(cut))) > limit:
         cut = cut[: len(cut) * 3 // 4]
-    return build(cut + note)
+    return build(finish(cut))
 
 
-def issue_title(error_text: str) -> str:
-    first = (error_text or "").strip().splitlines()
-    title = f"[Report] {first[0]}" if first else "[Report] Problem report"
+def issue_title(report_text: str) -> str:
+    """Title from the Error line of the report as the user left it.
+
+    Taken from the shown (scrubbed, maybe edited) text rather than the raw
+    error, so the public title holds nothing the user has not seen.
+    """
+    summary = extract_section(report_text, SECTION_SUMMARY)
+    m = re.search(r"^Error:[ \t]*(.*)$", summary, re.MULTILINE)
+    error = m.group(1).strip() if m else ""
+    if error == "(none)":
+        error = ""
+    title = f"[Report] {error}" if error else "[Report] Problem report"
     return title if len(title) <= 100 else title[:97] + "..."
 
 

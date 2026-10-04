@@ -241,11 +241,28 @@ def test_single_huge_line_is_cut_too():
     assert len(url) <= 2000
 
 
-def test_issue_title_and_body():
-    assert br.issue_title("") == "[Report] Problem report"
-    assert br.issue_title("   ") == "[Report] Problem report"
-    assert br.issue_title("Boom\nmore") == "[Report] Boom"
-    assert len(br.issue_title("z" * 300)) == 100
+def test_cut_inside_the_code_block_closes_it():
+    body = br.issue_body("== SUMMARY ==\n" + "Line: value\n" * 400, "r.txt")
+    url = br.github_issue_url("t", body, limit=2000)
+    assert len(url) <= 2000
+    assert parse_qs(urlparse(url).query)["body"][0].count("```") == 2
+
+
+def summary_with_error(error):
+    return (
+        f"x\n\n== SUMMARY ==\nLauncher version: 1\nError:   {error}\n\n== CONFIG ==\n"
+    )
+
+
+def test_issue_title_comes_from_the_shown_error_line():
+    assert br.issue_title(summary_with_error("Boom")) == "[Report] Boom"
+    assert br.issue_title(summary_with_error("(none)")) == "[Report] Problem report"
+    assert br.issue_title(summary_with_error("")) == "[Report] Problem report"
+    assert br.issue_title("no summary at all") == "[Report] Problem report"
+    assert len(br.issue_title(summary_with_error("z" * 300))) == 100
+
+
+def test_issue_body_carries_only_the_summary():
     body = br.issue_body("== SUMMARY ==\nA: b\n\n== CONFIG ==\n{}\n", "r.txt")
     assert "r.txt" in body and "A: b" in body and "CONFIG" not in body
 
@@ -256,3 +273,18 @@ def test_save_report_writes_utf8(tmp_path):
     assert path.endswith(".txt")
     with open(path, encoding="utf-8") as f:
         assert f.read() == "отчёт\n"
+
+
+def test_save_report_never_overwrites(tmp_path):
+    first = br.save_report("one", str(tmp_path))
+    second = br.save_report("two", str(tmp_path))
+    assert first != second
+    with open(first, encoding="utf-8") as f:
+        assert f.read() == "one"
+
+
+def test_unwritable_desktop_falls_back_to_home(tmp_path, monkeypatch):
+    monkeypatch.setattr(br, "default_save_dir", lambda: str(tmp_path / "missing"))
+    monkeypatch.setattr(br.os.path, "expanduser", lambda p: str(tmp_path))
+    path = br.save_report("x")
+    assert os.path.dirname(path) == str(tmp_path)

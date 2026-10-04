@@ -75,7 +75,6 @@ class BugReportDialog(QDialog):
     ):
         super().__init__(parent)
         self.source = source
-        self.error_text = error_text
         self.report = report or br.collect_report(source, error_text, traceback_text)
         self.saved_path: str | None = None
         self._checks: dict[str, QCheckBox] = {}
@@ -283,9 +282,7 @@ class BugReportDialog(QDialog):
 
         if route == "github":
             name = os.path.basename(path)
-            url = br.github_issue_url(
-                br.issue_title(self.error_text), br.issue_body(text, name)
-            )
+            url = br.github_issue_url(br.issue_title(text), br.issue_body(text, name))
             webbrowser.open(url)
             reveal_in_file_manager(path)
             MessageBox.info(

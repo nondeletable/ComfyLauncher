@@ -90,6 +90,15 @@ def test_github_route_opens_a_prefilled_issue(qapp, calls):
     assert calls["reveal"] == [dlg.saved_path]
 
 
+def test_issue_title_follows_the_shown_text_not_the_raw_error(qapp, calls):
+    raw = r"OSError: C:\Users\Jane\ComfyUI missing"
+    dlg = dlg_mod.BugReportDialog("exception", raw, report=make_report())
+    dlg.preview.setPlainText(dlg.report_text().replace("boom", "edited by user"))
+    dlg._send("github")
+    (url,) = calls["open"]
+    assert parse_qs(urlparse(url).query)["title"] == ["[Report] edited by user"]
+
+
 def test_discord_route_opens_the_invite(qapp, calls):
     dlg = dlg_mod.BugReportDialog(report=make_report())
     dlg._send("discord")
