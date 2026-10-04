@@ -136,9 +136,14 @@ class ThemeManager(QObject):
         if problems:
             raise ValueError(f"Theme '{name}' is broken: {'; '.join(problems)}")
 
+        previous = (self._active_name, self._colors)
         self._active_name = name
         self._colors = self._themes[name]
-        self.apply()
+        try:
+            self.apply()
+        except Exception:
+            self._active_name, self._colors = previous
+            raise
         self._save_last_theme()
         log_event(f"🎨 Theme switched to: {name}")
 

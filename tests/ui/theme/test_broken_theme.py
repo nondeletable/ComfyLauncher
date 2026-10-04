@@ -95,3 +95,5 @@ def test_switch_saves_only_after_the_theme_was_applied(setup, monkeypatch):
         manager.switch("good")
 
     assert theme_in_config() == "dark"
+    assert manager.name == "dark"
+    assert manager.colors is THEMES["dark"]
