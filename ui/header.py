@@ -173,15 +173,6 @@ class HeaderBar(QWidget):
         for btn in [self.btn_min, self.btn_max, self.btn_close]:
             btn.setFixedSize(25, 25)
             btn.setIconSize(QSize(20, 20))
-            btn.setStyleSheet(
-                """
-                QPushButton {
-                    border: none;
-                    background: transparent;
-                }
-                QPushButton:hover {{ background: {THEME.colors['bg_hover']}; }}
-            """
-            )
             layout.addWidget(btn)
 
         self.btn_restart.setToolTip("Restart ComfyUI")
@@ -291,6 +282,17 @@ class HeaderBar(QWidget):
             font-weight: bold;
         """
         )
+
+        for btn in [self.btn_min, self.btn_max, self.btn_close]:
+            btn.setStyleSheet(
+                f"""
+                QPushButton {{
+                    border: none;
+                    background: transparent;
+                }}
+                QPushButton:hover {{ background: {c['bg_hover']}; }}
+            """
+            )
 
         # Re-creating icons for a new theme
         self.btn_min.setIcon(
