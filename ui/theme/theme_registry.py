@@ -95,6 +95,11 @@ class ThemeRegistry:
 
                 name = os.path.splitext(filename)[0]
 
+                # Older imports saved "error": null when the file had no
+                # error-text; fill it the way the importer does now.
+                if isinstance(theme_dict, dict) and not theme_dict.get("error"):
+                    theme_dict["error"] = DARK_THEME["error"]
+
                 # A theme that would crash the app is left out, so it can be
                 # neither picked nor restored as the last theme at startup.
                 problems = theme_problems(theme_dict)

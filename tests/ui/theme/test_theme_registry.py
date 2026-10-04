@@ -118,7 +118,6 @@ def _broken(**changes):
     [
         _broken(icon_color_window=None),
         _broken(accent="not a color"),
-        _broken(error="DROP"),
         _broken(bg_header="DROP"),
         _broken(warning=None),
         [1, 2],
@@ -148,3 +147,18 @@ def test_theme_problems_tolerates_stylesheet_only_nulls():
     theme = _broken(bg_hover=None, popup_bg=None, popup_text=None)
     assert theme_problems(theme) == []
     assert theme_problems(DARK_THEME) == []
+
+
+@pytest.mark.parametrize("error", [None, "", "DROP"])
+def test_load_existing_repairs_a_theme_without_an_error_color(
+    registry, tmp_path, monkeypatch, error
+):
+    """Older imports saved "error": null; the importer fills it from the dark
+    theme today, so loading does the same instead of dropping the theme."""
+    (tmp_path / "old.json").write_text(json.dumps(_broken(error=error)), "utf8")
+    fake_themes = {}
+    monkeypatch.setattr("ui.theme.theme_registry.THEMES", fake_themes)
+
+    registry._load_existing()
+
+    assert fake_themes["old"]["error"] == DARK_THEME["error"]
