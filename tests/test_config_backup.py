@@ -13,6 +13,8 @@ import sys
 import pytest
 
 import config
+import main
+import ui.theme.manager as manager
 
 CONFIG_WITH_BUILDS = {"builds": [{"id": "b1", "path": "D:/ComfyUI"}], "theme": "light"}
 
@@ -258,8 +260,6 @@ def test_restore_reports_failure_when_backup_unreadable(paths):
 
 
 def test_theme_reload_picks_up_restored_config(paths, monkeypatch):
-    import ui.theme.manager as manager
-
     original = manager.THEME.name
     _write_json(paths["config"], {"theme": "dracula"})
     monkeypatch.setattr(manager, "CONFIG_PATH", str(paths["config"]))
@@ -277,8 +277,6 @@ def test_theme_reload_picks_up_restored_config(paths, monkeypatch):
 
 
 def test_declining_the_offer_leaves_the_config_alone(paths, monkeypatch):
-    import main
-
     _write_json(paths["app"] / "user_config.json", CONFIG_WITH_BUILDS)
     asked = []
     monkeypatch.setattr(
@@ -292,8 +290,6 @@ def test_declining_the_offer_leaves_the_config_alone(paths, monkeypatch):
 
 
 def test_accepting_the_offer_restores_and_reloads_theme(paths, monkeypatch):
-    import main
-
     _write_json(paths["app"] / "user_config.json", CONFIG_WITH_BUILDS)
     reloaded = []
     monkeypatch.setattr(main.MessageBox, "ask_yes_no", lambda *a: True)
@@ -309,8 +305,6 @@ def test_accepting_the_offer_restores_and_reloads_theme(paths, monkeypatch):
 
 
 def test_no_dialog_without_a_backup(paths, monkeypatch):
-    import main
-
     monkeypatch.setattr(
         main.MessageBox,
         "ask_yes_no",
