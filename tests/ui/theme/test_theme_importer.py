@@ -228,3 +228,10 @@ def test_load_keeps_an_unknown_key_out_of_the_check(importer, tmp_path):
 )
 def test_normalize_color_forms(value, expected):
     assert _normalize_color(value) == expected
+
+
+def test_load_reads_a_file_saved_with_a_bom(importer, tmp_path):
+    """Windows Notepad saves "UTF-8 with BOM"; json.load refuses the BOM."""
+    path = tmp_path / "theme.json"
+    path.write_text(_comfy(VALID_BASE), encoding="utf-8-sig")
+    assert importer.load(str(path))["bg_header"] == "#202020"
