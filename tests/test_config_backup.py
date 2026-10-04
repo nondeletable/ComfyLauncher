@@ -405,3 +405,15 @@ def test_no_dialog_without_a_backup(paths, monkeypatch):
     )
 
     main.offer_config_restore()
+
+
+def test_theme_switch_reaches_the_backup(paths, monkeypatch):
+    _write_json(paths["config"], CONFIG_WITH_BUILDS)
+    monkeypatch.setattr(manager, "CONFIG_PATH", str(paths["config"]))
+    monkeypatch.setattr(manager.THEME, "_active_name", "obsidian_orange")
+
+    manager.THEME._save_last_theme()
+
+    backup = json.loads((paths["app"] / "user_config.json").read_text("utf-8"))
+    assert backup["theme"] == "obsidian_orange"
+    assert backup["builds"] == CONFIG_WITH_BUILDS["builds"]

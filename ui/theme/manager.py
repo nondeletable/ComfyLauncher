@@ -3,6 +3,7 @@ import os
 from PyQt6.QtCore import QObject, pyqtSignal
 from PyQt6.QtWidgets import QApplication
 
+from config import backup_user_config
 from ui.theme.tokens import THEMES
 from ui.theme.theme_registry import REGISTRY
 from config import USER_CONFIG_PATH as CONFIG_PATH
@@ -167,6 +168,9 @@ class ThemeManager(QObject):
         data["theme"] = self._active_name
         with open(CONFIG_PATH, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
+        # Skips a config without builds, e.g. the {"theme": ...} written above
+        # when the file was unreadable — that never replaces a real backup.
+        backup_user_config()
 
     def _load_last_theme(self) -> str:
         """Loads the theme from user_config.json."""
