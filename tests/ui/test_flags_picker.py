@@ -108,3 +108,10 @@ def test_cleared_value_flag_without_default_is_dropped(app):
     d.by_flag["--port"] = dict(d.by_flag["--port"], default=None)
     d._on_value_edited("--port", "")
     assert d._build_string() == "--fast"
+
+
+@pytest.mark.parametrize(
+    "text", ["--cuda-device -1 --fast", "--reserve-vram -1", "--reserve-vram -.5"]
+)
+def test_negative_number_is_a_value_not_a_flag(app, text):
+    assert make(app, text)._build_string() == text

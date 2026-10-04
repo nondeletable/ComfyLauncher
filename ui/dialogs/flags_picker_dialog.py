@@ -14,6 +14,8 @@ in place.
 
 from __future__ import annotations
 
+import re
+
 from PyQt6.QtWidgets import (
     QDialog,
     QVBoxLayout,
@@ -35,6 +37,9 @@ from config import ICON_PATH
 from ui.theme.manager import THEME
 from utils.flags_catalog import load_flags_catalog, iter_flags
 
+
+# argparse reads a negative number after an option as its value, not a flag.
+_NEGATIVE_NUMBER = re.compile(r"-\d+(\.\d*)?|-\.\d+")
 
 # Quick presets: additively merged into the current selection (dedupe +
 # exclusive-group aware). Each is a list of flags to switch on.
@@ -163,8 +168,9 @@ class FlagsPickerDialog(QDialog):
             spec = self.by_flag.get(tok)
             if spec and spec.get("type") in ("value", "choice"):
                 value = ""
-                if i + 1 < len(tokens) and not tokens[i + 1].startswith("-"):
-                    value = tokens[i + 1]
+                nxt = tokens[i + 1] if i + 1 < len(tokens) else ""
+                if nxt and (not nxt.startswith("-") or _NEGATIVE_NUMBER.fullmatch(nxt)):
+                    value = nxt
                     i += 1
                 entries.append({"kind": "flag", "flag": tok, "value": value})
             elif spec and spec.get("type") == "bool":
