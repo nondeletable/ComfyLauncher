@@ -409,7 +409,9 @@ class BuildSettingsPage(QWidget):
         # if last_used became invalid for any reason -> clear
         self._sanitize_last_used(cfg)
 
-        save_user_config(cfg)
+        if not save_user_config(cfg):
+            MB.save_failed(self.window())
+            return
 
         # update UI
         self._refresh_builds_list()

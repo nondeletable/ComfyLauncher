@@ -106,7 +106,9 @@ class StartAppSettingsPage(QWidget):
         }
         cfg = load_user_config()
         cfg.update(data)
-        save_user_config(cfg)
+        if not save_user_config(cfg):
+            MB.save_failed(self.window())
+            return False
 
         self._saved.update(data)
         self._set_dirty(False)

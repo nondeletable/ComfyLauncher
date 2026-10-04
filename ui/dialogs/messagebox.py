@@ -197,6 +197,16 @@ class MessageBox(QDialog):
         return dlg._answer
 
     @staticmethod
+    def save_failed(parent):
+        """The settings file could not be written (save_user_config() is False)."""
+        return MessageBox.warning(
+            parent,
+            "Could not save",
+            "Failed to save the settings. Make sure the app can write to your "
+            "AppData folder, then try again.",
+        )
+      
+    @staticmethod
     def choose(parent, title: str, text: str, kind: str, buttons) -> str | None:
         """Ask with any set of buttons; ``buttons`` is ``[(label, key), ...]``.
 

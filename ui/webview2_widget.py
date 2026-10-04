@@ -83,7 +83,7 @@ class _DownloadToast(QWidget):
         safe = name.replace("<", "&lt;").replace(">", "&gt;")
         self._label.setText(
             f'<span style="color:{c["success"]};font-weight:bold;">✔</span>'
-            f"&nbsp;&nbsp;Сохранено: "
+            f"&nbsp;&nbsp;Saved: "
             f'<span style="color:{c["text_secondary"]};">{safe}</span>'
         )
         self._label.setToolTip(full_path)
@@ -375,7 +375,7 @@ class WebView2Widget(WebViewBase):
 
                     if op.State == CoreWebView2DownloadState.Completed:
                         path = str(op.ResultFilePath or "")
-                        name = os.path.basename(path) if path else "файл"
+                        name = os.path.basename(path) if path else "file"
                         self.download_saved.emit(name, path)  # type: ignore
                 except Exception:
                     pass
