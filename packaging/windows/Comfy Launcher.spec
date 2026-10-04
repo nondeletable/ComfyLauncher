@@ -17,7 +17,7 @@ a = Analysis(
     [os.path.join(ROOT, 'main.py')],
     pathex=[],
     binaries=[(os.path.join(WEBVIEW2, 'Microsoft.Web.WebView2.Core.dll'), 'ui\\webview2_dll'), (os.path.join(WEBVIEW2, 'Microsoft.Web.WebView2.WinForms.dll'), 'ui\\webview2_dll'), (os.path.join(WEBVIEW2, 'WebView2Loader.dll'), 'ui\\webview2_dll')],
-    datas=[(os.path.join(ROOT, 'assets'), 'assets')],
+    datas=[(os.path.join(ROOT, 'assets'), 'assets'), (os.path.join(SPECPATH, 'THIRD-PARTY-NOTICES.txt'), '.')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
