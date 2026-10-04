@@ -2,6 +2,7 @@ import json
 import os
 import shutil
 import sys
+import time
 import uuid
 
 from utils.logger import log_event
@@ -309,6 +310,23 @@ def restore_user_config(backup_path: str) -> bool:
         return False
     log_event(f"🗂 Restored user config from {backup_path}")
     return True
+
+
+def set_aside_user_config_backup(backup_path: str) -> None:
+    """Rename a declined backup so it is neither offered again nor overwritten.
+
+    Without this the next save after a declined restore would replace the
+    only copy of the user's old settings. The file is renamed, never deleted.
+    """
+    stamp = time.strftime("%Y%m%d-%H%M%S")
+    aside = os.path.join(
+        os.path.dirname(backup_path), f"user_config.declined-{stamp}.json"
+    )
+    try:
+        os.replace(backup_path, aside)
+        log_event(f"🗂 Declined config backup kept as {aside}")
+    except OSError as e:
+        log_event(f"⚠️ Could not set aside declined backup {backup_path}: {e}")
 
 
 def _migrate_build_flags(build: dict) -> None:

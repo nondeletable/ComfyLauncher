@@ -25,6 +25,7 @@ from config import (
     save_user_config,
     backup_user_config,
     restore_user_config,
+    set_aside_user_config_backup,
     user_config_restore_candidate,
 )
 
@@ -34,7 +35,8 @@ def offer_config_restore():
 
     Runs before the setup flow, so everything after it reads the restored
     config. The theme singleton read the config at import, so it is reloaded.
-    Declining leads to the normal first-run setup.
+    Declining leads to the normal first-run setup; the declined backup is
+    set aside rather than left for the next save to overwrite.
     """
     backup = user_config_restore_candidate()
     if not backup:
@@ -45,6 +47,7 @@ def offer_config_restore():
         f"No saved builds were found, but there is a backup:\n{backup}\n\n"
         "Restore your builds and settings from it?",
     ):
+        set_aside_user_config_backup(backup)
         return
     if restore_user_config(backup):
         THEME.reload()

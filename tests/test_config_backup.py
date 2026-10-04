@@ -357,6 +357,12 @@ def test_declining_the_offer_leaves_the_config_alone(paths, monkeypatch):
 
     assert len(asked) == 1
     assert not paths["config"].exists()
+    # The declined backup is kept under another name, out of the save path.
+    assert not (paths["app"] / "user_config.json").exists()
+    aside = list(paths["app"].glob("user_config.declined-*.json"))
+    assert len(aside) == 1
+    assert json.loads(aside[0].read_text(encoding="utf-8")) == CONFIG_WITH_BUILDS
+    assert config.user_config_restore_candidate() is None
 
 
 def test_accepting_the_offer_restores_and_reloads_theme(paths, monkeypatch):
