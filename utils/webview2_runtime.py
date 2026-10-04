@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import shutil
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
@@ -25,12 +26,15 @@ DOWNLOAD_PAGE_URL = "https://developer.microsoft.com/microsoft-edge/webview2/"
 # leave the uncloseable "Installing..." box up forever.
 INSTALL_TIMEOUT_S = 15 * 60
 
-LOADER_DLL = (
-    Path(__file__).resolve().parent.parent
-    / "ui"
-    / "webview2_dll"
-    / "WebView2Loader.dll"
+_ROOT = Path(__file__).resolve().parent.parent
+# A frozen build carries the SDK DLLs in ui/webview2_dll; a source checkout
+# has them in vendor/webview2.
+DLL_DIR = (
+    _ROOT / "ui" / "webview2_dll"
+    if getattr(sys, "frozen", False)
+    else _ROOT / "vendor" / "webview2"
 )
+LOADER_DLL = DLL_DIR / "WebView2Loader.dll"
 
 _CLIENT_KEY = r"Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}"
 _REGISTRY_KEYS = (
