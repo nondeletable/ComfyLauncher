@@ -256,16 +256,17 @@ def backup_user_config():
 def user_config_restore_candidate():
     """The backup to offer for restore on startup, or None.
 
-    Offered only when %APPDATA% holds no builds: either no config at all, or
-    one without builds — the default that the first load_user_config() writes,
-    which may already have run by the time main.py gets here. With several
-    backups the newest wins. A legacy in-app config (which
-    _migrate_legacy_config would copy in) takes precedence unless the backup
-    is newer: the legacy file is copied, not moved, so on an upgraded install
-    it can be a stale leftover.
+    Offered only when %APPDATA% has no config, or one that is still exactly
+    DEFAULT_USER_CONFIG — what the first load_user_config() writes, which may
+    already have run by the time main.py gets here. A real config is never
+    offered over, even with zero builds (the user may have removed them on
+    purpose), and neither is one that exists but cannot be read or parsed.
+    With several backups the newest wins. A legacy in-app config with builds
+    (which _migrate_legacy_config would copy in) takes precedence unless the
+    backup is newer: the legacy file is copied, not moved, so on an upgraded
+    install it can be a stale leftover.
     """
-    current = _read_bytes(USER_CONFIG_PATH)
-    if current is not None and _has_builds(current):
+    if os.path.exists(USER_CONFIG_PATH) and not _is_untouched_default():
         return None
     found = []
     for path in _backup_paths():
@@ -273,10 +274,21 @@ def user_config_restore_candidate():
         if raw is not None and _has_builds(raw):
             found.append(path)
     newest = max(found, key=os.path.getmtime, default=None)
-    if newest and os.path.exists(LEGACY_USER_CONFIG_PATH):
+    legacy = _read_bytes(LEGACY_USER_CONFIG_PATH)
+    if newest and legacy is not None and _has_builds(legacy):
         if os.path.getmtime(LEGACY_USER_CONFIG_PATH) >= os.path.getmtime(newest):
             return None
     return newest
+
+
+def _is_untouched_default() -> bool:
+    raw = _read_bytes(USER_CONFIG_PATH)
+    if raw is None:
+        return False
+    try:
+        return json.loads(raw.decode("utf-8")) == DEFAULT_USER_CONFIG
+    except Exception:
+        return False
 
 
 def restore_user_config(backup_path: str) -> bool:

@@ -201,6 +201,30 @@ def test_restore_offered_over_a_default_config_without_builds(paths):
     )
 
 
+def test_restore_not_offered_over_a_config_emptied_by_the_user(paths):
+    emptied = dict(config.DEFAULT_USER_CONFIG, theme="light")
+    _write_json(paths["config"], emptied)
+    _write_json(paths["app"] / "user_config.json", CONFIG_WITH_BUILDS)
+
+    assert config.user_config_restore_candidate() is None
+
+
+def test_restore_not_offered_over_an_unreadable_config(paths):
+    # A directory in place of the file: it exists, but open() fails.
+    paths["config"].mkdir(parents=True)
+    _write_json(paths["app"] / "user_config.json", CONFIG_WITH_BUILDS)
+
+    assert config.user_config_restore_candidate() is None
+
+
+def test_restore_not_offered_over_a_corrupt_config(paths):
+    paths["config"].parent.mkdir(parents=True)
+    paths["config"].write_text("{not json", encoding="utf-8")
+    _write_json(paths["app"] / "user_config.json", CONFIG_WITH_BUILDS)
+
+    assert config.user_config_restore_candidate() is None
+
+
 def test_restore_not_offered_without_backup(paths):
     assert config.user_config_restore_candidate() is None
 
@@ -230,6 +254,16 @@ def test_legacy_config_wins_over_older_backup(paths):
     _set_mtime(paths["legacy"], 2_000_000)
 
     assert config.user_config_restore_candidate() is None
+
+
+def test_newer_legacy_config_without_builds_does_not_hide_backup(paths):
+    backup = paths["app"] / "user_config.json"
+    _write_json(backup, CONFIG_WITH_BUILDS)
+    _write_json(paths["legacy"], {"builds": []})
+    _set_mtime(backup, 1_000_000)
+    _set_mtime(paths["legacy"], 2_000_000)
+
+    assert config.user_config_restore_candidate() == str(backup)
 
 
 def test_backup_newer_than_stale_legacy_config_is_offered(paths):

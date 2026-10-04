@@ -30,7 +30,7 @@ from config import (
 
 
 def offer_config_restore():
-    """Offer to restore settings from a backup when the config has no builds.
+    """Offer to restore settings from a backup when there is no real config.
 
     Runs before the setup flow, so everything after it reads the restored
     config. The theme singleton read the config at import, so it is reloaded.
