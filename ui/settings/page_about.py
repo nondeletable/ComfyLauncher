@@ -195,24 +195,7 @@ class AboutSettingsPage(QWidget):
         # Рекомендую все же добавить минимальную ширину, чтобы кнопка не была слишком узкой
         self.update_btn.setMinimumWidth(130)
         self.update_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.update_btn.setStyleSheet(
-            f"""
-            QPushButton {{
-                background-color: transparent;
-                color: {THEME.colors['text_secondary']};
-                border: 1px solid {THEME.colors['border_color']};
-                border-radius: 6px;
-                padding: 2px 8px;
-                font-size: 11px;
-            }}
-            QPushButton:hover {{
-                background-color: {THEME.colors['accent']};
-                color: {THEME.colors['text_inverse']};
-                border-color: {THEME.colors['accent']};
-            }}
-        """
-        )
-        self.report_btn.setStyleSheet(self.update_btn.styleSheet())
+        self._style_footer_buttons()
         self.update_btn.clicked.connect(self._manual_update_check)  # type: ignore
         right_layout.addWidget(self.update_btn)
         footer_layout.addWidget(right_container, 1)
@@ -237,6 +220,7 @@ class AboutSettingsPage(QWidget):
         )
         for btn in self._link_buttons:
             btn.setStyleSheet(self._link_button_style())
+        self._style_footer_buttons()
 
     def _link_button_style(self) -> str:
         return f"""
@@ -252,6 +236,29 @@ class AboutSettingsPage(QWidget):
                 transform: scale(1.05);
             }}
         """
+
+    def _style_footer_buttons(self):
+        c = THEME.colors
+        qss = f"""
+            QPushButton {{
+                background-color: transparent;
+                color: {c['text_secondary']};
+                border: 1px solid {c['border_color']};
+                border-radius: 6px;
+                padding: 2px 8px;
+                font-size: 11px;
+            }}
+            QPushButton:hover {{
+                background-color: {c['accent']};
+                color: {c['text_inverse']};
+                border-color: {c['accent']};
+            }}
+        """
+        self.report_btn.setStyleSheet(qss)
+        if getattr(self, "_release_url", None):
+            # an update was found: "Open Release Page" stands out
+            qss += f"QPushButton {{ font-weight: bold; color: {c['text_primary']}; }}"
+        self.update_btn.setStyleSheet(qss)
 
     def _manual_update_check(self):
         """Запуск проверки вручную"""
@@ -289,10 +296,7 @@ class AboutSettingsPage(QWidget):
         self._release_url = url  # Сохраняем ссылку для повторного нажатия
         self.update_btn.setText("Open Release Page")
         self.update_btn.setEnabled(True)
-        # Добавляем визуальный акцент
-        self.update_btn.setStyleSheet(
-            self.update_btn.styleSheet() + "font-weight: bold; color: white;"
-        )
+        self._style_footer_buttons()
 
     def _on_manual_update_none(self, *args):
         self.update_btn.setText("Latest version")

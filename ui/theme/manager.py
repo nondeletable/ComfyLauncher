@@ -5,7 +5,7 @@ from PyQt6.QtWidgets import QApplication
 
 from config import backup_user_config
 from ui.theme.tokens import THEMES
-from ui.theme.theme_registry import REGISTRY
+from ui.theme.theme_registry import REGISTRY, theme_problems
 from config import USER_CONFIG_PATH as CONFIG_PATH, load_user_config
 from utils.logger import log_event
 
@@ -131,10 +131,21 @@ class ThemeManager(QObject):
         if name == self._active_name:
             return
 
+        # Checked before anything changes: a broken theme crashes the launcher
+        # once applied, and on every start after if it was already saved.
+        problems = theme_problems(self._themes[name])
+        if problems:
+            raise ValueError(f"Theme '{name}' is broken: {'; '.join(problems)}")
+
+        previous = (self._active_name, self._colors)
         self._active_name = name
         self._colors = self._themes[name]
+        try:
+            self.apply()
+        except Exception:
+            self._active_name, self._colors = previous
+            raise
         self._save_last_theme()
-        self.apply()
         log_event(f"🎨 Theme switched to: {name}")
 
         # 🔹 Force refresh of all widgets
@@ -182,7 +193,11 @@ class ThemeManager(QObject):
         """
         theme = load_user_config().get("theme", "dark")
         # A hand-edited config can hold anything here; never fail the import.
-        return theme if isinstance(theme, str) and theme in self._themes else "dark"
+        # A custom theme that is gone, or was skipped as broken, lands here too.
+        if isinstance(theme, str) and theme in self._themes:
+            return theme
+        log_event(f"⚠️ Saved theme {theme!r} is not available. Using: dark")
+        return "dark"
 
 
 # Singleton

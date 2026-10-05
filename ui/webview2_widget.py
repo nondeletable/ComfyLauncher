@@ -20,6 +20,7 @@ from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel  # noqa: E402
 
 from ui.theme.manager import THEME  # noqa: E402
 from ui.webview.base import WebViewBase  # noqa: E402
+from utils.webview2_runtime import DLL_DIR  # noqa: E402
 
 
 class _DownloadToast(QWidget):
@@ -162,7 +163,7 @@ class WebView2Widget(WebViewBase):
         from pathlib import Path
 
         # 1) Folder with DLL
-        base = Path(dll_dir) if dll_dir else (Path(__file__).parent / "webview2_dll")
+        base = Path(dll_dir) if dll_dir else DLL_DIR
 
         winforms_dll = base / "Microsoft.Web.WebView2.WinForms.dll"
         core_dll = base / "Microsoft.Web.WebView2.Core.dll"

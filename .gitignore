@@ -17,6 +17,7 @@ venv/
 build/
 dist/
 *.spec
+!packaging/windows/*.spec
 
 # --- Logs, caches and temp files ---
 *.log
@@ -79,6 +80,8 @@ tests/__pycache__/
 # --- Optional: ignore executable builds ---
 *.exe
 *.dll
+# The WebView2 SDK DLLs are vendored, see vendor/webview2/LICENSE.txt
+!vendor/webview2/*.dll
 *.so
 
 
@@ -91,6 +94,7 @@ tests/__pycache__/
 CLAUDE.md
 PROGRESS.md
 HANDOFF.md
+RELEASE_NOTES_*.md
 
 # --- Secrets (never commit) ---
 git-token.txt

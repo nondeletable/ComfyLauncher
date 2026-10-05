@@ -12,8 +12,9 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt, pyqtSignal
 from ui.theme.manager import THEME, THEMES
-from ui.theme.theme_importer import ThemeImporter
+from ui.theme.theme_importer import ThemeImporter, ThemeImportError
 from ui.theme.theme_registry import REGISTRY
+from ui.dialogs.messagebox import MessageBox as MB
 from utils.logger import log_event
 import os
 import webbrowser
@@ -269,16 +270,27 @@ class ColorThemesPage(QWidget):
         if not path:
             return
 
-        importer = ThemeImporter()
-        theme_dict = importer.load(path)
+        # An exception escaping this slot kills the whole launcher (PyQt6), so a
+        # file that is not a usable theme, or one that can't be saved, ends in a
+        # message instead - and nothing is registered.
+        try:
+            theme_dict = ThemeImporter().load(path)
 
-        # avoid duplicates
-        existing = REGISTRY.theme_exists(theme_dict)
-        if existing:
-            name = existing
-        else:
-            base = os.path.splitext(os.path.basename(path))[0]
-            name = REGISTRY.add_custom(base.lower(), theme_dict)
+            # avoid duplicates
+            existing = REGISTRY.theme_exists(theme_dict)
+            if existing:
+                name = existing
+            else:
+                base = os.path.splitext(os.path.basename(path))[0]
+                name = REGISTRY.add_custom(base.lower(), theme_dict)
+        except (ThemeImportError, OSError) as e:
+            log_event(f"Theme import failed for {path}: {e}")
+            MB.warning(
+                self,
+                "Theme not imported",
+                f"{os.path.basename(path)} was not imported.\n\n{e}",
+            )
+            return
 
         # create card
         card = self._create_theme_card(name)
@@ -301,6 +313,7 @@ class ColorThemesPage(QWidget):
 
         except Exception as e:
             log_event(f"Theme switch failed: {e}")
+            MB.warning(self, "Theme not applied", str(e))
             return False
 
     def reset(self):
