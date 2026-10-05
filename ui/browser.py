@@ -27,6 +27,7 @@ from version import __version__
 from ui.splash_video import LauncherSplashVideo
 from ui.webview import create_webview
 from ui.window_resize import EdgeResizer, RESIZE_MARGIN
+from ui.window_placement import center_over, is_off_screen
 from ui.theme.manager import THEME
 from utils.logger import log_event
 from utils.platform_paths import open_in_file_manager
@@ -264,6 +265,7 @@ class ComfyBrowser(QMainWindow):
             # When the window is actually destroyed, reset the link
             self.settings_window.destroyed.connect(self._on_settings_destroyed)
 
+            center_over(self.settings_window, self)
             self.settings_window.show()
             self.settings_window.raise_()
             self.settings_window.activateWindow()
@@ -443,6 +445,9 @@ class ComfyBrowser(QMainWindow):
         try:
             if not hasattr(self, "console_window") or self.console_window is None:
                 self.console_window = ConsoleWindow(self)
+                center_over(self.console_window, self)
+            elif is_off_screen(self.console_window):
+                center_over(self.console_window, self)
             self.console_window.show()
             self.console_window.raise_()
             self.console_window.activateWindow()

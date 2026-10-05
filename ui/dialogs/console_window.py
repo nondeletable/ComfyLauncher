@@ -123,7 +123,6 @@ class ConsoleWindow(QWidget):
         self._apply_theme()
         THEME.themeChanged.connect(self._apply_theme)
 
-        self._center()
         self._refresh_logs()
 
     # ─────────────────────────────────────────────────
@@ -230,12 +229,6 @@ class ConsoleWindow(QWidget):
             sb.setValue(sb.maximum())
 
     # ── geometry/drag/rounding ───────────────────────
-    def _center(self):
-        screen = self.screen().availableGeometry()
-        x = (screen.width() - self.width()) // 2
-        y = (screen.height() - self.height()) // 2
-        self.move(x, y)
-
     def resizeEvent(self, event):
         super().resizeEvent(event)
 
