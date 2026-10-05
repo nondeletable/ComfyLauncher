@@ -36,6 +36,16 @@ def center_over(window: QWidget, anchor: QWidget) -> None:
     window.move(centered_top_left(window.frameGeometry().size(), rect, available))
 
 
+# Down from the top edge into the header, past the transparent shadow margin.
+HEADER_PROBE = 30
+
+
 def is_off_screen(window: QWidget) -> bool:
-    """True when the middle of ``window`` is on no screen (e.g. one unplugged)."""
-    return QGuiApplication.screenAt(window.frameGeometry().center()) is None
+    """True when the middle or the header of ``window`` is on no screen.
+
+    The header is the only place to drag the window by: with it off screen, or
+    in a gap between monitors, the window cannot be moved back by hand.
+    """
+    rect = window.frameGeometry()
+    header = QPoint(rect.center().x(), rect.top() + HEADER_PROBE)
+    return any(QGuiApplication.screenAt(p) is None for p in (rect.center(), header))

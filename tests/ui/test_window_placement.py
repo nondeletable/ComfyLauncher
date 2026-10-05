@@ -11,6 +11,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import pytest  # noqa: E402
 from PyQt6.QtCore import QPoint, QRect, QSize  # noqa: E402
+from PyQt6.QtGui import QGuiApplication  # noqa: E402
 from PyQt6.QtWidgets import QWidget  # noqa: E402
 
 from ui.browser import ComfyBrowser  # noqa: E402
@@ -129,6 +130,18 @@ def test_console_centres_on_first_show_then_stays_where_it_was_left(anchor, avai
     anchor.move(available.x() + 50, available.y() + 60)
     ComfyBrowser.open_console_logs(anchor)
     assert console.pos() == left_at
+
+
+def test_console_with_its_header_above_the_screen_comes_back(anchor, available):
+    ComfyBrowser.open_console_logs(anchor)
+    console = anchor.console_window
+    # Middle still on screen, header past the top edge: nothing to drag it by.
+    console.move(available.x(), available.y() - 100)
+    assert QGuiApplication.screenAt(console.frameGeometry().center()) is not None
+    assert is_off_screen(console)
+    console.hide()
+    ComfyBrowser.open_console_logs(anchor)
+    assert not is_off_screen(console)
 
 
 def test_console_left_off_screen_comes_back_over_the_main_window(anchor, available):
