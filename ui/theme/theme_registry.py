@@ -8,14 +8,17 @@ from config import THEMES_DIR
 # Colors painted through QColor (icons, message box badges). None there is a
 # TypeError inside a Qt slot, and PyQt6 kills the whole launcher on that.
 _PAINTED_KEYS = ("icon_color_window", "accent", "error", "warning")
+# Tokens added after themes were already imported and saved: they are read with
+# colors.get(key, default), so a theme without them still works.
+_OPTIONAL_KEYS = ("warning", "text_disabled")
 
 
 def theme_problems(theme) -> list[str]:
     """
     Why a theme can't be used safely; empty when it can.
 
-    Every token but "warning" is read as colors[key] somewhere, so it must be
-    present. None is tolerated where the value only lands in a stylesheet (Qt
+    Every token but the optional ones is read as colors[key] somewhere, so it
+    must be present. None is tolerated where the value only lands in a stylesheet (Qt
     drops that declaration, and themes imported from comfyui-themes.com have
     a few), but the painted colors must be real - "warning" too when present,
     since colors.get("warning", default) hands back its None.
@@ -25,7 +28,7 @@ def theme_problems(theme) -> list[str]:
     problems = [
         f'"{key}" is missing'
         for key in DARK_THEME
-        if key != "warning" and key not in theme
+        if key not in _OPTIONAL_KEYS and key not in theme
     ]
     for key in _PAINTED_KEYS:
         value = theme.get(key)

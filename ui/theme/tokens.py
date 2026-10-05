@@ -12,6 +12,7 @@ DARK_THEME = {
     # ─── TEXT AND ICONS ───────────────────────────
     "text_primary": "#FFFFFF",
     "text_secondary": "#A0A0A0",
+    "text_disabled": "#555555",
     "text_inverse": "#000000",
     "app_title_color": "#FFFFFF",
     "icon_color_window": "#76767B",
@@ -39,6 +40,7 @@ LIGHT_THEME = {
     # ─── TEXT AND ICONS ───────────────────────────
     "text_primary": "#222222",
     "text_secondary": "#6D6D6D",
+    "text_disabled": "#A8A8A8",
     "text_inverse": "#FFFFFF",
     "app_title_color": "#1E1E1E",
     "icon_color_window": "#4B5563",
@@ -66,6 +68,7 @@ DRACULA_THEME = {
     # ─── TEXT AND ICONS ──────────────────────────
     "text_primary": "#f8f8f2",
     "text_secondary": "#6272a4",
+    "text_disabled": "#4b4f66",
     "text_inverse": "#000000",
     "app_title_color": "#f8f8f2",
     "icon_color_window": "#bd93f9",
@@ -93,6 +96,7 @@ OBSIDIAN_ORANGE_THEME = {
     # ─── TEXT AND ICONS ──────────────────────────
     "text_primary": "#FF8C32",
     "text_secondary": "#A0A0A0",
+    "text_disabled": "#4A4A4A",
     "text_inverse": "#000000",
     "app_title_color": "#FFFFFF",
     "icon_color_window": "#FF8C32",

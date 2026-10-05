@@ -314,6 +314,8 @@ class SettingsWindow(QWidget):
             }}
         """
         )
+        # Themes imported before the token existed keep the old fixed grey.
+        disabled = c.get("text_disabled", "#555555")
         for btn in (self.btn_apply, self.btn_close):
             btn.setStyleSheet(
                 f"""
@@ -330,8 +332,8 @@ class SettingsWindow(QWidget):
                     border-color: {c['accent']};
                 }}
                 QPushButton:disabled {{
-                    color: #555555;
-                    border: 1px solid #555555;
+                    color: {disabled};
+                    border: 1px solid {disabled};
                 }}
             """
             )

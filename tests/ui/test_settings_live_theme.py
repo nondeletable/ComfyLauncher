@@ -234,3 +234,30 @@ def test_a_page_that_fails_to_repaint_does_not_stop_the_others(window, monkeypat
     for page in pages:
         if page is not broken:
             assert _page_colors(page) <= _theme(NEW) | FIXED, type(page).__name__
+
+
+def _luminance(color: str) -> float:
+    channels = [int(color.lstrip("#")[i : i + 2], 16) / 255 for i in (0, 2, 4)]
+    r, g, b = [
+        c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4 for c in channels
+    ]
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+
+
+def _contrast(a: str, b: str) -> float:
+    low, high = sorted((_luminance(a), _luminance(b)))
+    return (high + 0.05) / (low + 0.05)
+
+
+@pytest.mark.parametrize("name", list(THEMES))
+def test_a_disabled_footer_button_takes_the_theme_and_reads_as_disabled(window, name):
+    """The disabled colour was a fixed #555555: on the light theme a disabled
+    Apply stood out more than the enabled Close next to it."""
+    THEME.switch(name)
+    t = THEMES[name]
+
+    disabled = window.btn_apply.styleSheet().split(":disabled", 1)[1]
+    assert t["text_disabled"] in disabled
+    assert _contrast(t["text_disabled"], t["bg_menu"]) < _contrast(
+        t["text_secondary"], t["bg_menu"]
+    )

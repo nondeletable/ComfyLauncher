@@ -146,6 +146,7 @@ def test_theme_problems_tolerates_stylesheet_only_nulls():
 
     theme = _broken(bg_hover=None, popup_bg=None, popup_text=None)
     assert theme_problems(theme) == []
+    assert theme_problems(_broken(text_disabled="DROP")) == []
     assert theme_problems(DARK_THEME) == []
 
 
