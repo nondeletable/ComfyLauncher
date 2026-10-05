@@ -104,6 +104,20 @@ def test_anchor_off_its_screen_centres_on_the_screen(anchor, available):
     win.deleteLater()
 
 
+def test_anchor_without_a_screen_leaves_the_window_where_it_is(qapp):
+    class Screenless(QWidget):
+        def screen(self):
+            return None
+
+    anchor = Screenless()
+    win = QWidget()
+    win.move(12, 34)
+    center_over(win, anchor)
+    assert win.pos() == QPoint(12, 34)
+    win.deleteLater()
+    anchor.deleteLater()
+
+
 def test_settings_open_over_the_main_window_inside_the_screen(anchor, available):
     anchor.setGeometry(available.x() + 300, available.y() + 200, 400, 300)
     ComfyBrowser.open_settings(anchor)

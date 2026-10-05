@@ -27,9 +27,13 @@ def center_over(window: QWidget, anchor: QWidget) -> None:
     """Move ``window`` to the centre of ``anchor``, inside ``anchor``'s screen.
 
     A minimized ``anchor`` keeps its screen; if its geometry is then nowhere on
-    that screen, ``window`` is centred on the screen itself.
+    that screen, ``window`` is centred on the screen itself. With no screen at
+    all ``window`` is left where it is, so it still opens.
     """
-    available = anchor.screen().availableGeometry()
+    screen = anchor.screen()
+    if screen is None:
+        return
+    available = screen.availableGeometry()
     rect = anchor.frameGeometry()
     if not rect.intersects(available):
         rect = available
