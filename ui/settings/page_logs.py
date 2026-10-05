@@ -13,7 +13,7 @@ from PyQt6.QtCore import Qt, QSize
 from config import OTHER_ICONS
 from utils.logger import LOG_FILE, log_event
 from ui.header import colorize_svg
-from ui.theme.manager import THEME
+from ui.theme.manager import THEME, safe_repaint
 from ui.dialogs.messagebox import MessageBox as MB
 
 
@@ -135,6 +135,7 @@ class LogsSettingsPage(QWidget):
             }}
         """
 
+    @safe_repaint
     def _apply_theme(self, *args):
         """Applies the active theme."""
         c = THEME.colors

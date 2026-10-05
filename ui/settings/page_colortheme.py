@@ -11,7 +11,7 @@ from PyQt6.QtWidgets import (
     QPushButton,
 )
 from PyQt6.QtCore import Qt, pyqtSignal
-from ui.theme.manager import THEME, THEMES
+from ui.theme.manager import THEME, THEMES, safe_repaint
 from ui.theme.theme_importer import ThemeImporter, ThemeImportError
 from ui.theme.theme_registry import REGISTRY
 from ui.dialogs.messagebox import MessageBox as MB
@@ -140,6 +140,7 @@ class ColorThemesPage(QWidget):
         self._apply_theme()
         THEME.themeChanged.connect(self._apply_theme)
 
+    @safe_repaint
     def _apply_theme(self, *args):
         c = THEME.colors
         self.title.setStyleSheet(

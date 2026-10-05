@@ -18,7 +18,7 @@ from ui.settings.page_colortheme import ColorThemesPage
 from ui.settings.page_about import AboutSettingsPage
 from ui.settings.page_logs import LogsSettingsPage
 from ui.settings.page_startapp import StartAppSettingsPage
-from ui.theme.manager import THEME
+from ui.theme.manager import THEME, safe_repaint
 from ui.dialogs.messagebox import MessageBox as MB
 from config import ICON_PATH
 from utils.logger import log_event
@@ -227,6 +227,7 @@ class SettingsWindow(QWidget):
                 return
         e.accept()
 
+    @safe_repaint
     def _apply_theme(self, *args):
         c = THEME.colors
         self.setStyleSheet("background: transparent;")

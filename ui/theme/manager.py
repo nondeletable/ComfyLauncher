@@ -1,5 +1,7 @@
+import functools
 import json
 import os
+import traceback
 from PyQt6.QtCore import QObject, pyqtSignal
 from PyQt6.QtWidgets import QApplication
 
@@ -10,6 +12,29 @@ from config import USER_CONFIG_PATH as CONFIG_PATH, load_user_config
 from utils.logger import log_event
 
 _ = REGISTRY
+
+
+def safe_repaint(apply_theme):
+    """Decorate a themeChanged slot: a repaint that raises is logged, not fatal.
+
+    One theme switch runs every subscriber in a row, and an exception escaping
+    a PyQt slot aborts the process unless the exception hook is installed - so
+    one broken page would take the launcher down with the theme change. The
+    wrapper stays a plain method, so PyQt still drops the connection when the
+    widget is deleted.
+    """
+
+    @functools.wraps(apply_theme)
+    def wrapper(self, *_args):
+        try:
+            apply_theme(self)
+        except Exception:
+            log_event(
+                f"⚠️ {type(self).__name__} failed to repaint for the theme:\n"
+                f"{traceback.format_exc()}"
+            )
+
+    return wrapper
 
 
 class ThemeManager(QObject):

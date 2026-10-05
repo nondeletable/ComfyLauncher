@@ -8,7 +8,7 @@ from PyQt6.QtWidgets import (
     QFrame,
 )
 from config import load_user_config, save_user_config
-from ui.theme.manager import THEME
+from ui.theme.manager import THEME, safe_repaint
 from ui.dialogs.messagebox import MessageBox as MB
 
 
@@ -72,6 +72,7 @@ class BehaviorSettingsPage(QWidget):
         self.rb_never.toggled.connect(self._on_any_change)  # type: ignore
         THEME.themeChanged.connect(self._apply_theme)
 
+    @safe_repaint
     def _apply_theme(self, *args):
         c = THEME.colors
         self.desc.setStyleSheet(

@@ -10,7 +10,7 @@ from PyQt6.QtGui import QPixmap, QIcon
 from PyQt6.QtCore import Qt, QSize, QUrl, QThread
 from PyQt6.QtMultimedia import QMediaPlayer
 from PyQt6.QtMultimediaWidgets import QVideoWidget
-from ui.theme.manager import THEME
+from ui.theme.manager import THEME, safe_repaint
 from version import __version__
 from config import (
     DONATION_ICONS,
@@ -209,6 +209,7 @@ class AboutSettingsPage(QWidget):
             webbrowser.open(url)
 
     # ─── Repainting when changing the theme ────────
+    @safe_repaint
     def _apply_theme(self):
         self.colors = THEME.colors
         self.setStyleSheet(f"background-color: {self.colors['bg_header']};")

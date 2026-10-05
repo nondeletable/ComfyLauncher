@@ -206,3 +206,31 @@ def test_a_closed_settings_window_leaves_no_theme_slot_behind(qapp, monkeypatch)
         assert THEME.receivers(THEME.themeChanged) == baseline
     finally:
         THEME.switch(before)
+
+
+def test_a_page_that_fails_to_repaint_does_not_stop_the_others(window, monkeypatch):
+    """One page raising in its themeChanged slot is logged; the switch still
+    repaints the window and every other page, and nothing aborts."""
+    import ui.theme.manager as manager
+
+    logs = []
+    monkeypatch.setattr(manager, "log_event", logs.append)
+    for row in range(window.pages.count()):
+        window.menu.setCurrentRow(row)
+    pages = [window.pages.widget(i) for i in range(window.pages.count())]
+    broken = next(p for p in pages if isinstance(p, AboutSettingsPage))
+
+    def boom():
+        raise RuntimeError("broken repaint")
+
+    monkeypatch.setattr(broken, "_link_button_style", boom)
+
+    THEME.switch(NEW)
+
+    failures = [line for line in logs if "failed to repaint" in line]
+    assert len(failures) == 1
+    assert "AboutSettingsPage" in failures[0] and "broken repaint" in failures[0]
+    assert _colors(window.menu, window.footer) <= _theme(NEW) | FIXED
+    for page in pages:
+        if page is not broken:
+            assert _page_colors(page) <= _theme(NEW) | FIXED, type(page).__name__

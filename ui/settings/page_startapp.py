@@ -1,7 +1,7 @@
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QCheckBox, QHBoxLayout
 from config import load_user_config, save_user_config
-from ui.theme.manager import THEME
+from ui.theme.manager import THEME, safe_repaint
 from ui.dialogs.messagebox import MessageBox as MB
 from utils.process_launch import external_console_supported
 
@@ -70,6 +70,7 @@ class StartAppSettingsPage(QWidget):
 
     # ───────────────────── HELPERS ────────────────────────
 
+    @safe_repaint
     def _apply_theme(self, *args):
         c = THEME.colors
         for desc in self._descs:
