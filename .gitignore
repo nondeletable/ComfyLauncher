@@ -94,6 +94,7 @@ tests/__pycache__/
 CLAUDE.md
 PROGRESS.md
 HANDOFF.md
+RELEASE_NOTES_*.md
 
 # --- Secrets (never commit) ---
 git-token.txt
