@@ -12,6 +12,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 import pytest  # noqa: E402
 from PyQt6.QtGui import QMovie  # noqa: E402
 
+from ui.settings import page_about  # noqa: E402
 from ui.settings.page_about import AnimatedLogo  # noqa: E402
 
 
@@ -47,3 +48,30 @@ def test_paints_the_current_frame_over_the_backdrop(logo):
         if image.pixelColor(x, y).red() > 200 and image.pixelColor(x, y).blue() < 100
     ]
     assert orange
+
+
+@pytest.mark.parametrize("content", [None, b"RIFF0000WEBPjunk"])
+def test_an_unloadable_animation_is_logged_and_leaves_the_backdrop(
+    qapp, monkeypatch, tmp_path, content
+):
+    path = tmp_path / "menu_anim.webp"
+    if content is not None:
+        path.write_bytes(content)
+    logs = []
+    monkeypatch.setattr(page_about, "ABOUT_LOGO_ANIM", str(path))
+    monkeypatch.setattr(page_about, "log_event", logs.append)
+
+    w = AnimatedLogo()
+    w.show()
+    image = w.grab().toImage()
+    w.deleteLater()
+
+    assert len(logs) == 1 and str(path) in logs[0]
+    assert not image.isNull()
+
+
+def test_a_loadable_animation_logs_nothing(qapp, monkeypatch):
+    logs = []
+    monkeypatch.setattr(page_about, "log_event", logs.append)
+    AnimatedLogo().deleteLater()
+    assert logs == []

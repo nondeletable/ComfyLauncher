@@ -18,6 +18,7 @@ from config import (
 import webbrowser
 from utils.update_checker import UpdateService
 from ui.dialogs.bug_report_dialog import open_bug_report
+from utils.logger import log_event
 
 
 class AnimatedLogo(QWidget):
@@ -31,6 +32,14 @@ class AnimatedLogo(QWidget):
         self.background = QPixmap(ABOUT_LOGO_BG)
         self.movie = QMovie(ABOUT_LOGO_ANIM, parent=self)
         self.movie.frameChanged.connect(self._on_frame)
+        # A missing or broken file, or a build without the qwebp plugin, leaves
+        # only the backdrop on screen; the log is the one place that says why.
+        self.movie.jumpToFrame(0)
+        if self.movie.currentPixmap().isNull():
+            log_event(
+                f"⚠️ About logo animation failed to load "
+                f"({self.movie.lastErrorString()}): {ABOUT_LOGO_ANIM}"
+            )
 
     def _on_frame(self, _frame):
         self.update()
