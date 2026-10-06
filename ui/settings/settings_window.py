@@ -132,17 +132,10 @@ class SettingsWindow(QWidget):
         self.btn_apply.clicked.connect(self._apply_current)  # type: ignore
         self.btn_close.clicked.connect(self.close)  # type: ignore
 
-        # ─── Centering and formatting──────────────────
-        self.center()
+        # ─── Formatting ──────────────────
         THEME.themeChanged.connect(self._apply_theme)
         self._apply_theme()
         print("✅ Settings window initialized successfully")
-
-    def center(self):
-        screen = self.screen().availableGeometry()
-        x = (screen.width() - self.width()) // 2
-        y = (screen.height() - self.height()) // 2
-        self.move(x, y)
 
     # ─── Moving a window ────────────────────────────────────
     def mousePressEvent(self, event):
