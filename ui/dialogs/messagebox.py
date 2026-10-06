@@ -293,14 +293,3 @@ class MessageBox(QDialog):
         # Recolor the stored badge (avoids a fragile findChild-by-order lookup)
         icon = colorize_svg(icon_path, badge_color, QSize(22, 22))
         self._badge.setPixmap(icon.pixmap(QSize(22, 22)))
-
-    def showEvent(self, event):
-        super().showEvent(event)
-        parent = self.parent()
-        if parent:
-            # Центрируем диалог относительно родителя
-            geo = parent.frameGeometry()
-            dialog_rect = self.frameGeometry()
-            x = geo.center().x() - dialog_rect.width() // 2
-            y = geo.center().y() - dialog_rect.height() // 2
-            self.move(x, y)
