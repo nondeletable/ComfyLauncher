@@ -118,7 +118,6 @@ class ConsoleWindow(QWidget):
         self._timer = QTimer(self)
         self._timer.setInterval(500)  # ms
         self._timer.timeout.connect(self._refresh_logs)  # type: ignore
-        self._timer.start()
 
         self._apply_theme()
         THEME.themeChanged.connect(self._apply_theme)
@@ -228,6 +227,17 @@ class ConsoleWindow(QWidget):
 
         if at_bottom:
             sb.setValue(sb.maximum())
+
+    # Output keeps piling up in ConsoleBuffer while the window is hidden, so the
+    # timer only runs while it is visible and a show catches up in one refresh.
+    def showEvent(self, event):
+        super().showEvent(event)
+        self._refresh_logs()
+        self._timer.start()
+
+    def hideEvent(self, event):
+        super().hideEvent(event)
+        self._timer.stop()
 
     # ── geometry/drag/rounding ───────────────────────
     def _center(self):
