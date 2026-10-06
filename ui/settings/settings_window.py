@@ -18,7 +18,7 @@ from ui.settings.page_colortheme import ColorThemesPage
 from ui.settings.page_about import AboutSettingsPage
 from ui.settings.page_logs import LogsSettingsPage
 from ui.settings.page_startapp import StartAppSettingsPage
-from ui.theme.manager import THEME
+from ui.theme.manager import THEME, safe_repaint
 from ui.dialogs.messagebox import MessageBox as MB
 from config import ICON_PATH
 from utils.logger import log_event
@@ -38,7 +38,6 @@ class SettingsWindow(QWidget):
         self.setWindowFlag(Qt.WindowType.FramelessWindowHint)
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-        self.colors = THEME.colors
         self.drag_position = None
 
         # ─── Main frame ───────────────────────────────────
@@ -46,18 +45,6 @@ class SettingsWindow(QWidget):
         main_frame.setObjectName("settings_main_frame")
         main_frame.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
-        )
-        main_frame.setStyleSheet(
-            f"""
-            QFrame {{
-                background-color: {self.colors['bg_header']};
-                color: {self.colors['text_primary']};
-                border-radius: 10px;
-            }}
-            QFrame#settings_main_frame {{
-                border: none;
-            }}
-        """
         )
 
         # ─── ONE layout for the entire window ──────────────────
@@ -83,73 +70,13 @@ class SettingsWindow(QWidget):
             ]
         )
         self.menu.setFixedWidth(200)
-        self.menu.setStyleSheet(
-            f"""
-            QListWidget {{
-                background-color: {self.colors['bg_menu']};
-                color: {self.colors['text_secondary']};
-                font-size: 15px;
-                border-top-left-radius: 10px;
-                border-top-right-radius: 0px;
-                border-bottom-left-radius: 0px;
-                border-bottom-right-radius: 0px;
-                padding: 6px;
-            }}
-            QListWidget::item {{
-                padding: 10px 18px;
-                border-radius: 6px;
-                transition: all 0.2s ease-in-out;
-            }}
-            QListWidget::item:hover {{
-                background-color: {self.colors['bg_hover']};
-                color: {self.colors['text_primary']};
-            }}
-            QListWidget::item:selected {{
-                background-color: {self.colors['accent']};
-                color: #fff;
-                border: none;
-                outline: none;
-            }}
-            QListWidget:focus {{
-                outline: 0;
-                border: none;
-            }}
-        """
-        )
 
         # ─── Right content panel ───────────────────────────
         self.pages = QStackedWidget()
-        self.pages.setStyleSheet(
-            f"""
-            QStackedWidget {{
-                background-color: {self.colors["bg_header"]};
-                border-top-right-radius: 10px;
-                border-top-left-radius: 0px;
-                border-bottom-right-radius: 0px;
-                border-bottom-left-radius: 0px;
-            }}
-            QLabel {{
-                color: {self.colors['text_primary']};
-                font-size: 16px;
-                margin: 10px;
-            }}
-        """
-        )
 
         # ─── Bottom button bar ─────────────────────────────
-        footer = QFrame()
-        footer.setStyleSheet(
-            f"""
-            QFrame {{
-                background-color: {self.colors['bg_menu']};
-                border-bottom-left-radius: 10px;
-                border-top-left-radius: 0px;
-                border-bottom-right-radius: 10px;
-                border-top-right-radius: 0px;
-            }}
-        """
-        )
-        footer_layout = QHBoxLayout(footer)
+        self.footer = QFrame()
+        footer_layout = QHBoxLayout(self.footer)
         footer_layout.setContentsMargins(20, 10, 20, 10)
         footer_layout.setSpacing(12)
         footer_layout.setAlignment(Qt.AlignmentFlag.AlignRight)
@@ -159,26 +86,6 @@ class SettingsWindow(QWidget):
 
         for btn in (self.btn_apply, self.btn_close):
             btn.setFixedSize(110, 34)
-            btn.setStyleSheet(
-                f"""
-                QPushButton {{
-                    background-color: transparent;
-                    color: {self.colors['text_secondary']};
-                    border: 1px solid {self.colors['border_color']};
-                    border-radius: 6px;
-                    transition: all 0.2s ease-in-out;
-                }}
-                QPushButton:hover {{
-                    background-color: {self.colors['accent']};
-                    color: #fff;
-                    border-color: {self.colors['accent']};
-                }}
-                QPushButton:disabled {{
-                    color: #555555;
-                    border: 1px solid #555555;
-                }}
-            """
-            )
             footer_layout.addWidget(btn)
 
         # ─── Adding menus and pages to the body ─────────────────
@@ -187,7 +94,7 @@ class SettingsWindow(QWidget):
 
         # ─── Add everything to the main layout ──────────────────
         main_layout.addLayout(body_layout, stretch=1)
-        main_layout.addWidget(footer)
+        main_layout.addWidget(self.footer)
 
         # ─── Adding a main frame to the window ───────────────────
         outer_layout = QVBoxLayout()
@@ -213,7 +120,6 @@ class SettingsWindow(QWidget):
             LogsSettingsPage,
             AboutSettingsPage,
         ]
-        self._themes_page = self._page_classes.index(ColorThemesPage)
         self._built_pages = set()
         for _ in self._page_classes:
             self.pages.addWidget(QWidget())
@@ -304,14 +210,7 @@ class SettingsWindow(QWidget):
             if answer == "apply":
                 # Every page is applied even if one fails; a failed page has
                 # shown its own warning and stays dirty, so Settings stays open.
-                # Color Themes goes last and only if the rest saved: applying a
-                # theme closes Settings on its own, which would ask again.
-                results = []
-                for i in sorted(dirty, key=lambda i: i == self._themes_page):
-                    if i == self._themes_page and not all(results):
-                        results.append(False)
-                        continue
-                    results.append(self._apply_page(self.pages.widget(i)))
+                results = [self._apply_page(self.pages.widget(i)) for i in dirty]
                 self._sync_footer()
                 if not all(results):
                     e.ignore()
@@ -321,6 +220,7 @@ class SettingsWindow(QWidget):
                 return
         e.accept()
 
+    @safe_repaint
     def _apply_theme(self, *args):
         c = THEME.colors
         self.setStyleSheet("background: transparent;")
@@ -347,3 +247,86 @@ class SettingsWindow(QWidget):
             }}
         """
         )
+        self.menu.setStyleSheet(
+            f"""
+            QListWidget {{
+                background-color: {c['bg_menu']};
+                color: {c['text_secondary']};
+                font-size: 15px;
+                border-top-left-radius: 10px;
+                border-top-right-radius: 0px;
+                border-bottom-left-radius: 0px;
+                border-bottom-right-radius: 0px;
+                padding: 6px;
+            }}
+            QListWidget::item {{
+                padding: 10px 18px;
+                border-radius: 6px;
+                transition: all 0.2s ease-in-out;
+            }}
+            QListWidget::item:hover {{
+                background-color: {c['bg_hover']};
+                color: {c['text_primary']};
+            }}
+            QListWidget::item:selected {{
+                background-color: {c['accent']};
+                color: #fff;
+                border: none;
+                outline: none;
+            }}
+            QListWidget:focus {{
+                outline: 0;
+                border: none;
+            }}
+        """
+        )
+        self.pages.setStyleSheet(
+            f"""
+            QStackedWidget {{
+                background-color: {c["bg_header"]};
+                border-top-right-radius: 10px;
+                border-top-left-radius: 0px;
+                border-bottom-right-radius: 0px;
+                border-bottom-left-radius: 0px;
+            }}
+            QLabel {{
+                color: {c['text_primary']};
+                font-size: 16px;
+                margin: 10px;
+            }}
+        """
+        )
+        self.footer.setStyleSheet(
+            f"""
+            QFrame {{
+                background-color: {c['bg_menu']};
+                border-bottom-left-radius: 10px;
+                border-top-left-radius: 0px;
+                border-bottom-right-radius: 10px;
+                border-top-right-radius: 0px;
+            }}
+        """
+        )
+        # Themes imported before the token existed keep the old fixed grey.
+        disabled = c.get("text_disabled", "#555555")
+        for btn in (self.btn_apply, self.btn_close):
+            btn.setStyleSheet(
+                f"""
+                QPushButton {{
+                    background-color: transparent;
+                    color: {c['text_secondary']};
+                    border: 1px solid {c['border_color']};
+                    border-radius: 6px;
+                    transition: all 0.2s ease-in-out;
+                }}
+                QPushButton:hover {{
+                    background-color: {c['accent']};
+                    color: #fff;
+                    border-color: {c['accent']};
+                }}
+                QPushButton:disabled {{
+                    color: {disabled};
+                    border: 1px solid {disabled};
+                }}
+            """
+            )

@@ -8,7 +8,7 @@ from PyQt6.QtWidgets import (
     QFrame,
 )
 from config import load_user_config, save_user_config
-from ui.theme.manager import THEME
+from ui.theme.manager import THEME, safe_repaint
 from ui.dialogs.messagebox import MessageBox as MB
 
 
@@ -30,19 +30,12 @@ class BehaviorSettingsPage(QWidget):
         title.setStyleSheet("font-size: 20px; font-weight: 600;")
         layout.addWidget(title)
 
-        desc = QLabel(
+        self.desc = QLabel(
             "Do you want to always confirm when exiting ComfyLauncher?\n"
             "You can choose a default action."
         )
-        desc.setWordWrap(True)
-        desc.setStyleSheet(
-            f"""
-            color: {THEME.colors['text_secondary']};
-            font-size: 13px;
-            margin-bottom: 10px;
-            """
-        )
-        layout.addWidget(desc)
+        self.desc.setWordWrap(True)
+        layout.addWidget(self.desc)
 
         # --- 3 exclusive options (radio group) ---
         self.rb_ask = QRadioButton("Ask on exit")
@@ -54,31 +47,6 @@ class BehaviorSettingsPage(QWidget):
         for rb in (self.rb_ask, self.rb_always, self.rb_never):
             self.group.addButton(rb)
 
-        # Style (same "filled" indicator as before)
-        radio_style = f"""
-            QRadioButton {{
-                font-size: 14px;
-                color: {THEME.colors['text_primary']};
-                spacing: 8px;
-            }}
-            QRadioButton::indicator {{
-                width: 18px; height: 18px;
-                border-radius: 4px;
-                border: 1px solid {THEME.colors['border_color']};
-                background: transparent;
-            }}
-            QRadioButton::indicator:checked {{
-                background-color: {THEME.colors['accent']};
-                border: 1px solid {THEME.colors['accent']};
-            }}
-            QRadioButton::indicator:hover {{
-                border: 1px solid {THEME.colors['accent_hover']};
-            }}
-        """
-
-        for rb in (self.rb_ask, self.rb_always, self.rb_never):
-            rb.setStyleSheet(radio_style)
-
         # Indent like you had (14px from left)
         rb_col = QVBoxLayout()
         rb_col.setContentsMargins(14, 0, 0, 0)
@@ -88,20 +56,56 @@ class BehaviorSettingsPage(QWidget):
         rb_col.addWidget(self.rb_never)
         layout.addLayout(rb_col)
 
-        div = QFrame()
-        div.setFrameShape(QFrame.Shape.HLine)
-        div.setStyleSheet(f"color: {THEME.colors['border_color']};")
-        layout.addWidget(div)
+        self.div = QFrame()
+        self.div.setFrameShape(QFrame.Shape.HLine)
+        layout.addWidget(self.div)
 
         layout.addStretch()
 
         # --- Load saved values into UI ---
         self.reset()
+        self._apply_theme()
 
         # --- Signals: mark dirty only ---
         self.rb_ask.toggled.connect(self._on_any_change)  # type: ignore
         self.rb_always.toggled.connect(self._on_any_change)  # type: ignore
         self.rb_never.toggled.connect(self._on_any_change)  # type: ignore
+        THEME.themeChanged.connect(self._apply_theme)
+
+    @safe_repaint
+    def _apply_theme(self, *args):
+        c = THEME.colors
+        self.desc.setStyleSheet(
+            f"""
+            color: {c['text_secondary']};
+            font-size: 13px;
+            margin-bottom: 10px;
+            """
+        )
+        # Style (same "filled" indicator as before)
+        radio_style = f"""
+            QRadioButton {{
+                font-size: 14px;
+                color: {c['text_primary']};
+                spacing: 8px;
+            }}
+            QRadioButton::indicator {{
+                width: 18px; height: 18px;
+                border-radius: 4px;
+                border: 1px solid {c['border_color']};
+                background: transparent;
+            }}
+            QRadioButton::indicator:checked {{
+                background-color: {c['accent']};
+                border: 1px solid {c['accent']};
+            }}
+            QRadioButton::indicator:hover {{
+                border: 1px solid {c['accent_hover']};
+            }}
+        """
+        for rb in (self.rb_ask, self.rb_always, self.rb_never):
+            rb.setStyleSheet(radio_style)
+        self.div.setStyleSheet(f"color: {c['border_color']};")
 
     # ---- Public API for SettingsWindow ----
     def is_dirty(self) -> bool:

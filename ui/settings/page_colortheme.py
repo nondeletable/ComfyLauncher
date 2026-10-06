@@ -10,8 +10,8 @@ from PyQt6.QtWidgets import (
     QFileDialog,
     QPushButton,
 )
-from PyQt6.QtCore import Qt, pyqtSignal, QTimer
-from ui.theme.manager import THEME, THEMES
+from PyQt6.QtCore import Qt, pyqtSignal
+from ui.theme.manager import THEME, THEMES, safe_repaint
 from ui.theme.theme_importer import ThemeImporter, ThemeImportError
 from ui.theme.theme_registry import REGISTRY
 from ui.dialogs.messagebox import MessageBox as MB
@@ -76,12 +76,8 @@ class ColorThemesPage(QWidget):
         content_layout.setContentsMargins(30, 30, 30, 30)
         content_layout.setSpacing(16)
 
-        title = QLabel("Color Themes")
-        title.setStyleSheet(
-            f"color: {THEME.colors['text_primary']}; "
-            f"font-size: 20px; font-weight: 600;"
-        )
-        content_layout.addWidget(title)
+        self.title = QLabel("Color Themes")
+        content_layout.addWidget(self.title)
 
         self.grid = QGridLayout()
         self.grid.setSpacing(15)
@@ -103,14 +99,13 @@ class ColorThemesPage(QWidget):
         grid_container.setLayout(self.grid)
         content_layout.addWidget(grid_container)
 
-        desc = QLabel(
+        self.desc = QLabel(
             "Here you can select a launcher theme from a .json file.\n"
             "Or download a theme from https://www.comfyui-themes.com."
         )
-        desc.setStyleSheet(f"color: {THEME.colors['text_secondary']}; font-size: 13px;")
-        desc.setWordWrap(True)
+        self.desc.setWordWrap(True)
         content_layout.addStretch()
-        content_layout.addWidget(desc)
+        content_layout.addWidget(self.desc)
 
         btn_layout = QHBoxLayout()
         btn_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
@@ -133,22 +128,6 @@ class ColorThemesPage(QWidget):
         self.btn_download.clicked.connect(self._open_comfyui_themes)  # type: ignore
 
         for btn in (self.btn_select, self.btn_download):
-            btn.setStyleSheet(
-                f"""
-                QPushButton {{
-                    background-color: transparent;
-                    border: 1px solid {THEME.colors['border_color']};
-                    border-radius: 6px;
-                }}
-                QPushButton:hover {{
-                    background-color: {THEME.colors['accent']};
-                    border-color: {THEME.colors['accent']};
-                }}
-                QPushButton:pressed {{
-                    background-color: {THEME.colors['accent_hover']};
-                }}
-                """
-            )
             btn_layout.addWidget(btn)
 
         self.btn_select.setToolTip("Select file")
@@ -157,6 +136,34 @@ class ColorThemesPage(QWidget):
         content_layout.addLayout(btn_layout)
         scroll.setWidget(content)
         layout.addWidget(scroll)
+
+        self._apply_theme()
+        THEME.themeChanged.connect(self._apply_theme)
+
+    @safe_repaint
+    def _apply_theme(self, *args):
+        c = THEME.colors
+        self.title.setStyleSheet(
+            f"color: {c['text_primary']}; font-size: 20px; font-weight: 600;"
+        )
+        self.desc.setStyleSheet(f"color: {c['text_secondary']}; font-size: 13px;")
+        for btn in (self.btn_select, self.btn_download):
+            btn.setStyleSheet(
+                f"""
+                QPushButton {{
+                    background-color: transparent;
+                    border: 1px solid {c['border_color']};
+                    border-radius: 6px;
+                }}
+                QPushButton:hover {{
+                    background-color: {c['accent']};
+                    border-color: {c['accent']};
+                }}
+                QPushButton:pressed {{
+                    background-color: {c['accent_hover']};
+                }}
+                """
+            )
 
     # ────────────────────────────────
     def _create_theme_card(self, name: str) -> QFrame:
@@ -303,11 +310,6 @@ class ColorThemesPage(QWidget):
             THEME.switch(self.selected_theme)
             self._original_theme = self.selected_theme
             self.dirtyChanged.emit(False)  # type: ignore[attr-defined]
-
-            # 🔹 After 100 ms, we close the window - closeEvent() will be triggered
-            win = self.window()
-            QTimer.singleShot(100, win.close)
-
             return True
 
         except Exception as e:

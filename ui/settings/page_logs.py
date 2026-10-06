@@ -13,7 +13,7 @@ from PyQt6.QtCore import Qt, QSize
 from config import OTHER_ICONS
 from utils.logger import LOG_FILE, log_event
 from ui.header import colorize_svg
-from ui.theme.manager import THEME
+from ui.theme.manager import THEME, safe_repaint
 from ui.dialogs.messagebox import MessageBox as MB
 
 
@@ -44,10 +44,10 @@ class LogsSettingsPage(QWidget):
         layout.addLayout(log_container, stretch=1)
 
         # ─── Divider ──────────────────────────────────
-        divider = QFrame()
-        divider.setFrameShape(QFrame.Shape.HLine)
-        divider.setStyleSheet(f"color: {THEME.colors['border_color']};")
-        layout.addWidget(divider)
+        self.divider = QFrame()
+        self.divider.setFrameShape(QFrame.Shape.HLine)
+        self.divider.setStyleSheet(f"color: {THEME.colors['border_color']};")
+        layout.addWidget(self.divider)
 
         # ─── Bottom buttons with icons ─────────────────────────────
         btn_layout = QHBoxLayout()
@@ -135,6 +135,7 @@ class LogsSettingsPage(QWidget):
             }}
         """
 
+    @safe_repaint
     def _apply_theme(self, *args):
         """Applies the active theme."""
         c = THEME.colors
@@ -142,7 +143,18 @@ class LogsSettingsPage(QWidget):
             f"background-color: {c['bg_header']}; color: {c['text_primary']};"
         )
         self.text_edit.setStyleSheet(self._build_textedit_style())
-        for btn in (self.btn_refresh, self.btn_clear):
+        self.divider.setStyleSheet(f"color: {c['border_color']};")
+        for btn, icon in (
+            (self.btn_refresh, "refresh"),
+            (self.btn_clear, "clear-log"),
+        ):
+            btn.setIcon(
+                QIcon(
+                    colorize_svg(
+                        OTHER_ICONS[icon], c["icon_color_window"], QSize(18, 18)
+                    )
+                )
+            )
             btn.setStyleSheet(
                 f"""
                 QPushButton {{
