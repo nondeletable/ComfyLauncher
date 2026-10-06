@@ -36,7 +36,7 @@ ICON_PATH = os.path.join(ICONS_DIR, "icon.png")
 FLAGS_JSON_PATH = os.path.join(DATA_DIR, "flags.json")
 SPLASH_PATH = os.path.join(SPLASH_DIR, "1618x616_qt.mp4")
 ABOUT_LOGO_BG = os.path.join(INTERFACE_DIR, "back.png")
-ABOUT_LOGO_ANIM = os.path.join(INTERFACE_DIR, "menu_anim.mp4")
+ABOUT_LOGO_ANIM = os.path.join(INTERFACE_DIR, "menu_anim.webp")
 
 # ── Set of icons for toolbar ──────────────────
 ICON_PATHS = {

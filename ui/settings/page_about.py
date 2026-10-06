@@ -4,12 +4,9 @@ from PyQt6.QtWidgets import (
     QLabel,
     QHBoxLayout,
     QPushButton,
-    QStackedLayout,
 )
-from PyQt6.QtGui import QPixmap, QIcon
-from PyQt6.QtCore import Qt, QSize, QUrl, QThread
-from PyQt6.QtMultimedia import QMediaPlayer
-from PyQt6.QtMultimediaWidgets import QVideoWidget
+from PyQt6.QtGui import QPixmap, QIcon, QMovie, QPainter
+from PyQt6.QtCore import Qt, QSize, QRect, QThread
 from ui.theme.manager import THEME
 from version import __version__
 from config import (
@@ -21,50 +18,47 @@ from config import (
 import webbrowser
 from utils.update_checker import UpdateService
 from ui.dialogs.bug_report_dialog import open_bug_report
+from utils.logger import log_event
 
 
 class AnimatedLogo(QWidget):
     SIZE = 180
-    VIDEO_SIZE = 120
+    ANIM_SIZE = 120
 
     def __init__(self, parent=None):
         super().__init__(parent)
-
-        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
         self.setFixedSize(self.SIZE, self.SIZE)
 
-        root = QStackedLayout(self)
-        root.setContentsMargins(0, 0, 0, 0)
-        root.setStackingMode(QStackedLayout.StackingMode.StackAll)
+        self.background = QPixmap(ABOUT_LOGO_BG)
+        self.movie = QMovie(ABOUT_LOGO_ANIM, parent=self)
+        self.movie.frameChanged.connect(self._on_frame)
+        # A missing or broken file, or a build without the qwebp plugin, leaves
+        # only the backdrop on screen; the log is the one place that says why.
+        self.movie.jumpToFrame(0)
+        if self.movie.currentPixmap().isNull():
+            log_event(
+                f"⚠️ About logo animation failed to load "
+                f"({self.movie.lastErrorString()}): {ABOUT_LOGO_ANIM}"
+            )
 
-        # ─── Background PNG ─────────────────────
-        bg = QLabel()
-        bg.setFixedSize(self.SIZE, self.SIZE)
+    def _on_frame(self, _frame):
+        self.update()
 
-        bg.setPixmap(QPixmap(ABOUT_LOGO_BG))
-        bg.setScaledContents(True)
+    def showEvent(self, event):
+        super().showEvent(event)
+        self.movie.start()
 
-        # ─── Centered video container ───────────
-        video_container = QWidget()
-        video_container.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+    def hideEvent(self, event):
+        super().hideEvent(event)
+        self.movie.stop()
 
-        video_layout = QVBoxLayout(video_container)
-        video_layout.setContentsMargins(0, 0, 0, 0)
-        video_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        self.video = QVideoWidget()
-        self.video.setFixedSize(self.VIDEO_SIZE, self.VIDEO_SIZE)
-
-        self.player = QMediaPlayer(self)
-        self.player.setVideoOutput(self.video)
-        self.player.setSource(QUrl.fromLocalFile(ABOUT_LOGO_ANIM))
-        self.player.setLoops(QMediaPlayer.Loops.Infinite)
-        self.player.play()
-
-        video_layout.addWidget(self.video)
-
-        root.addWidget(bg)
-        root.addWidget(video_container)
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
+        painter.drawPixmap(self.rect(), self.background)
+        inset = (self.SIZE - self.ANIM_SIZE) // 2
+        frame = QRect(inset, inset, self.ANIM_SIZE, self.ANIM_SIZE)
+        painter.drawPixmap(frame, self.movie.currentPixmap())
 
 
 class AboutSettingsPage(QWidget):
