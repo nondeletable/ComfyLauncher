@@ -422,7 +422,8 @@ def load_user_config():
 
         return data
 
-    except Exception:
+    except Exception as e:
+        log_event(f"⚠️ Failed to load config, using defaults: {e!r}")
         return copy.deepcopy(DEFAULT_USER_CONFIG)
 
 

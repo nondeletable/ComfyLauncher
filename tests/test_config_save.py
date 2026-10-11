@@ -91,3 +91,14 @@ def test_filled_in_defaults_do_not_alias_default(cfg_path):
 
     _mutate(config.load_user_config())
     _assert_default_untouched(snapshot)
+
+
+# ── Load error logging ────────────────────────
+
+
+def test_corrupt_file_is_logged(cfg_path, logged):
+    cfg_path.parent.mkdir(parents=True)
+    cfg_path.write_text('{"builds": [', encoding="utf-8")
+
+    assert config.load_user_config() == config.DEFAULT_USER_CONFIG
+    assert any("Failed to load config" in m for m in logged)
