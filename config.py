@@ -432,12 +432,13 @@ def save_user_config(data: dict) -> bool:
     value and warn the user if it is False.
     """
     try:
-        os.makedirs(os.path.dirname(USER_CONFIG_PATH), exist_ok=True)
-        with open(USER_CONFIG_PATH, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=4, ensure_ascii=False)
-    except Exception as e:
-        print(f"⚠️ Failed to save config: {e}")
+        raw = json.dumps(data, indent=4, ensure_ascii=False).encode("utf-8")
+    except (TypeError, ValueError) as e:
         log_event(f"⚠️ Failed to save config: {e}")
+        return False
+    # Atomic: a process killed mid-save leaves the previous config intact
+    # instead of a truncated file that load_user_config would discard.
+    if not _write_verified(USER_CONFIG_PATH, raw):
         return False
     backup_user_config()
     return True
