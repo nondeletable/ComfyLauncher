@@ -54,3 +54,40 @@ def test_unserializable_data_keeps_previous_config(cfg_path, logged):
     assert config.save_user_config({"bad": object()}) is False
     assert json.loads(cfg_path.read_text(encoding="utf-8")) == GOOD
     assert any("Failed to save config" in m for m in logged)
+
+
+# ── Default isolation ─────────────────────────
+
+
+def _mutate(data):
+    data["builds"].append({"id": "leak"})
+    data["ui"]["show_manager_on_start"] = False
+    data["browser_patch_registry"]["leak"] = 1
+
+
+def _assert_default_untouched(snapshot):
+    assert config.DEFAULT_USER_CONFIG == snapshot
+
+
+def test_first_run_result_does_not_alias_default(cfg_path):
+    snapshot = json.loads(json.dumps(config.DEFAULT_USER_CONFIG))
+    _mutate(config.load_user_config())
+    _assert_default_untouched(snapshot)
+
+
+def test_corrupt_file_result_does_not_alias_default(cfg_path, logged):
+    snapshot = json.loads(json.dumps(config.DEFAULT_USER_CONFIG))
+    cfg_path.parent.mkdir(parents=True)
+    cfg_path.write_text('{"builds": [', encoding="utf-8")
+
+    _mutate(config.load_user_config())
+    _assert_default_untouched(snapshot)
+
+
+def test_filled_in_defaults_do_not_alias_default(cfg_path):
+    snapshot = json.loads(json.dumps(config.DEFAULT_USER_CONFIG))
+    cfg_path.parent.mkdir(parents=True)
+    cfg_path.write_text("{}", encoding="utf-8")  # every key comes from setdefault
+
+    _mutate(config.load_user_config())
+    _assert_default_untouched(snapshot)

@@ -1,3 +1,4 @@
+import copy
 import json
 import os
 import shutil
@@ -396,15 +397,16 @@ def load_user_config():
 
     if not os.path.exists(USER_CONFIG_PATH):
         save_user_config(DEFAULT_USER_CONFIG)
-        return DEFAULT_USER_CONFIG.copy()
+        return copy.deepcopy(DEFAULT_USER_CONFIG)
 
     try:
         with open(USER_CONFIG_PATH, "r", encoding="utf-8") as f:
             data = json.load(f)
 
-        # 1) Дефолты верхнего уровня
+        # 1) Дефолты верхнего уровня (deepcopy: nested builds/ui must not
+        #    alias the DEFAULT_USER_CONFIG constant)
         for key, val in DEFAULT_USER_CONFIG.items():
-            data.setdefault(key, val)
+            data.setdefault(key, copy.deepcopy(val))
 
         # 2) Migration: fold legacy startup_mode into extra_flags, and backfill
         #    a stable id for any build that predates id-based identification.
@@ -421,7 +423,7 @@ def load_user_config():
         return data
 
     except Exception:
-        return DEFAULT_USER_CONFIG.copy()
+        return copy.deepcopy(DEFAULT_USER_CONFIG)
 
 
 def save_user_config(data: dict) -> bool:
