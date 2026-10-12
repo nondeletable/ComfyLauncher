@@ -23,7 +23,6 @@ DOODLES_DIR = os.path.join(ICONS_DIR, "doodles")
 COMFYUI_PORT = 8188
 
 # ── Waiting parameters ────────────────────────
-CHECK_INTERVAL = 1
 MAX_WAIT_TIME = 90
 
 # ── User data directories ─────────────────────────────

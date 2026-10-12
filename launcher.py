@@ -1,5 +1,4 @@
 import subprocess
-from subprocess import TimeoutExpired
 import socket
 import time
 import psutil
@@ -15,8 +14,6 @@ from utils.python_resolver import resolve_interpreter, build_env
 from utils.process_launch import spawn_comfy, external_console_supported
 from config import (
     COMFYUI_PORT,
-    CHECK_INTERVAL,
-    MAX_WAIT_TIME,
     load_user_config,
     save_user_config,
 )
@@ -36,18 +33,6 @@ def is_port_open(port):
         return s.connect_ex(("127.0.0.1", port)) == 0
 
 
-def wait_for_server():
-    """Waiting for ComfyUI to load"""
-    start = time.time()
-    while time.time() - start < MAX_WAIT_TIME:
-        if is_port_open(COMFYUI_PORT):
-            log_event("ComfyUI started.")
-            return True
-        time.sleep(CHECK_INTERVAL)
-    log_event("Failed to connect to the server.")
-    return False
-
-
 def get_listening_pids(port: int) -> set[int]:
     pids: set[int] = set()
     try:
@@ -58,24 +43,6 @@ def get_listening_pids(port: int) -> set[int]:
     except Exception:
         pass
     return pids
-
-
-def is_cuda_available():
-    """Checks for the presence of an NVIDIA GPU via nvidia-smi"""
-    # Checks that nvidia-smi even exists
-    if not shutil.which("nvidia-smi"):
-        return False
-
-    try:
-        result = subprocess.run(
-            ["nvidia-smi"],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            timeout=5,  # таймаут на случай зависания
-        )
-        return result.returncode == 0
-    except (OSError, TimeoutExpired):
-        return False
 
 
 # =====================================================================
@@ -312,6 +279,24 @@ def _pid_belongs_to_build(pid: int, comfy_main: str, base_dir: str) -> bool:
     return False
 
 
+def _build_root(comfy_path: str) -> str:
+    """Folder whose executables count as this build's, as a '/'-terminated prefix.
+
+    Normally the parent of the ComfyUI folder: a portable build keeps its
+    python_embeded next to ComfyUI/. The trailing '/' keeps a sibling such as
+    ComfyUI_windows_portable_old from matching ComfyUI_windows_portable. When
+    that parent is a drive or filesystem root, the ComfyUI folder itself is
+    used instead — otherwise every program on the drive would count as ours.
+    """
+    if not comfy_path:
+        return ""
+    path = os.path.normpath(comfy_path)
+    root = os.path.dirname(path)
+    if os.path.dirname(root) == root:
+        root = path
+    return root.lower().replace("\\", "/").rstrip("/") + "/"
+
+
 def stop_comfyui_hard(comfy_path: str, _grace_period=5):
     """Completely completes ComfyUI (python process and descendants)."""
     global _comfy_process
@@ -319,7 +304,7 @@ def stop_comfyui_hard(comfy_path: str, _grace_period=5):
 
     killed = False
     comfy_main = os.path.join(comfy_path, "main.py").lower().replace("\\", "/")
-    base_dir = os.path.dirname(comfy_path).lower().replace("\\", "/")
+    base_dir = _build_root(comfy_path)
 
     # 1️⃣ Look for python main.py process
     for proc in psutil.process_iter(["pid", "name", "cmdline"]):
