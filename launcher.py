@@ -1,5 +1,4 @@
 import subprocess
-from subprocess import TimeoutExpired
 import socket
 import time
 import psutil
@@ -15,8 +14,6 @@ from utils.python_resolver import resolve_interpreter, build_env
 from utils.process_launch import spawn_comfy, external_console_supported
 from config import (
     COMFYUI_PORT,
-    CHECK_INTERVAL,
-    MAX_WAIT_TIME,
     load_user_config,
     save_user_config,
 )
@@ -36,18 +33,6 @@ def is_port_open(port):
         return s.connect_ex(("127.0.0.1", port)) == 0
 
 
-def wait_for_server():
-    """Waiting for ComfyUI to load"""
-    start = time.time()
-    while time.time() - start < MAX_WAIT_TIME:
-        if is_port_open(COMFYUI_PORT):
-            log_event("ComfyUI started.")
-            return True
-        time.sleep(CHECK_INTERVAL)
-    log_event("Failed to connect to the server.")
-    return False
-
-
 def get_listening_pids(port: int) -> set[int]:
     pids: set[int] = set()
     try:
@@ -58,24 +43,6 @@ def get_listening_pids(port: int) -> set[int]:
     except Exception:
         pass
     return pids
-
-
-def is_cuda_available():
-    """Checks for the presence of an NVIDIA GPU via nvidia-smi"""
-    # Checks that nvidia-smi even exists
-    if not shutil.which("nvidia-smi"):
-        return False
-
-    try:
-        result = subprocess.run(
-            ["nvidia-smi"],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            timeout=5,  # таймаут на случай зависания
-        )
-        return result.returncode == 0
-    except (OSError, TimeoutExpired):
-        return False
 
 
 # =====================================================================
