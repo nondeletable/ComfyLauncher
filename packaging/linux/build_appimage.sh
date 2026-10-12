@@ -2,8 +2,12 @@
 #
 # Build a Linux AppImage of ComfyLauncher (QtWebEngine engine).
 #
-# Run this ON LINUX only (Ubuntu 24.04 LTS target). An AppImage bundles Linux
-# .so libraries and is assembled by appimagetool, which does not run on Windows.
+# Run this ON LINUX only, on Ubuntu 22.04. An AppImage bundles Linux .so
+# libraries and is assembled by appimagetool, which does not run on Windows.
+# The bundle takes glibc from the user's system, so it starts only on systems
+# as new as the build machine or newer: built on 24.04 it dies on 22.04.
+# 22.04 is also the floor — the Qt 6.11 wheels need glibc 2.34. The release
+# build runs on GitHub Actions (.github/workflows/appimage.yml).
 #
 # Usage:
 #   cd packaging/linux
@@ -11,10 +15,13 @@
 #
 # Prerequisites (see BUILD.md):
 #   - the project's venv activated with `pip install -r requirements.txt` done
-#   - libfuse2 installed (to run the resulting AppImage; older AppImage runtime)
+#   - readelf (binutils), for the glibc check
 #   - internet access (downloads appimagetool once, into this folder)
 #
 # Output: packaging/linux/ComfyLauncher-x86_64.AppImage
+#
+# GLIBC_MAX (default 2.35, Ubuntu 22.04) is the newest glibc the bundle may
+# need; the build stops if any bundled file needs more.
 #
 set -euo pipefail
 
@@ -27,6 +34,7 @@ APPDIR="${SCRIPT_DIR}/${APP_NAME}.AppDir"
 ICON_SRC="${REPO_ROOT}/assets/icons/icon.png"
 OUTPUT="${SCRIPT_DIR}/${APP_NAME}-x86_64.AppImage"
 APPIMAGETOOL="${SCRIPT_DIR}/appimagetool-x86_64.AppImage"
+GLIBC_MAX="${GLIBC_MAX:-2.35}"
 
 echo "==> repo root: ${REPO_ROOT}"
 
@@ -39,6 +47,10 @@ fi
 if ! python -c "import PyQt6.QtWebEngineWidgets" >/dev/null 2>&1; then
     echo "ERROR: PyQt6-WebEngine not importable — the Linux engine is missing." >&2
     echo "       Check requirements.txt installed the non-win32 Qt 6.11 wheels." >&2
+    exit 1
+fi
+if ! command -v readelf >/dev/null 2>&1; then
+    echo "ERROR: readelf not found - install binutils (needed for the glibc check)." >&2
     exit 1
 fi
 if [ ! -f "${ICON_SRC}" ]; then
@@ -89,7 +101,13 @@ cp "${SCRIPT_DIR}/comfylauncher.desktop" "${APPDIR}/comfylauncher.desktop"
 cp "${ICON_SRC}" "${APPDIR}/comfylauncher.png"
 cp "${ICON_SRC}" "${APPDIR}/usr/share/icons/hicolor/256x256/apps/comfylauncher.png"
 
-# --- 3. fetch appimagetool (once) ----------------------------------------
+# --- 3. glibc check -------------------------------------------------------
+# Before packing, so a build that would not start on Ubuntu 22.04 never
+# becomes an AppImage at all.
+echo "==> checking the glibc the bundle needs (limit ${GLIBC_MAX})…"
+python "${SCRIPT_DIR}/check_glibc.py" "${APPDIR}" "${GLIBC_MAX}"
+
+# --- 4. fetch appimagetool (once) ----------------------------------------
 if [ ! -f "${APPIMAGETOOL}" ]; then
     echo "==> downloading appimagetool…"
     URL="https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage"
@@ -101,7 +119,7 @@ if [ ! -f "${APPIMAGETOOL}" ]; then
     chmod +x "${APPIMAGETOOL}"
 fi
 
-# --- 4. build the AppImage -----------------------------------------------
+# --- 5. build the AppImage -----------------------------------------------
 echo "==> running appimagetool…"
 rm -f "${OUTPUT}"
 # ARCH is required by appimagetool's continuous build.
