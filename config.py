@@ -1,3 +1,4 @@
+import copy
 import json
 import os
 import shutil
@@ -396,15 +397,16 @@ def load_user_config():
 
     if not os.path.exists(USER_CONFIG_PATH):
         save_user_config(DEFAULT_USER_CONFIG)
-        return DEFAULT_USER_CONFIG.copy()
+        return copy.deepcopy(DEFAULT_USER_CONFIG)
 
     try:
         with open(USER_CONFIG_PATH, "r", encoding="utf-8") as f:
             data = json.load(f)
 
-        # 1) Дефолты верхнего уровня
+        # 1) Дефолты верхнего уровня (deepcopy: nested builds/ui must not
+        #    alias the DEFAULT_USER_CONFIG constant)
         for key, val in DEFAULT_USER_CONFIG.items():
-            data.setdefault(key, val)
+            data.setdefault(key, copy.deepcopy(val))
 
         # 2) Migration: fold legacy startup_mode into extra_flags, and backfill
         #    a stable id for any build that predates id-based identification.
@@ -420,8 +422,9 @@ def load_user_config():
 
         return data
 
-    except Exception:
-        return DEFAULT_USER_CONFIG.copy()
+    except Exception as e:
+        log_event(f"⚠️ Failed to load config, using defaults: {e!r}")
+        return copy.deepcopy(DEFAULT_USER_CONFIG)
 
 
 def save_user_config(data: dict) -> bool:
@@ -432,12 +435,13 @@ def save_user_config(data: dict) -> bool:
     value and warn the user if it is False.
     """
     try:
-        os.makedirs(os.path.dirname(USER_CONFIG_PATH), exist_ok=True)
-        with open(USER_CONFIG_PATH, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=4, ensure_ascii=False)
-    except Exception as e:
-        print(f"⚠️ Failed to save config: {e}")
+        raw = json.dumps(data, indent=4, ensure_ascii=False).encode("utf-8")
+    except (TypeError, ValueError) as e:
         log_event(f"⚠️ Failed to save config: {e}")
+        return False
+    # Atomic: a process killed mid-save leaves the previous config intact
+    # instead of a truncated file that load_user_config would discard.
+    if not _write_verified(USER_CONFIG_PATH, raw):
         return False
     backup_user_config()
     return True
