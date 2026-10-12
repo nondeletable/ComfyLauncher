@@ -61,9 +61,8 @@ class StartingWidget(QWidget):
 
 
 class ComfyBrowser(QMainWindow):
-    def __init__(self, poll_callback=None):
+    def __init__(self):
         super().__init__()
-        self.poll_callback = poll_callback
         self.error_widget = None
         self.setWindowTitle("ComfyLauncher")
         self.comfyui_path = get_comfyui_path()
@@ -330,21 +329,11 @@ class ComfyBrowser(QMainWindow):
         except Exception as e:
             log_event(f"⚠️ Error in check_server_status: {e}")
 
-    def load_comfy(self):
-        """Reserved for future browser loading logic."""
-        pass
-
     def on_load_finished(self, ok):
         if not ok:
             log_event("⚠️ Page not ready yet (server probably still starting).")
         else:
             log_event("✅ Page loaded successfully.")
-
-    def reload_comfy(self):
-        self.load_comfy()
-        threading.Thread(target=ensure_comfyui_running, daemon=True).start()
-        if self.poll_callback:
-            QTimer.singleShot(1000, self.poll_callback)
 
     def _shutdown_webview(self):
         """Tear the embedded web view down before the window is destroyed.
