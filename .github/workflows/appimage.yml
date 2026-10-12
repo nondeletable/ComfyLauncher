@@ -31,7 +31,8 @@ jobs:
       # PyInstaller copies system libraries from this machine into the bundle,
       # so whatever Qt's xcb plugin and QtWebEngine link against must be
       # installed here — a missing one only shows up as a "Library not found"
-      # warning, and then as a crash on the user's machine.
+      # warning, and then as a crash on the user's machine. libpulse0 is for
+      # QtMultimedia (the splash video).
       - name: Install system libraries
         run: |
           sudo apt-get update
@@ -42,7 +43,8 @@ jobs:
             libxcb-xinerama0 libxcb-xkb1 libxkbcommon-x11-0 \
             libegl1 libgl1 libfontconfig1 libdbus-1-3 \
             libnss3 libxcomposite1 libxdamage1 libxrandr2 libxtst6 \
-            libxkbfile1 libasound2
+            libxkbfile1 libasound2 \
+            libpulse0
 
       - name: Install Python dependencies
         run: |
