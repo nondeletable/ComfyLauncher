@@ -24,6 +24,28 @@ The `feature/linux-port` branch still exists but is now redundant — build from
 
 ## 1. Environment
 
+### Build on Ubuntu 22.04 — not on anything newer
+
+The AppImage carries its own libraries but **takes glibc from the user's
+system**, and it starts only where glibc is at least as new as on the build
+machine. v1.9.0 was built on Ubuntu 24.04 and needs `GLIBC_2.38`, so it dies on
+22.04 at once — `libpython3.12.so: version 'GLIBC_2.38' not found` — which is
+how the AppImage catalog (it tests on `ubuntu-22.04`) rejected it.
+
+22.04 is also the floor: the PyQt6 6.11 wheels are `manylinux_2_34`, so Qt
+itself needs glibc 2.34+ and an older system cannot run the launcher anyway.
+
+**The release build runs on GitHub Actions**: `.github/workflows/appimage.yml`
+(Actions → AppImage → Run workflow; it also runs on PRs that touch
+`packaging/linux/`). The AppImage is attached to the run as the
+`ComfyLauncher-AppImage` artifact. Building by hand works the same on a 22.04
+machine or container, with Python 3.11+ that was itself built for 22.04 (e.g.
+the deadsnakes PPA) — not a 24.04 interpreter copied over.
+
+`build_appimage.sh` checks this itself: after PyInstaller it reads the glibc
+requirement of every bundled binary (`check_glibc.py`) and stops if any needs
+more than `GLIBC_MAX` (default 2.35). The check needs `readelf` (binutils).
+
 ### System packages — do this first
 
 ```bash
@@ -50,8 +72,10 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-Python 3.11 or newer. Ubuntu 24.04 ships 3.12 and has no `python3.11` package;
-3.12.3 is verified — 129 tests green, AppImage built and run.
+Python 3.11 or newer. Ubuntu 22.04 ships 3.10, so take 3.12 from
+`actions/setup-python` (CI) or the deadsnakes PPA. Running from source on a
+24.04 machine with its own 3.12.3 is fine — only the AppImage build has to
+happen on 22.04.
 
 `requirements.txt` is split per-OS. On Linux this installs **PyQt6 6.11.0 +
 PyQt6-WebEngine 6.11.0** (the win32-only WebView2 stack — `pythonnet`, `pywin32` —
@@ -122,7 +146,7 @@ translations automatically.
 ls -lh packaging/linux/ComfyLauncher-x86_64.AppImage
 ```
 
-**Measured: 210 MB** — 2026-09-21, Ubuntu 24.04 / Python 3.12.3 / Qt 6.11.0,
+**Measured: 210 MB** — 2026-09-21, Ubuntu 24.04 / Python 3.12.3 / Qt 6.11.0 (the 1.9.0 build),
 inside the ~200–280 MB estimate (QtWebEngine bundles its own Chromium). The
 Windows build is lighter because WebView2 is a system component — note that in
 the notes.
@@ -156,9 +180,13 @@ differently from a source run.
   only external dependencies are glibc and the graphics stack — `libGL`,
   `libGLX`, `libEGL`, `libGLdispatch`, `libdrm`, `libxcb`, `libxcb-dri3` — which
   *must* come from the system and must not be bundled, since they have to match
-  the installed GPU driver. One warning is expected and harmless: `libtiff.so.5`
-  stays unresolved on Ubuntu 24.04 (which ships `libtiff.so.6`); it only disables
-  Qt's TIFF image plugin and the launcher never loads a TIFF.
+  the installed GPU driver. On a 24.04 machine `libtiff.so.5` stays unresolved
+  (24.04 ships `libtiff.so.6`); on 22.04 it is present. Either way it only
+  affects Qt's TIFF image plugin, and the launcher never loads a TIFF. The CI
+  workflow lists every such warning as an annotation on the run.
+- **`version 'GLIBC_2.xx' not found` at startup** — the AppImage was built on a
+  newer system than the one running it. Rebuild on 22.04 (see §1);
+  `check_glibc.py` names the files that need the newer glibc.
 - **Splash video is silent/black** — the app forces the ffmpeg media backend
   (`QT_MEDIA_BACKEND=ffmpeg` in `main.py`); if QtMultimedia's ffmpeg libs didn't
   bundle, the splash may degrade. Non-blocking for the port; note it and move on.
