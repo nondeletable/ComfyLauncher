@@ -19,7 +19,9 @@ def detect_build_type(path: str) -> str:
         'standalone' — no own Python found, the system one will be used
     """
     if sys.platform != "win32":
-        return "standalone" if resolve_interpreter(path).kind == "system" else "portable"
+        return (
+            "standalone" if resolve_interpreter(path).kind == "system" else "portable"
+        )
 
     base_dir = os.path.dirname(path)
     has_python = os.path.isdir(
