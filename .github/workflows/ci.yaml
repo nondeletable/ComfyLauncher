@@ -66,7 +66,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            libnss3 libnspr4 libasound2t64 \
+            libnss3 libnspr4 libasound2t64 libpulse0 \
             libegl1 libgl1 libgbm1 libxshmfence1 \
             libxkbcommon0 libxkbcommon-x11-0 \
             libxcomposite1 libxdamage1 libxrandr2 libxtst6 \
