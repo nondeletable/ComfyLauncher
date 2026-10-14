@@ -45,7 +45,10 @@ class SetupWindow(QDialog):
     WINDOW_WIDTH = 530
     WINDOW_HEIGHT = 400
     BORDER_RADIUS = 9
-    DEFAULT_FLAGS = "--windows-standalone-build"
+    # --windows-standalone-build only means anything to the Windows portable
+    # build; it is noise in the flags field everywhere else, so it is not
+    # prefilled off Windows.
+    DEFAULT_FLAGS = "--windows-standalone-build" if sys.platform == "win32" else ""
 
     def __init__(
         self,
@@ -249,6 +252,8 @@ class SetupWindow(QDialog):
         self.flags_edit = QLineEdit()
         self.flags_edit.setPlaceholderText(
             "--windows-standalone-build --lowvram --listen"
+            if sys.platform == "win32"
+            else "--lowvram --listen"
         )
         self.flags_edit.setFixedHeight(36)
         self.flags_edit.setStyleSheet(self._line_edit_style())
