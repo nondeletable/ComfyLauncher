@@ -1,3 +1,5 @@
+import sys
+
 from PyQt6.QtWidgets import (
     QDialog,
     QVBoxLayout,
@@ -395,12 +397,21 @@ class SetupWindow(QDialog):
             return
 
         if detect_build_type(path) == "standalone":
+            if sys.platform == "win32":
+                reason = (
+                    "No embedded Python was found next to this folder, so it looks "
+                    "like a non-portable or third-party ComfyUI install "
+                    "(e.g. system Python or Stability Matrix)."
+                )
+            else:
+                reason = (
+                    "No virtual environment (.venv or venv) was found in or next "
+                    "to this folder."
+                )
             proceed = MB.ask_yes_no(
                 self,
                 "Non-portable build",
-                "No embedded Python was found next to this folder, so it looks like "
-                "a non-portable or third-party ComfyUI install "
-                "(e.g. system Python or Stability Matrix).\n\n"
+                f"{reason}\n\n"
                 "ComfyLauncher will launch it using the system Python. "
                 "Add this build anyway?",
             )
