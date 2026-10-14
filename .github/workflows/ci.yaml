@@ -34,3 +34,52 @@ jobs:
 
       - name: Black
         run: black --check .
+
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11"]
+
+    env:
+      # Headless Qt. The suite's conftest also sets offscreen, but the test
+      # job's own steps (pip, etc.) are unaffected and the explicit value keeps
+      # the platform obvious here.
+      QT_QPA_PLATFORM: offscreen
+      # Chromium's sandbox needs kernel user namespaces the runner does not
+      # grant; QtWebEngine aborts at startup otherwise. The AppImage sets the
+      # same flag for the same reason (see packaging/linux/AppRun).
+      QTWEBENGINE_DISABLE_SANDBOX: "1"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install QtWebEngine runtime libraries
+        # tests/ui/test_qtwebengine_view.py constructs the real engine, which
+        # needs these Chromium shared libraries present on the headless runner.
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libnss3 libnspr4 libasound2t64 libpulse0 \
+            libegl1 libgl1 libgbm1 libxshmfence1 \
+            libxkbcommon0 libxkbcommon-x11-0 \
+            libxcomposite1 libxdamage1 libxrandr2 libxtst6 \
+            libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 \
+            libxcb-randr0 libxcb-render-util0 libxcb-shape0 \
+            libxcb-xinerama0 libxcb-xfixes0 \
+            fonts-dejavu-core
+
+      - name: Install dependencies
+        run: |
+          python -m pip install -U pip
+          pip install -r requirements.txt
+          pip install pytest==9.1.1 pytest-qt==4.5.0
+
+      - name: Pytest
+        run: pytest -q
