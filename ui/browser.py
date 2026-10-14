@@ -524,10 +524,6 @@ class ComfyBrowser(QMainWindow):
 
     def _on_comfy_ready(self):
         self.ui_state = "RUNNING"
-        self.showMaximized()
-        if hasattr(self, "splash") and self.splash:
-            self.splash.finish()
-            self.splash = None
 
         url = f"http://127.0.0.1:{COMFYUI_PORT}"
         self.browser = create_webview(url)
@@ -543,6 +539,7 @@ class ComfyBrowser(QMainWindow):
         vbox.addWidget(self.browser, 1)
 
         self._set_central(central)
+        self._show_main_window()
 
         # We carefully complete the worker
         self.worker.stop()
@@ -551,13 +548,23 @@ class ComfyBrowser(QMainWindow):
 
         QTimer.singleShot(1500, self.start_update_check)
 
-    def _enter_error_state(self, error_code: str):
-        self.ui_state = "ERROR_STARTUP"
+    def _show_main_window(self):
+        """Show the window maximized, then drop the splash.
+
+        Called only once the final central widget is in place. The window used
+        to be shown first and its header re-parented into a new container
+        afterwards; on a cold start under Wayland (translucent frameless
+        window) the header was then left unpainted and dead to the mouse until
+        the window was minimized and restored.
+        """
+        self._round_corners(10)
         self.showMaximized()
-        # close the splash
         if hasattr(self, "splash") and self.splash:
             self.splash.finish()
             self.splash = None
+
+    def _enter_error_state(self, error_code: str):
+        self.ui_state = "ERROR_STARTUP"
 
         error = ERRORS[error_code]
         self._startup_error = f"{error_code}: {error.title} - {error.message}"
@@ -581,6 +588,7 @@ class ComfyBrowser(QMainWindow):
         vbox.addWidget(error_screen, 1)
 
         self._set_central(central)
+        self._show_main_window()
 
         # We carefully stop the worker.
         if hasattr(self, "worker"):
