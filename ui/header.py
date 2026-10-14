@@ -101,14 +101,15 @@ class HeaderBar(QWidget):
         self.btn_folder = QPushButton(colorize_svg(ICON_PATHS["open_folder"]), "")
         self.btn_output = QPushButton(colorize_svg(ICON_PATHS["open_output"]), "")
         self.btn_reload = QPushButton(colorize_svg(ICON_PATHS["refresh"]), "")
-        self.btn_report = QPushButton(colorize_svg(ICON_PATHS["bug"]), "")
+        # Bug-report button hidden from the header: the same action lives in About.
+        # self.btn_report = QPushButton(colorize_svg(ICON_PATHS["bug"]), "")
 
         for btn in [
             self.btn_settings,
             self.btn_folder,
             self.btn_output,
             self.btn_reload,
-            self.btn_report,
+            # self.btn_report,
         ]:
             btn.setIconSize(QSize(20, 20))
             layout.addWidget(btn)
@@ -181,7 +182,7 @@ class HeaderBar(QWidget):
         self.btn_folder.setToolTip("Open ComfyUI folder")
         self.btn_output.setToolTip("Open output")
         self.btn_reload.setToolTip("Refresh UI")
-        self.btn_report.setToolTip("Report a problem")
+        # self.btn_report.setToolTip("Report a problem")
         self.btn_console.setToolTip("Command Prompt")
 
         # ── Signals ───────────────────────────────────
@@ -191,7 +192,7 @@ class HeaderBar(QWidget):
         self.btn_settings.clicked.connect(self.settings_clicked.emit)  # type: ignore
         self.btn_output.clicked.connect(self.output_clicked.emit)  # type: ignore
         self.btn_reload.clicked.connect(self._on_reload_clicked)  # type: ignore
-        self.btn_report.clicked.connect(self.report_clicked.emit)  # type: ignore
+        # self.btn_report.clicked.connect(self.report_clicked.emit)  # type: ignore
         if hasattr(self, "btn_console"):
             self.btn_console.clicked.connect(self.console_clicked.emit)  # type: ignore
 
@@ -335,6 +336,6 @@ class HeaderBar(QWidget):
         self.btn_reload.setIcon(
             colorize_svg(ICON_PATHS["refresh"], c["icon_color_window"], QSize(20, 20))
         )
-        self.btn_report.setIcon(
-            colorize_svg(ICON_PATHS["bug"], c["icon_color_window"], QSize(20, 20))
-        )
+        # self.btn_report.setIcon(
+        #     colorize_svg(ICON_PATHS["bug"], c["icon_color_window"], QSize(20, 20))
+        # )
