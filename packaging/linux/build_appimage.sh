@@ -86,6 +86,38 @@ if [ ! -x "${DIST_DIR}/${APP_NAME}" ]; then
     exit 1
 fi
 
+# --- 1b. drop host-provided graphics / driver libraries ------------------
+# These must match the running GPU driver and Wayland compositor, so they have
+# to come from the user's system, not the bundle (BUILD.md §4). PyInstaller
+# copies some in as transitive dependencies; a bundled copy then shadows the
+# host one and breaks the Mesa VAAPI driver on newer systems — the driver wants
+# a newer libstdc++ than the bundled one ("CXXABI_x.y.z not found"), EGL/GBM
+# init then fails, and QtWebEngine and the splash's QQuickWidget abort the
+# process (SIGABRT at startup on Ubuntu 26.04).
+#
+# libstdc++/libgcc_s are safe to drop: the Qt 6.11 wheels need at most
+# GLIBCXX_3.4.29 / CXXABI_1.3.13, which the 22.04 build floor already provides,
+# so the host's own (equal or newer) copy always satisfies them. The loader
+# finds them on the default system path once they are gone from $ORIGIN.
+echo "==> removing host-provided graphics/driver libraries from the bundle…"
+host_libs=(
+    "libstdc++.so*"
+    "libgcc_s.so*"
+    "libgbm.so*"
+    "libwayland-client.so*"
+    "libwayland-cursor.so*"
+    "libwayland-egl.so*"
+    "libwayland-server.so*"
+    "libdrm.so*"
+    "libGL.so*"
+    "libGLX.so*"
+    "libGLdispatch.so*"
+    "libEGL.so*"
+)
+for pat in "${host_libs[@]}"; do
+    find "${DIST_DIR}" -type f -name "${pat}" -print -delete
+done
+
 # --- 2. assemble the AppDir ----------------------------------------------
 echo "==> assembling AppDir…"
 rm -rf "${APPDIR}"

@@ -178,9 +178,17 @@ differently from a source run.
   it was absent from the build machine (see §1), and it will be missing from the
   AppImage for every user. Built on a properly prepared machine, the AppImage's
   only external dependencies are glibc and the graphics stack — `libGL`,
-  `libGLX`, `libEGL`, `libGLdispatch`, `libdrm`, `libxcb`, `libxcb-dri3` — which
+  `libGLX`, `libEGL`, `libGLdispatch`, `libdrm`, `libgbm`, `libwayland-*`,
+  `libxcb`, `libxcb-dri3`, and the C++ runtime `libstdc++` / `libgcc_s` — which
   *must* come from the system and must not be bundled, since they have to match
-  the installed GPU driver. On a 24.04 machine `libtiff.so.5` stays unresolved
+  the installed GPU driver and Wayland compositor. PyInstaller copies some of
+  these in as transitive dependencies, so `build_appimage.sh` (step 1b) deletes
+  them from the bundle after the build: a bundled copy shadows the host one and
+  breaks the Mesa VAAPI driver on newer systems (the driver wants a newer
+  `libstdc++` than the 22.04 one; EGL/GBM init then fails and the process aborts
+  at startup — seen on Ubuntu 26.04). Dropping `libstdc++` / `libgcc_s` is safe:
+  the Qt 6.11 wheels need at most `GLIBCXX_3.4.29` / `CXXABI_1.3.13`, which the
+  22.04 build floor already provides. On a 24.04 machine `libtiff.so.5` stays unresolved
   (24.04 ships `libtiff.so.6`); on 22.04 it is present. Either way it only
   affects Qt's TIFF image plugin, and the launcher never loads a TIFF. The CI
   workflow lists every such warning as an annotation on the run.
