@@ -18,9 +18,12 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 # suite reads — and, through ComfyBrowser.closeEvent, *writes* — the developer's
 # real user_config.json: whatever builds and exit settings happen to be there
 # steer the tests, and the tests steer them back.
+#
+# The app's own override, not XDG_CONFIG_HOME/APPDATA alone: macOS resolves
+# ~/Library/Application Support and reads neither of those, so on a Mac the
+# suite kept rewriting the real config (see platform_paths.app_dir).
 _TEST_APP_DIR = tempfile.mkdtemp(prefix="comfylauncher-tests-")
-os.environ["XDG_CONFIG_HOME"] = _TEST_APP_DIR  # Linux
-os.environ["APPDATA"] = _TEST_APP_DIR  # Windows
+os.environ["COMFYLAUNCHER_CONFIG_HOME"] = _TEST_APP_DIR
 
 import pytest  # noqa: E402
 from PyQt6.QtCore import Qt  # noqa: E402
@@ -42,6 +45,12 @@ def quiet_exit_config():
 
     from config import USER_CONFIG_PATH
 
+    # Belt and braces: if a platform change ever makes app_dir() ignore the
+    # override again, fail loudly here instead of silently rewriting the
+    # developer's real config file.
+    assert (
+        _TEST_APP_DIR in USER_CONFIG_PATH
+    ), f"the test config is not isolated: {USER_CONFIG_PATH}"
     os.makedirs(os.path.dirname(USER_CONFIG_PATH), exist_ok=True)
     with open(USER_CONFIG_PATH, "w", encoding="utf-8") as fh:
         json.dump({"ask_on_exit": False, "exit_mode": "never_stop"}, fh)

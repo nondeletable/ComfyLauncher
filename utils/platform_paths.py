@@ -25,11 +25,21 @@ def app_dir(app_name: str = APP_NAME) -> str:
     - Windows: ``%APPDATA%/ComfyLauncher`` (unchanged — existing installs keep working)
     - macOS:   ``~/Library/Application Support/ComfyLauncher``
     - Linux:   ``$XDG_CONFIG_HOME/ComfyLauncher`` or ``~/.config/ComfyLauncher``
+    - On any of them ``$COMFYLAUNCHER_CONFIG_HOME/ComfyLauncher`` when that
+      variable is set — it wins over the platform default
+
+    The override exists because the platform defaults cannot be redirected
+    everywhere: macOS follows ``~/Library`` and reads neither ``APPDATA`` nor
+    ``XDG_CONFIG_HOME``, so the test suite had no way to keep its own config
+    away from a developer's real one.
 
     Returns the path only; the directory is created by callers when they write,
     exactly as before. No side effects on import.
     """
-    if sys.platform == "win32":
+    override = os.environ.get("COMFYLAUNCHER_CONFIG_HOME")
+    if override:
+        base = override
+    elif sys.platform == "win32":
         base = os.environ.get("APPDATA") or os.path.expanduser("~")
     elif sys.platform == "darwin":
         base = os.path.join(os.path.expanduser("~"), "Library", "Application Support")

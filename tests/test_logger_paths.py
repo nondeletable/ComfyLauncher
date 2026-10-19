@@ -23,12 +23,26 @@ def test_log_dir_is_inside_the_app_dir():
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="XDG is not a Windows concept")
-def test_log_dir_follows_xdg_config_home(monkeypatch, tmp_path):
-    """Regression: no more logs in the home directory root."""
+def test_log_dir_follows_platform_config_home(monkeypatch, tmp_path):
+    """Regression: no more logs in the home directory root.
+
+    Linux honors ``XDG_CONFIG_HOME``; macOS deliberately ignores it and uses
+    ``~/Library/Application Support`` instead (``utils.platform_paths.app_dir``).
+    Asserting the macOS path here keeps that branch on a real code path.
+    """
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+    # The app-level override outranks the platform default by design, so drop
+    # it here: this test asserts what the *platform* branch resolves to.
+    monkeypatch.delenv("COMFYLAUNCHER_CONFIG_HOME", raising=False)
     try:
         importlib.reload(logger_mod)
-        expected = os.path.join(str(tmp_path), "ComfyLauncher", "logs")
+        if sys.platform == "darwin":
+            base = os.path.join(
+                os.path.expanduser("~"), "Library", "Application Support"
+            )
+        else:
+            base = str(tmp_path)
+        expected = os.path.join(base, "ComfyLauncher", "logs")
         assert logger_mod.LOG_DIR == expected
         assert os.path.isdir(expected)
         # The old behavior; asserting on the directory's absence instead would
