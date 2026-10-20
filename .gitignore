@@ -18,6 +18,7 @@ build/
 dist/
 *.spec
 !packaging/windows/*.spec
+!packaging/macos/*.spec
 
 # --- Logs, caches and temp files ---
 *.log
