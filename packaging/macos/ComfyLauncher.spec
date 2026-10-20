@@ -97,19 +97,30 @@ coll = COLLECT(
 app = BUNDLE(
     coll,
     name="ComfyLauncher.app",
-    # No icon yet: assets/ has icon.png (256x256) but no .icns, and an .icns
-    # built from a 256px source is blurry on Retina. None makes BUNDLE() fall
-    # back to PyInstaller's own icon. Task 4 owns the real one.
-    icon=None,
+    # Committed next to the Windows (icon.ico) and Linux (icon.png) icons, so all
+    # three platforms keep their app icon in assets/icons/ and the spec stays
+    # self-contained — a bare `pyinstaller` run needs nothing generated first.
+    # The source art is only 256x256, so this .icns was not upscaled: the raster
+    # was traced into vectors (rounded-rect plate, glyph outline, gradient fills
+    # and the drop shadow) and every slot was rasterised from the SVG at its own
+    # size, so 16 px is sharp too. Regenerate only if the art changes.
+    icon=os.path.join(ROOT, "assets", "icons", "icon.icns"),
     version=VERSION,
     # Reverse-DNS of the upstream owner (github.com/nondeletable). Task 4's
     # CFBundleIdentifier has to match this; the maintainer may want a different
     # value, it is a placeholder until they say so.
     bundle_identifier="com.nondeletable.ComfyLauncher",
     info_plist={
-        # Empty so far: PyInstaller already sets CFBundleExecutable,
-        # CFBundleIdentifier, CFBundleName, CFBundleDisplayName,
-        # CFBundleShortVersionString and NSHighResolutionCapable. Task 4 adds
-        # CFBundleIconFile and LSMinimumSystemVersion here.
+        # Only what PyInstaller does not set itself. It already writes
+        # CFBundleExecutable, CFBundleIdentifier, CFBundleName,
+        # CFBundleDisplayName, CFBundleShortVersionString,
+        # NSHighResolutionCapable (true) and, from `icon=` above,
+        # CFBundleIconFile.
+        #
+        # 13.0 is read off the bundled binaries, not guessed: `otool -l` on
+        # QtCore and QtWebEngineCore reports `minos 13.0` (the bootloader itself
+        # says 11.0, but Qt WebEngine sets the real floor). Declaring less would
+        # advertise a system the bundle cannot actually run on.
+        "LSMinimumSystemVersion": "13.0",
     },
 )
