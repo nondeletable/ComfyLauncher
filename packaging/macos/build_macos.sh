@@ -17,11 +17,13 @@
 #   - an arm64 Python in that venv, otherwise the arch check stops the build
 #
 # Output: <repo root>/dist/ComfyLauncher.app
+#         packaging/macos/ComfyLauncher-<version>-arm64.dmg
 #
-# The script repairs the QtWebEngineCore.framework layout and then applies the
-# ad-hoc signature (codesign -s -), inside out. PyInstaller signs the bundle on
-# its own, but only before this script rearranges the framework, which leaves
-# both the framework and the app seal stale; see the signing section below.
+# The script repairs the QtWebEngineCore.framework layout, applies the ad-hoc
+# signature (codesign -s -) inside out, and packs the verified bundle into a
+# distributable .dmg. PyInstaller signs the bundle on its own, but only before
+# this script rearranges the framework, which leaves both the framework and the
+# app seal stale; see the signing section below.
 #
 set -euo pipefail
 
@@ -199,5 +201,40 @@ if ! codesign --verify --deep --strict "${APP}"; then
 fi
 echo "    ok: deep-strict verification passed"
 
+# --- 5. distributable .dmg ------------------------------------------------
+# Mirrors the Linux delivery form (ComfyLauncher-x86_64.AppImage): a single file
+# the user can mount and drag the app out of. The image also carries an
+# /Applications symlink, which is the usual drop target.
+#
+# ditto, not cp -R: it preserves symlinks, permissions and extended attributes
+# exactly, which the signed bundle depends on.
+VERSION="$("${PYTHON}" -c 'import runpy; print(runpy.run_path("version.py")["__version__"])')"
+DMG="${SCRIPT_DIR}/${APP_NAME}-${VERSION}-arm64.dmg"
+STAGE="${REPO_ROOT}/build/dmg-staging"
+
+echo "==> creating $(basename "${DMG}")…"
+rm -rf "${STAGE}"
+mkdir -p "${STAGE}"
+ditto "${APP}" "${STAGE}/${APP_NAME}.app"
+ln -s /Applications "${STAGE}/Applications"
+hdiutil create -volname "${APP_NAME}" -srcfolder "${STAGE}" -ov -format UDZO "${DMG}" >/dev/null
+
+# Mount what was just written and check it, rather than trusting hdiutil's exit
+# code: the point of the check is that the image contains a signed app and the
+# drag target, not that the command returned 0.
+MOUNT="$(hdiutil attach -nobrowse -readonly "${DMG}" | sed -n 's|.*\(/Volumes/.*\)$|\1|p' | head -1)"
+trap 'hdiutil detach "${MOUNT}" >/dev/null 2>&1 || true' EXIT
+if [ ! -d "${MOUNT}/${APP_NAME}.app" ] || [ ! -L "${MOUNT}/Applications" ]; then
+    echo "ERROR: the dmg is missing ${APP_NAME}.app or the /Applications link (mounted at ${MOUNT})." >&2
+    exit 1
+fi
+if ! codesign --verify --deep --strict "${MOUNT}/${APP_NAME}.app"; then
+    echo "ERROR: the app inside the dmg does not pass deep-strict verification." >&2
+    exit 1
+fi
+hdiutil detach "${MOUNT}" >/dev/null
+trap - EXIT
+echo "    ok: mounted image carries a signed ${APP_NAME}.app and the Applications link"
+
 echo "==> done:"
-du -sh "${APP}"
+du -sh "${APP}" "${DMG}"

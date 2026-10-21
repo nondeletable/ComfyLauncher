@@ -62,6 +62,9 @@ MANIFEST
 packaging/linux/*.AppImage
 packaging/linux/ComfyLauncher.AppDir/
 
+# --- macOS dmg build artifact ---
+packaging/macos/*.dmg
+
 # --- PyTest and Coverage ---
 .cache/
 .coverage
