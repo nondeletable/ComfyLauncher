@@ -18,9 +18,10 @@
 #
 # Output: <repo root>/dist/ComfyLauncher.app
 #
-# Signing is deliberately NOT done here. Task 5 adds the ad-hoc pass that signs
-# the nested helpers inside out. A bundle built from source carries no quarantine
-# flag, so it starts on the build machine with no signature at all.
+# The script repairs the QtWebEngineCore.framework layout and then applies the
+# ad-hoc signature (codesign -s -), inside out. PyInstaller signs the bundle on
+# its own, but only before this script rearranges the framework, which leaves
+# both the framework and the app seal stale; see the signing section below.
 #
 set -euo pipefail
 
@@ -84,8 +85,9 @@ fi
 
 # --- 2. QtWebEngine framework layout repair -------------------------------
 # The PyQt6 6.11 wheels ship a non-standard QtWebEngineCore.framework: Helpers/
-# and Resources/ are real directories at the framework root, and there is no
-# Versions/Current. PyInstaller 6.10 re-lays that out as
+# and Resources/ are real directories at the framework root, Versions/A/ holds
+# only the binary, and there is no Versions/Current. PyInstaller 6.10 re-lays
+# that out as
 #
 #     Helpers   -> Versions/Current/Helpers
 #     Resources -> Versions/Current/Resources
@@ -107,9 +109,19 @@ fi
 #                  The following paths were searched for Qt WebEngine resources: …
 #                  but could not find any.
 #
-# Both are repaired here by linking the real files back into the version
-# directory, so the framework-root symlinks keep pointing inside
-# Versions/Current — which is what codesign expects of a framework.
+# The fix is to move the real payload into Versions/A/ and drop the bogus
+# Versions/Resources directory, which leaves a standard framework:
+#
+#     Helpers   -> Versions/Current/Helpers    (real directory)
+#     Resources -> Versions/Current/Resources  (real directory)
+#     Versions/Current -> A
+#
+# Do not "repair" this by symlinking from Versions/A back into Versions/Resources
+# (the first version of this script did). Qt then works, but codesign does not:
+# `codesign --verify --deep --strict` reports
+#     invalid destination for symbolic link in bundle
+# and turns every resource reached through those links into "file modified", so
+# the bundle never passes Task 5. Prevented by keeping the payload real.
 #
 # Do NOT validate this with `PYTHONPATH=<bundle>/Contents/Frameworks python3 …`.
 # The bundle ships no PyQt6/__init__.py (it lives in the PYZ archive), so a plain
@@ -121,34 +133,42 @@ fi
 # opposite. Only a launch of the real bundle counts as evidence.
 #
 # Guarded and re-runnable, so it becomes a no-op once PyInstaller lays this out
-# correctly. It must run before Task 5's signing pass: re-linking the bundle
-# afterwards would invalidate the signature just applied.
+# correctly. It must run before the signing pass below: rearranging the bundle
+# afterwards invalidates the signature just applied.
 FW="${APP}/Contents/Frameworks/PyQt6/Qt6/lib/QtWebEngineCore.framework"
-HELPER_PATH="${FW}/Helpers/QtWebEngineProcess.app/Contents/MacOS/QtWebEngineProcess"
 
 CURRENT="$(readlink "${FW}/Versions/Current" || true)"
 CUR="${FW}/Versions/${CURRENT}"
 
 if [ -n "${CURRENT}" ] && [ -d "${CUR}" ] && [ -d "${FW}/Versions/Resources" ]; then
-    if [ ! -e "${HELPER_PATH}" ]; then
-        echo "==> repairing QtWebEngine helper lookup (Versions/${CURRENT}/Helpers)…"
-        # relative to Versions/<CURRENT>/
-        ln -s "../Resources/Helpers" "${CUR}/Helpers"
+    if [ -d "${FW}/Versions/Resources/Helpers" ]; then
+        echo "==> normalizing QtWebEngine helper lookup (Versions/${CURRENT}/Helpers)…"
+        rm -rf "${CUR}/Helpers"
+        mv "${FW}/Versions/Resources/Helpers" "${CUR}/Helpers"
     fi
-    if [ ! -e "${FW}/Resources/icudtl.dat" ]; then
-        echo "==> repairing QtWebEngine resources (Versions/${CURRENT}/Resources)…"
-        # relative to Versions/<CURRENT>/Resources/; Info.plist already exists
-        # there, so every entry is linked only when it is missing.
-        for ENTRY in "${FW}/Versions/Resources/Resources"/*; do
-            NAME="$(basename "${ENTRY}")"
-            if [ ! -e "${CUR}/Resources/${NAME}" ]; then
-                ln -s "../../Resources/Resources/${NAME}" "${CUR}/Resources/${NAME}"
-            fi
-        done
+    if [ -d "${FW}/Versions/Resources/Resources" ]; then
+        echo "==> normalizing QtWebEngine resources (Versions/${CURRENT}/Resources)…"
+        # Only the version Info.plist is there, and the moved directory carries
+        # the same one, so replacing it wholesale is safe and keeps this simple.
+        rm -rf "${CUR}/Resources"
+        mv "${FW}/Versions/Resources/Resources" "${CUR}/Resources"
     fi
+    rmdir "${FW}/Versions/Resources" 2>/dev/null || true
 fi
 
-# --- 3. bundle verification ----------------------------------------------
+# --- 3. ad-hoc code signing (inside out) ----------------------------------
+# Apple deprecated `codesign --deep` for signing, so the nested code is signed
+# first and its container last. PyInstaller already ad-hoc signed everything,
+# but before the repair above; moving the payload invalidated the framework seal
+# and, through it, the app seal. Re-signing the whole tree from scratch would be
+# pointless — only the framework and the app that seals it are stale.
+HELPER_APP="${CUR}/Helpers/QtWebEngineProcess.app"
+echo "==> signing ad-hoc (helper, framework, app)…"
+codesign --force --sign - "${HELPER_APP}"
+codesign --force --sign - "${FW}"
+codesign --force --sign - "${APP}"
+
+# --- 4. bundle verification ----------------------------------------------
 # Asserted at the paths Qt actually queries. Checking by filename anywhere in the
 # bundle is not enough — `find -name QtWebEngineProcess` passed on the broken
 # bundle, because the helper was present but unreachable.
@@ -171,6 +191,13 @@ if [ "${MISSING}" -ne 0 ]; then
     echo "ERROR: this bundle would start with a dead QtWebEngine — a placeholder page at best, SIGABRT at worst." >&2
     exit 1
 fi
+
+echo "==> verifying the ad-hoc signature (deep, strict)…"
+if ! codesign --verify --deep --strict "${APP}"; then
+    echo "ERROR: signature verification failed — the nested code is not signed inside out." >&2
+    exit 1
+fi
+echo "    ok: deep-strict verification passed"
 
 echo "==> done:"
 du -sh "${APP}"
