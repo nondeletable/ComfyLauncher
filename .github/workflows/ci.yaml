@@ -83,3 +83,40 @@ jobs:
 
       - name: Pytest
         run: pytest -q
+
+  # macOS exists because the suite has platform assumptions that Linux never
+  # exercised: the log path test asserted XDG semantics the darwin branch
+  # deliberately ignores, which went unnoticed until this port. Keep the two
+  # jobs otherwise identical so a failure means a real platform bug.
+  test-macos:
+    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11"]
+
+    env:
+      QT_QPA_PLATFORM: offscreen
+      # No QTWEBENGINE_DISABLE_SANDBOX here. That flag is for the Linux runner,
+      # which does not grant Chromium's kernel user namespaces; macOS does not
+      # use them. Verified on macOS 2026-10-21: the full suite, including the
+      # real-engine test, passes with the flag unset.
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      # No QtWebEngine runtime libraries step: those apt packages are the Linux
+      # Chromium dependencies, already present in the macOS runner.
+      - name: Install dependencies
+        run: |
+          python -m pip install -U pip
+          pip install -r requirements.txt
+          pip install pytest==9.1.1 pytest-qt==4.5.0
+
+      - name: Pytest
+        run: pytest -q
