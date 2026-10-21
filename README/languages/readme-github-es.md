@@ -95,7 +95,7 @@ Puedes explorar las funciones del programa, la interfaz y las instrucciones a tr
 - [x] Menú de inicio para selección de builds (lanzar un build específico de ComfyUI desde una lista)
 - [x] Soporte de flags para cada build
 - [ ] Portar a Linux
-- [ ] Portar a macOS
+- [x] Portar a macOS
 - [ ] Actualizaciones automáticas para ComfyLauncher
 - [ ] Atajos de teclado para acciones del launcher
 - [ ] Soporte multilenguaje

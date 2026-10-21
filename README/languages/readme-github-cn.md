@@ -94,7 +94,7 @@ Comfy 的 Standalone 版本自带 Launcher，用起来非常舒服。所以我�
 - [x] 启动菜单支持 build 选择（从列表启动指定的 ComfyUI build）
 - [x] 每个 build 支持独立启动参数（flags）
 - [ ] 移植到 Linux
-- [ ] 移植到 macOS
+- [x] 移植到 macOS
 - [ ] ComfyLauncher 自动更新
 - [ ] Launcher 操作快捷键
 - [ ] 多语言支持

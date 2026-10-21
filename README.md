@@ -85,7 +85,7 @@ You can explore the program's features, interface, and instructions by following
 - [x] Startup menu for build selection (so you can launch a specific ComfyUI build from a list)
 - [x] Flag support for every build
 - [x] Port to Linux
-- [ ] Port to macOS
+- [x] Port to macOS
 - [ ] Automatic updates for Comfy Launcher
 - [ ] Hotkeys for launcher actions
 - [ ] Multi-language support
