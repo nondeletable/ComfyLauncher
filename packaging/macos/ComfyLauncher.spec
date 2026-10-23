@@ -76,12 +76,13 @@ exe = EXE(
     console=False,
     disable_windowed_traceback=False,
     argv_emulation=False,
-    # arm64-only on purpose (plan §7-4): None follows the running interpreter, so
-    # this can never produce a cross-arch or universal2 (double-size) bundle.
-    # Intel macOS support is out of scope for this port.
+    # arm64-only on purpose: None follows the running interpreter, so this can
+    # never produce a cross-arch or universal2 (double-size) bundle. Intel macOS
+    # support is out of scope.
     target_arch=None,
-    # Ad-hoc signing is added in Task 5 via the build script; leaving these None
-    # keeps PyInstaller from signing with an identity we do not have.
+    # Ad-hoc signing is done by build_macos.sh after the framework repair;
+    # leaving these None keeps PyInstaller from signing with an identity we do
+    # not have.
     codesign_identity=None,
     entitlements_file=None,
 )
@@ -106,9 +107,8 @@ app = BUNDLE(
     # size, so 16 px is sharp too. Regenerate only if the art changes.
     icon=os.path.join(ROOT, "assets", "icons", "icon.icns"),
     version=VERSION,
-    # Reverse-DNS of the upstream owner (github.com/nondeletable). Task 4's
-    # CFBundleIdentifier has to match this; the maintainer may want a different
-    # value, it is a placeholder until they say so.
+    # Reverse-DNS of the upstream owner (github.com/nondeletable). INFO_PLIST
+    # below relies on it for CFBundleIdentifier.
     bundle_identifier="com.nondeletable.ComfyLauncher",
     info_plist={
         # Only what PyInstaller does not set itself. It already writes

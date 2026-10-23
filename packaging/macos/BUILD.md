@@ -11,18 +11,13 @@ everything you need is here.
 
 ## 0. Where the code is
 
-The port is **not merged yet**. It lives on `feature/macos-port`, based on
-`master` @ `528fce8` (upstream v1.10.0), and is proposed as a pull request:
+The macOS packaging lives in `packaging/macos/`, next to the Windows and Linux
+setups:
 
 ```bash
 git clone https://github.com/nondeletable/ComfyLauncher
-git fetch origin pull/92/head:feature/macos-port   # or clone your own fork
-git checkout feature/macos-port
+cd ComfyLauncher
 ```
-
-This matters for the build: `packaging/macos/` does not exist on `master`, and
-`tests/test_logger_paths.py` on `master` still fails on macOS (and rewrites the
-real user config when run there — see §2).
 
 ## 1. Environment
 
@@ -31,11 +26,10 @@ real user config when run there — see §2).
 `LSMinimumSystemVersion` is **13.0**, set in `packaging/macos/ComfyLauncher.spec`
 via `BUNDLE(info_plist=…)`. That is the floor Qt 6.11 supports.
 
-The bundle is **arm64-only by design** (plan §7-4): PyInstaller follows the
-running interpreter's architecture, so an Intel or universal2 bundle cannot be
-produced from this tree. Intel macOS support is out of scope for this port. The
-build script refuses to run when the interpreter reports anything other than
-`arm64`.
+The bundle is **arm64-only by design**: PyInstaller follows the running
+interpreter's architecture, so an Intel or universal2 bundle cannot be produced
+from this tree. Intel macOS support is out of scope. The build script refuses to
+run when the interpreter reports anything other than `arm64`.
 
 Nothing needs `apt`, Homebrew, or Xcode project files: `codesign`, `ditto` and
 `hdiutil` are part of macOS. If `codesign` is somehow absent, install the
@@ -69,8 +63,7 @@ python main.py
 ```
 
 Checklist — this is the real point of the macOS trip. Everything below was
-walked through on 2026-10-19/20 (record: `docs/task2-walkthrough.md`, local
-only):
+verified on macOS 27.0.1 on 2026-10-19/20:
 
 1. **Setup Window** appears → point it at an installed **macOS** ComfyUI
    (portable dir with `main.py`, or one with a `.venv`/`venv` beside it). The
@@ -91,10 +84,9 @@ only):
    - ✕ → **Yes** → ComfyUI is stopped, the window closes, no abort;
    - ✕ → **Cancel** → nothing exits, the UI stays usable;
    - ✕ → **No** → the window closes but **ComfyUI is supposed to keep running**.
-     On this branch it does **not**: `utils/process_launch.py` uses a pipe on
-     POSIX, so the child gets SIGPIPE when the launcher exits. That is an
-     upstream bug affecting Linux too, fixed separately in `fix/console-pipe`,
-     and deliberately **not** part of this port.
+     It currently does **not**: `utils/process_launch.py` uses a pipe on POSIX,
+     so the child gets SIGPIPE when the launcher exits. That is an upstream bug
+     affecting Linux too, and is being fixed separately.
 
 Run the tests too (`pytest` is not in `requirements.txt` — `pip install pytest
 pytest-qt` into the venv first):
@@ -107,11 +99,11 @@ QT_QPA_PLATFORM=offscreen .venv/bin/python3 -m pytest -q
 `QT_QPA_PLATFORM=offscreen` is used exactly as on the Linux job; QtWebEngine
 still initialises.
 
-> **Do not run pytest on a branch without the §0 test fix.** `conftest.py` relies
-> on `COMFYLAUNCHER_CONFIG_HOME` (added in the same change) to redirect the
-> config dir. Without it, the suite writes `ask_on_exit: false` into the real
+> **Do not run pytest on an older branch.** `conftest.py` relies on
+> `COMFYLAUNCHER_CONFIG_HOME` to redirect the config dir. Without it, the suite
+> writes `ask_on_exit: false` into the real
 > `~/Library/Application Support/ComfyLauncher/user_config.json`, which silently
-> removes the exit dialog. This actually happened on 2026-10-19.
+> removes the exit dialog. This actually happened during the port.
 
 ## 3. Build the .app and the .dmg
 
@@ -214,21 +206,15 @@ differently from a source run.
   without the spec does not.
 - **Splash video is silent/black** — the app forces the ffmpeg media backend; if
   QtMultimedia's ffmpeg libs did not bundle, the splash degrades. Non-blocking.
-- **Tests fail on macOS with a log-path assertion** — you are on a branch without
-  the §0 fix. `utils/platform_paths.py` deliberately ignores `XDG_CONFIG_HOME` on
-  darwin, while the old test asserted it was followed.
+- **Tests fail on macOS with a log-path assertion** — the checkout predates
+  macOS support. `utils/platform_paths.py` deliberately ignores `XDG_CONFIG_HOME`
+  on darwin, while the old test asserted it was followed.
 
 ## 5. Status / not done
 
-- **Not merged.** Branch `feature/macos-port`, PR #92. Everything below was
-  verified on that branch, not on `master`.
-- **CI**: `.github/workflows/ci.yaml` gained a `test-macos` job
-  (`macos-latest`, Python 3.11, no apt step). Verified 2026-10-21 by running the
-  workflow with `workflow_dispatch` against `feature/macos-port` in a fork —
-  `lint`, `test` and `test-macos` all green in 47 s. The runner annotation
-  confirms `macos-latest` is arm64, i.e. the same architecture this bundle
-  targets. On the upstream PR the checks stay at 0 until a maintainer approves
-  workflows for the fork.
+- **CI**: `.github/workflows/ci.yaml` runs `lint`, `test` and `test-macos`
+  (`macos-latest`, Python 3.11, no apt step). `macos-latest` is arm64, the same
+  architecture this bundle targets.
 - **No Developer ID, no notarisation.** Distribution is ad-hoc signed
   (`codesign -s -`), which is enough to run locally and satisfies deep-strict
   verification, but downloadable builds trigger Gatekeeper's "Open Anyway" flow.
@@ -237,11 +223,12 @@ differently from a source run.
   on an x86_64 interpreter.
 - **DMG cosmetics** are minimal: the app plus an `/Applications` symlink, no
   background image and no fixed window layout.
-- **Title bar** still uses the Windows-style custom controls on macOS. Left as a
-  UX decision for the maintainer rather than invented here.
-- **`✕ → No` does not keep ComfyUI alive** on this branch, as described in §2 —
-  the fix is the separate `fix/console-pipe` change.
-- **README roadmap** `Port to macOS` is ticked in this PR (all six language
-  versions). Two optional follow-ups are intentionally **not** here:
+- **Title bar** still uses the Windows-style custom controls on macOS, so the
+  header stays identical across platforms. Revisit if a native title bar is
+  wanted.
+- **`✕ → No` does not keep ComfyUI alive yet**, as described in §2 — the fix is a
+  separate change.
+- **README roadmap** leaves `Port to macOS` unchecked until the first macOS
+  build ships. Two optional follow-ups are intentionally **not** here:
   `LAUNCH_PRESETS` platform gating and the `Segoe UI` tooltip font in `main.py`
   (both affect Linux equally, so they belong in their own PRs).

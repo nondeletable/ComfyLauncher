@@ -2,10 +2,9 @@
 #
 # Build a macOS .app bundle of ComfyLauncher (QtWebEngine engine).
 #
-# Run this ON macOS only, on Apple Silicon. The bundle is arm64-only by design
-# (plan §7-4): PyInstaller follows the running interpreter's architecture, so an
-# Intel or universal2 bundle cannot be produced here. Intel macOS support is out
-# of scope for this port; the release build runs on GitHub Actions (Task 7).
+# Run this ON macOS only, on Apple Silicon. The bundle is arm64-only by design:
+# PyInstaller follows the running interpreter's architecture, so an Intel or
+# universal2 bundle cannot be produced here. Intel macOS support is out of scope.
 #
 # Usage:
 #   cd packaging/macos
@@ -123,7 +122,7 @@ fi
 # `codesign --verify --deep --strict` reports
 #     invalid destination for symbolic link in bundle
 # and turns every resource reached through those links into "file modified", so
-# the bundle never passes Task 5. Prevented by keeping the payload real.
+# the bundle can never be signed. Prevented by keeping the payload real.
 #
 # Do NOT validate this with `PYTHONPATH=<bundle>/Contents/Frameworks python3 …`.
 # The bundle ships no PyQt6/__init__.py (it lives in the PYZ archive), so a plain

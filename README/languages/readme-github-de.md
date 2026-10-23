@@ -92,7 +92,7 @@ Du kannst die Funktionen, die Benutzeroberfläche und die Anleitung über diesen
 - [x] Startmenü zur Build-Auswahl (einen bestimmten ComfyUI-Build aus einer Liste starten)
 - [x] Unterstützung von Start-Flags für jeden Build
 - [ ] Portierung auf Linux
-- [x] Portierung auf macOS
+- [ ] Portierung auf macOS
 - [ ] Automatische Updates für ComfyLauncher
 - [ ] Hotkeys für Launcher-Aktionen
 - [ ] Mehrsprachige Unterstützung
