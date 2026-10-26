@@ -30,6 +30,10 @@ STARTUP_STALL_TIMEOUT = 120
 STARTUP_STALL_CHOICES = (120, 300, 600, 0)
 # A shorter silence happens during normal loading (big imports, model scans).
 STARTUP_STALL_MIN = 30
+# After this many seconds of loading the "taking longer than usual" card shows
+# up (once per start). Not an error and not configurable: the stall timeout
+# above is what decides when to give up.
+SLOW_START_NOTICE_AFTER = 90
 
 # ── User data directories ─────────────────────────────
 # Single per-user directory (see utils/platform_paths). On Windows this is the
