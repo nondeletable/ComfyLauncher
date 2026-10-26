@@ -31,8 +31,20 @@ ERRORS = {
     "COMFY_START_TIMEOUT": ErrorInfo(
         level=ErrorLevel.STARTUP,
         title="ComfyUI is not responding",
-        message="The server did not become available within a reasonable time.",
+        message="ComfyUI stopped showing any activity before its server came up.",
         hint="Check that the path to the ComfyUI folder is correct. Try restarting the app or check the Settings -> Application Logs section in the app header.",
+    ),
+    "COMFY_PROCESS_EXITED": ErrorInfo(
+        level=ErrorLevel.STARTUP,
+        title="ComfyUI stopped during startup",
+        message="The ComfyUI process exited before its server came up.",
+        hint="The reason is usually in the ComfyUI console output: check the console window or Settings -> Application Logs in the app header.",
+    ),
+    "COMFY_START_STOPPED": ErrorInfo(
+        level=ErrorLevel.STARTUP,
+        title="Startup stopped",
+        message="You stopped ComfyUI while it was still loading.",
+        hint="Press Restart in the app header to start it again. If it is always slow to start, you can raise the limit in Settings -> Startup.",
     ),
     "PORT_ALREADY_IN_USE": ErrorInfo(
         level=ErrorLevel.STARTUP,
