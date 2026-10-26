@@ -18,6 +18,7 @@ build/
 dist/
 *.spec
 !packaging/windows/*.spec
+!packaging/macos/*.spec
 
 # --- Logs, caches and temp files ---
 *.log
@@ -60,6 +61,9 @@ MANIFEST
 # only cover the PyInstaller staging dirs at the repo root.
 packaging/linux/*.AppImage
 packaging/linux/ComfyLauncher.AppDir/
+
+# --- macOS dmg build artifact ---
+packaging/macos/*.dmg
 
 # --- PyTest and Coverage ---
 .cache/
