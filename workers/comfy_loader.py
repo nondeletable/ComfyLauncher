@@ -1,8 +1,9 @@
 from PyQt6.QtCore import QObject, pyqtSignal
 import time
 
-from launcher import ensure_comfyui_running, is_port_open
-from config import COMFYUI_PORT, MAX_WAIT_TIME
+from launcher import ensure_comfyui_running, get_comfy_process, is_port_open
+from config import COMFYUI_PORT, STARTUP_STALL_TIMEOUT
+from utils.startup_watch import ProcessActivity, StartupState, decide
 
 
 class ComfyLoaderWorker(QObject):
@@ -10,12 +11,12 @@ class ComfyLoaderWorker(QObject):
     started = pyqtSignal()
     ready = pyqtSignal()
     timeout = pyqtSignal()
+    exited = pyqtSignal()
     error = pyqtSignal(str)
 
-    def __init__(self, comfy_path: str, first_launch: bool = False):
+    def __init__(self, comfy_path: str):
         super().__init__()
         self.comfy_path = comfy_path
-        self.first_launch = first_launch
         self._running = True
 
     def stop(self):
@@ -26,7 +27,7 @@ class ComfyLoaderWorker(QObject):
         """
         Main logic:
         - ComfyUI start
-        - port wait
+        - wait for the port while the process shows signs of life
         - result signal
         """
         try:
@@ -35,16 +36,35 @@ class ComfyLoaderWorker(QObject):
             # 1️⃣ Launch ComfyUI (if it's already running, the function will figure it out automatically)
             ensure_comfyui_running(self.comfy_path)
 
-            # 2️⃣ We're waiting for the server to go up.
-            start_time = time.time()
+            # 2️⃣ We're waiting for the server to go up. No fixed deadline: only a
+            # dead process or one that stopped doing anything ends the wait.
+            proc, wrapped = get_comfy_process()
+            activity = ProcessActivity(proc.pid, wrapped) if proc else None
+            last_active = time.monotonic()
 
             while self._running:
-                if is_port_open(COMFYUI_PORT):
+                port_open = is_port_open(COMFYUI_PORT)
+
+                alive = None
+                if activity:
+                    alive, active = activity.sample()
+                    if active:
+                        last_active = time.monotonic()
+
+                state = decide(
+                    port_open,
+                    alive,
+                    time.monotonic() - last_active,
+                    STARTUP_STALL_TIMEOUT,
+                )
+
+                if state is StartupState.READY:
                     self.ready.emit()  # type: ignore
                     return
-
-                # We use timeout ONLY if this is not the first launch.
-                if not self.first_launch and time.time() - start_time > MAX_WAIT_TIME:
+                if state is StartupState.EXITED:
+                    self.exited.emit()  # type: ignore
+                    return
+                if state is StartupState.STALLED:
                     self.timeout.emit()  # type: ignore
                     return
 

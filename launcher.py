@@ -19,6 +19,14 @@ from config import (
 )
 
 _comfy_process: subprocess.Popen | None = None
+# True when _comfy_process is the Windows ``cmd.exe /k`` console wrapper rather
+# than ComfyUI's python itself (the wrapper outlives a crashed ComfyUI).
+_comfy_wrapped = False
+
+
+def get_comfy_process() -> tuple[subprocess.Popen | None, bool]:
+    """The ComfyUI process we launched (if any) and whether it is wrapped."""
+    return _comfy_process, _comfy_wrapped
 
 
 def comfy_exists(path):
@@ -151,7 +159,7 @@ def ensure_comfyui_running(comfy_path: str, port: int = 8188):
     3) If necessary, patches and updates user_config.json.
     4) Launches ComfyUI (via bat or directly).
     """
-    global _comfy_process
+    global _comfy_process, _comfy_wrapped
 
     # --- Browser Check and Patch -------------------------------------
     main_py = os.path.join(comfy_path, "main.py")
@@ -209,6 +217,7 @@ def ensure_comfyui_running(comfy_path: str, port: int = 8188):
     _comfy_process, piped = spawn_comfy(
         args, comfy_path, env, external_console=show_cmd
     )
+    _comfy_wrapped = not piped
 
     # --- Drain stdout whenever we own the pipe -----------------------
     # Piped means the internal console is in use (always on posix; the
@@ -393,6 +402,7 @@ def _get_active_build(cfg: dict) -> dict | None:
 __all__ = [
     "is_port_open",
     "ensure_comfyui_running",
+    "get_comfy_process",
     "stop_comfyui_hard",
     "comfy_exists",
     "kill_process_tree",

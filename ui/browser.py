@@ -519,6 +519,7 @@ class ComfyBrowser(QMainWindow):
         self.worker.ready.connect(self._on_comfy_ready)
         self.worker.error.connect(self._on_comfy_error)
         self.worker.timeout.connect(self._on_comfy_timeout)
+        self.worker.exited.connect(self._on_comfy_exited)
 
         self.thread.start()
 
@@ -602,6 +603,9 @@ class ComfyBrowser(QMainWindow):
 
     def _on_comfy_timeout(self):
         self._enter_error_state("COMFY_START_TIMEOUT")
+
+    def _on_comfy_exited(self):
+        self._enter_error_state("COMFY_PROCESS_EXITED")
 
     def cleanup_update_thread(self):
         self.update_thread.quit()

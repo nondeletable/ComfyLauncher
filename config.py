@@ -23,7 +23,9 @@ DOODLES_DIR = os.path.join(ICONS_DIR, "doodles")
 COMFYUI_PORT = 8188
 
 # ── Waiting parameters ────────────────────────
-MAX_WAIT_TIME = 90
+# Give up on a starting ComfyUI only after this many seconds without any CPU or
+# I/O activity (see utils/startup_watch). 0 = wait as long as it is alive.
+STARTUP_STALL_TIMEOUT = 120
 
 # ── User data directories ─────────────────────────────
 # Single per-user directory (see utils/platform_paths). On Windows this is the
