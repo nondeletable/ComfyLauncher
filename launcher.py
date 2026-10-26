@@ -12,6 +12,7 @@ from utils.console_buffer import ConsoleBuffer
 from utils.logger import log_event
 from utils.python_resolver import resolve_interpreter, build_env
 from utils.process_launch import spawn_comfy, external_console_supported
+from utils.startup_watch import is_alive
 from config import (
     COMFYUI_PORT,
     load_user_config,
@@ -185,8 +186,12 @@ def ensure_comfyui_running(comfy_path: str, port: int = 8188):
 
     # Is there a live process already?
     if _comfy_process and _comfy_process.poll() is None:
-        log_event("⚠️ ComfyUI process is already running, skip start.")
-        return
+        if is_alive(_comfy_process.pid, _comfy_wrapped):
+            log_event("⚠️ ComfyUI process is already running, skip start.")
+            return
+        # Only the cmd.exe wrapper of a crashed ComfyUI is left — close it.
+        log_event("ℹ️ Closing the console of a stopped ComfyUI.")
+        kill_process_tree(_comfy_process.pid)
 
     # Port busy - Comfy is already running
     if is_port_open(port):
