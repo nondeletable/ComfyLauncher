@@ -26,6 +26,10 @@ COMFYUI_PORT = 8188
 # Give up on a starting ComfyUI only after this many seconds without any CPU or
 # I/O activity (see utils/startup_watch). 0 = wait as long as it is alive.
 STARTUP_STALL_TIMEOUT = 120
+# What Settings -> Startup offers; user_config may hold any other value.
+STARTUP_STALL_CHOICES = (120, 300, 600, 0)
+# A shorter silence happens during normal loading (big imports, model scans).
+STARTUP_STALL_MIN = 30
 
 # ── User data directories ─────────────────────────────
 # Single per-user directory (see utils/platform_paths). On Windows this is the
@@ -446,6 +450,23 @@ def save_user_config(data: dict) -> bool:
         return False
     backup_user_config()
     return True
+
+
+def get_startup_stall_timeout(cfg: dict | None = None) -> int:
+    """Seconds of silence before a starting ComfyUI counts as stuck (0 = never).
+
+    The value is hand-editable in user_config.json, so anything that is not a
+    non-negative number falls back to the default, and a too short limit is
+    raised to STARTUP_STALL_MIN.
+    """
+    if cfg is None:
+        cfg = load_user_config()
+    val = cfg.get("startup_stall_timeout", STARTUP_STALL_TIMEOUT)
+    if isinstance(val, bool) or not isinstance(val, (int, float)) or val < 0:
+        return STARTUP_STALL_TIMEOUT
+    if val == 0:
+        return 0
+    return max(int(val), STARTUP_STALL_MIN)
 
 
 def get_comfyui_path() -> str:

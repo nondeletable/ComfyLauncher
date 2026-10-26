@@ -1,6 +1,19 @@
 from PyQt6.QtCore import pyqtSignal
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QCheckBox, QHBoxLayout
-from config import load_user_config, save_user_config
+from PyQt6.QtWidgets import (
+    QWidget,
+    QVBoxLayout,
+    QLabel,
+    QCheckBox,
+    QHBoxLayout,
+    QComboBox,
+    QSizePolicy,
+)
+from config import (
+    load_user_config,
+    save_user_config,
+    get_startup_stall_timeout,
+    STARTUP_STALL_CHOICES,
+)
 from ui.theme.manager import THEME, safe_repaint
 from ui.dialogs.messagebox import MessageBox as MB
 from utils.process_launch import external_console_supported
@@ -59,6 +72,28 @@ class StartAppSettingsPage(QWidget):
         row_splash.addWidget(self.cb_show_splash)
         layout.addLayout(row_splash)
 
+        # ─── Startup timeout Section ──────────────────
+        desc_stall = QLabel(
+            "ComfyUI may take several minutes to start on a slow machine or with many custom nodes.\n"
+            "The launcher waits while it is busy. If ComfyUI crashes, the error appears at once."
+        )
+        desc_stall.setWordWrap(True)
+        self._descs.append(desc_stall)
+        layout.addWidget(desc_stall)
+
+        self.lbl_stall = QLabel("Show an error if ComfyUI shows no activity for:")
+        self.cmb_stall = QComboBox()
+        self.cmb_stall.setFixedHeight(28)
+        self.cmb_stall.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToContents)
+        self.cmb_stall.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        row_stall = QHBoxLayout()
+        row_stall.setContentsMargins(14, 0, 0, 0)
+        row_stall.setSpacing(10)
+        row_stall.addWidget(self.lbl_stall)
+        row_stall.addWidget(self.cmb_stall)
+        row_stall.addStretch()
+        layout.addLayout(row_stall)
+
         layout.addStretch()
 
         self.reset()
@@ -66,6 +101,7 @@ class StartAppSettingsPage(QWidget):
 
         self.cb_show_cmd.stateChanged.connect(self._on_change)  # type: ignore
         self.cb_show_splash.stateChanged.connect(self._on_change)  # type: ignore
+        self.cmb_stall.currentIndexChanged.connect(self._on_change)  # type: ignore
         THEME.themeChanged.connect(self._apply_theme)
 
     # ───────────────────── HELPERS ────────────────────────
@@ -95,6 +131,27 @@ class StartAppSettingsPage(QWidget):
                 }}
             """
             )
+        self.lbl_stall.setStyleSheet(f"font-size: 14px; color: {c['text_primary']};")
+        self.cmb_stall.setStyleSheet(
+            f"""
+            QComboBox {{
+                background-color: {c['bg_input']};
+                color: {c['text_primary']};
+                border: 1px solid {c['border_color']};
+                border-radius: 6px;
+                padding: 0 8px;
+                font-size: 14px;
+            }}
+            QComboBox QAbstractItemView {{
+                background-color: {c['bg_input']};
+                color: {c['text_primary']};
+                border: 1px solid {c['border_color']};
+                selection-background-color: {c['accent']};
+                selection-color: {c['text_inverse']};
+                outline: none;
+            }}
+        """
+        )
 
     # ───────────────────── PUBLIC API ─────────────────────────
 
@@ -102,10 +159,8 @@ class StartAppSettingsPage(QWidget):
         return self._dirty
 
     def apply(self):
-        data = {
-            "show_cmd": self.cb_show_cmd.isChecked(),
-            "show_splash": self.cb_show_splash.isChecked(),
-        }
+        data = self._current_data()
+        saved = self._saved_data()
         cfg = load_user_config()
         cfg.update(data)
         if not save_user_config(cfg):
@@ -115,35 +170,77 @@ class StartAppSettingsPage(QWidget):
         self._saved.update(data)
         self._set_dirty(False)
 
-        MB.info(self.window(), "Saved", "To apply this setting, restart the launcher.")
+        # The timeout is read on every ComfyUI start; only the console and
+        # splash options need the launcher restarted.
+        if any(data[k] != saved[k] for k in ("show_cmd", "show_splash")):
+            MB.info(
+                self.window(), "Saved", "To apply this setting, restart the launcher."
+            )
+        else:
+            MB.info(
+                self.window(),
+                "Saved",
+                "The new timeout applies the next time ComfyUI starts.",
+            )
         return True
 
     def reset(self):
-        self.cb_show_cmd.blockSignals(True)
-        self.cb_show_splash.blockSignals(True)
+        widgets = (self.cb_show_cmd, self.cb_show_splash, self.cmb_stall)
+        for w in widgets:
+            w.blockSignals(True)
 
         self.cb_show_cmd.setChecked(self._saved.get("show_cmd", True))
         self.cb_show_splash.setChecked(self._saved.get("show_splash", True))
+        self._fill_stall_choices(get_startup_stall_timeout(self._saved))
 
-        self.cb_show_cmd.blockSignals(False)
-        self.cb_show_splash.blockSignals(False)
+        for w in widgets:
+            w.blockSignals(False)
 
         self._set_dirty(False)
 
     # ───────────────────── INTERNAL LOGIC ─────────────────────────
 
-    def _on_change(self):
-        cur = {
+    def _current_data(self) -> dict:
+        return {
             "show_cmd": self.cb_show_cmd.isChecked(),
             "show_splash": self.cb_show_splash.isChecked(),
+            "startup_stall_timeout": self.cmb_stall.currentData(),
         }
-        saved = {
+
+    def _saved_data(self) -> dict:
+        return {
             "show_cmd": self._saved.get("show_cmd", True),
             "show_splash": self._saved.get("show_splash", True),
+            "startup_stall_timeout": get_startup_stall_timeout(self._saved),
         }
-        self._set_dirty(cur != saved)
+
+    def _fill_stall_choices(self, selected: int):
+        """Offer the presets; a hand-edited value is kept as one more item."""
+        choices = list(STARTUP_STALL_CHOICES)
+        custom = selected not in choices
+        if custom:
+            choices.insert(-1, selected)  # keep "Never" last
+        self.cmb_stall.clear()
+        for sec in choices:
+            label = _stall_label(sec)
+            if custom and sec == selected:
+                label += " (custom)"
+            self.cmb_stall.addItem(label, sec)
+        self.cmb_stall.setCurrentIndex(choices.index(selected))
+
+    def _on_change(self):
+        self._set_dirty(self._current_data() != self._saved_data())
 
     def _set_dirty(self, val):
         if self._dirty != val:
             self._dirty = val
             self.dirtyChanged.emit(val)  # type: ignore
+
+
+def _stall_label(seconds: int) -> str:
+    if seconds == 0:
+        return "Never (wait while ComfyUI is running)"
+    if seconds % 60 == 0:
+        minutes = seconds // 60
+        return f"{minutes} minute" if minutes == 1 else f"{minutes} minutes"
+    return f"{seconds} seconds"

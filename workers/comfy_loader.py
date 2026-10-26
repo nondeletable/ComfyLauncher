@@ -2,7 +2,7 @@ from PyQt6.QtCore import QObject, pyqtSignal
 import time
 
 from launcher import ensure_comfyui_running, get_comfy_process, is_port_open
-from config import COMFYUI_PORT, STARTUP_STALL_TIMEOUT
+from config import COMFYUI_PORT, get_startup_stall_timeout
 from utils.startup_watch import ProcessActivity, StartupState, decide
 
 
@@ -38,6 +38,7 @@ class ComfyLoaderWorker(QObject):
 
             # 2️⃣ We're waiting for the server to go up. No fixed deadline: only a
             # dead process or one that stopped doing anything ends the wait.
+            stall_timeout = get_startup_stall_timeout()
             proc, wrapped = get_comfy_process()
             activity = ProcessActivity(proc.pid, wrapped) if proc else None
             last_active = time.monotonic()
@@ -55,7 +56,7 @@ class ComfyLoaderWorker(QObject):
                     port_open,
                     alive,
                     time.monotonic() - last_active,
-                    STARTUP_STALL_TIMEOUT,
+                    stall_timeout,
                 )
 
                 if state is StartupState.READY:
