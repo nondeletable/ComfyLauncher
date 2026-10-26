@@ -16,6 +16,7 @@ from config import (
 )
 from ui.theme.manager import THEME, safe_repaint
 from ui.dialogs.messagebox import MessageBox as MB
+from ui.widgets.combo_box import ThemedComboBox
 from utils.process_launch import external_console_supported
 
 
@@ -82,7 +83,7 @@ class StartAppSettingsPage(QWidget):
         layout.addWidget(desc_stall)
 
         self.lbl_stall = QLabel("Show an error if ComfyUI shows no activity for:")
-        self.cmb_stall = QComboBox()
+        self.cmb_stall = ThemedComboBox()
         self.cmb_stall.setFixedHeight(28)
         self.cmb_stall.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToContents)
         self.cmb_stall.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
@@ -132,26 +133,6 @@ class StartAppSettingsPage(QWidget):
             """
             )
         self.lbl_stall.setStyleSheet(f"font-size: 14px; color: {c['text_primary']};")
-        self.cmb_stall.setStyleSheet(
-            f"""
-            QComboBox {{
-                background-color: {c['bg_input']};
-                color: {c['text_primary']};
-                border: 1px solid {c['border_color']};
-                border-radius: 6px;
-                padding: 0 8px;
-                font-size: 14px;
-            }}
-            QComboBox QAbstractItemView {{
-                background-color: {c['bg_input']};
-                color: {c['text_primary']};
-                border: 1px solid {c['border_color']};
-                selection-background-color: {c['accent']};
-                selection-color: {c['text_inverse']};
-                outline: none;
-            }}
-        """
-        )
 
     # ───────────────────── PUBLIC API ─────────────────────────
 
