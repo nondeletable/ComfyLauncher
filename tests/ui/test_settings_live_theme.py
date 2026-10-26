@@ -25,6 +25,7 @@ from ui.settings.page_colortheme import ColorThemesPage  # noqa: E402
 from ui.settings.page_startapp import StartAppSettingsPage  # noqa: E402
 from ui.settings.settings_window import SettingsWindow  # noqa: E402
 from ui.theme.manager import THEME, THEMES  # noqa: E402
+from ui.widgets.combo_box import ThemedComboBox  # noqa: E402
 
 COLOR_THEMES = 3
 PAGE_CLASSES = (
@@ -170,7 +171,7 @@ def test_a_closed_settings_window_leaves_no_theme_slot_behind(qapp, monkeypatch)
     """Every part subscribes to themeChanged; once the window is gone, a theme
     switch must not reach any of them, and the connections must go too."""
     calls = []
-    for cls in (SettingsWindow, *PAGE_CLASSES):
+    for cls in (SettingsWindow, *PAGE_CLASSES, ThemedComboBox):
 
         def spy(self, *args, _real=cls._apply_theme):
             calls.append(sip.isdeleted(self))
@@ -188,6 +189,7 @@ def test_a_closed_settings_window_leaves_no_theme_slot_behind(qapp, monkeypatch)
             w.menu.setCurrentRow(row)
         parts = [weakref.ref(w)]
         parts += [weakref.ref(w.pages.widget(i)) for i in range(w.pages.count())]
+        parts += [weakref.ref(c) for c in w.findChildren(ThemedComboBox)]
         assert THEME.receivers(THEME.themeChanged) == baseline + len(parts)
 
         calls.clear()

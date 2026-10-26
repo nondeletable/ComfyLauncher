@@ -25,6 +25,7 @@ from ui.error_page import ErrorWidget, ErrorScreen
 from core.errors import ERRORS
 from version import __version__
 from ui.splash_video import LauncherSplashVideo
+from ui.dialogs.slow_start_notice import SlowStartNotice
 from ui.webview import create_webview
 from ui.window_resize import EdgeResizer, RESIZE_MARGIN
 from ui.window_placement import center_over, is_off_screen
@@ -44,6 +45,7 @@ from config import (
     load_user_config,
     save_user_config,
     SPLASH_PATH,
+    SLOW_START_NOTICE_AFTER,
 )
 
 
@@ -156,6 +158,14 @@ class ComfyBrowser(QMainWindow):
     # ──────────────────────────────────────────────
     def restart_comfy(self):
         """Restart ComfyUI: if running — soft stop, then restart; if stopped — start fresh."""
+        # From a startup error screen the browser was never built, so the
+        # in-place restart below would bring the server up behind the error
+        # screen. Run the whole start again instead (splash, wait, browser).
+        if self.ui_state == "ERROR_STARTUP":
+            log_event("🔄 Starting ComfyUI again from the error screen...")
+            self._start_comfyui()
+            return
+
         if getattr(self, "_restart_in_progress", False):
             log_event("⏳ Restart already in progress — ignored.")
             return
@@ -519,10 +529,60 @@ class ComfyBrowser(QMainWindow):
         self.worker.ready.connect(self._on_comfy_ready)
         self.worker.error.connect(self._on_comfy_error)
         self.worker.timeout.connect(self._on_comfy_timeout)
+        self.worker.exited.connect(self._on_comfy_exited)
 
         self.thread.start()
 
+        # ── SLOW START NOTICE ───────────────
+        self._start_time = time.monotonic()
+        self._slow_notice = None
+        if not hasattr(self, "_slow_notice_timer"):
+            self._slow_notice_timer = QTimer(self)
+            self._slow_notice_timer.setSingleShot(True)
+            self._slow_notice_timer.timeout.connect(self._show_slow_notice)
+        self._slow_notice_timer.start(SLOW_START_NOTICE_AFTER * 1000)
+
+    def _show_slow_notice(self):
+        if self.ui_state != "STARTING_COMFY":
+            return
+        log_event("🐢 ComfyUI is taking longer than usual — showing the notice.")
+        splash = getattr(self, "splash", None)
+        anchor = splash if splash is not None and splash.isVisible() else None
+        self._slow_notice = SlowStartNotice(self._start_time, anchor)
+        self._slow_notice.waitRequested.connect(self._on_slow_wait)
+        self._slow_notice.stopRequested.connect(self._on_slow_stop)
+        self._slow_notice.popup(anchor)
+
+    def _close_slow_notice(self):
+        if hasattr(self, "_slow_notice_timer"):
+            self._slow_notice_timer.stop()
+        notice = getattr(self, "_slow_notice", None)
+        if notice is not None:
+            self._slow_notice = None
+            notice.close()  # deletes itself (WA_DeleteOnClose)
+
+    def _on_slow_wait(self):
+        log_event("⏳ User chose to keep waiting for ComfyUI.")
+        self._slow_notice = None
+
+    def _on_slow_stop(self):
+        if self.ui_state != "STARTING_COMFY":
+            return
+        log_event("⏹ User stopped the slow ComfyUI start.")
+        self._slow_notice = None
+        self.worker.stop()
+        QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
+        try:
+            stop_comfyui_hard(self.comfyui_path)
+        finally:
+            QApplication.restoreOverrideCursor()
+        self._enter_error_state("COMFY_START_STOPPED")
+
     def _on_comfy_ready(self):
+        # A late signal after Stop or an error must not resurrect the start.
+        if self.ui_state != "STARTING_COMFY":
+            return
+        self._close_slow_notice()
         self.ui_state = "RUNNING"
 
         url = f"http://127.0.0.1:{COMFYUI_PORT}"
@@ -564,6 +624,7 @@ class ComfyBrowser(QMainWindow):
             self.splash = None
 
     def _enter_error_state(self, error_code: str):
+        self._close_slow_notice()
         self.ui_state = "ERROR_STARTUP"
 
         error = ERRORS[error_code]
@@ -598,10 +659,16 @@ class ComfyBrowser(QMainWindow):
             self.thread.wait()
 
     def _on_comfy_error(self, message: str):
-        self._enter_error_state("PROCESS_START_FAILED")
+        if self.ui_state == "STARTING_COMFY":
+            self._enter_error_state("PROCESS_START_FAILED")
 
     def _on_comfy_timeout(self):
-        self._enter_error_state("COMFY_START_TIMEOUT")
+        if self.ui_state == "STARTING_COMFY":
+            self._enter_error_state("COMFY_START_TIMEOUT")
+
+    def _on_comfy_exited(self):
+        if self.ui_state == "STARTING_COMFY":
+            self._enter_error_state("COMFY_PROCESS_EXITED")
 
     def cleanup_update_thread(self):
         self.update_thread.quit()

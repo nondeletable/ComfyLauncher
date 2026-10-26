@@ -35,6 +35,7 @@ from PyQt6.QtGui import QColor, QIcon
 
 from config import ICON_PATH
 from ui.theme.manager import THEME
+from ui.widgets.combo_box import ThemedComboBox
 from utils.flags_catalog import load_flags_catalog, iter_flags
 
 
@@ -427,10 +428,9 @@ class FlagsPickerDialog(QDialog):
 
         ftype = spec.get("type")
         if ftype == "choice":
-            combo = QComboBox()
+            combo = ThemedComboBox(font_size=12)
             combo.addItems([str(c) for c in (spec.get("choices") or [])])
             combo.setFixedHeight(26)
-            combo.setStyleSheet(self._editor_style())
             combo.setVisible(False)
             combo.currentTextChanged.connect(  # type: ignore
                 lambda text, f=flag: self._on_value_edited(f, text)
@@ -475,20 +475,12 @@ class FlagsPickerDialog(QDialog):
     def _editor_style(self) -> str:
         c = THEME.colors
         return f"""
-            QLineEdit, QComboBox {{
+            QLineEdit {{
                 background-color: {c['bg_input']};
                 color: {c['text_primary']};
                 border: 1px solid {c['border_color']};
                 border-radius: 6px;
                 padding-left: 8px;
-            }}
-            QComboBox QAbstractItemView {{
-                background-color: {c['bg_input']};
-                color: {c['text_primary']};
-                border: 1px solid {c['border_color']};
-                selection-background-color: {c['accent']};
-                selection-color: {c['text_inverse']};
-                outline: none;
             }}
         """
 
