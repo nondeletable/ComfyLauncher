@@ -26,3 +26,23 @@ def test_logs_page_shows_a_large_log_in_a_plain_text_view(qapp, tmp_path, monkey
         assert page.text_edit.textCursor().atEnd()
     finally:
         page.close()
+
+
+def test_note_follows_the_language_but_the_log_does_not(qapp, tmp_path, monkeypatch):
+    from utils.i18n import I18N
+
+    log = tmp_path / "launcher.log"
+    monkeypatch.setattr(page_logs, "LOG_FILE", str(log))
+    monkeypatch.setattr(page_logs, "log_event", lambda *a: None)
+    page = LogsSettingsPage()
+    try:
+        assert page.text_edit.toPlainText() == "No logs yet."
+        I18N.set_language("de")
+        assert page.text_edit.toPlainText() == "Noch keine Protokolle."
+        log.write_text("[2026-10-27] line", encoding="utf-8")
+        page.load_logs()
+        I18N.set_language("en")
+        assert page.text_edit.toPlainText() == "[2026-10-27] line"
+    finally:
+        I18N.set_language("en")
+        page.close()

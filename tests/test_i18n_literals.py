@@ -38,6 +38,8 @@ TRANSLATED = [
     "ui/error_page.py",
     "ui/settings/page_startapp.py",
     "ui/settings/page_behavior.py",
+    "ui/settings/page_build.py",
+    "ui/settings/page_logs.py",
 ]
 
 # Shown as-is in every language.

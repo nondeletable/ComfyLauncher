@@ -15,6 +15,7 @@ from utils.logger import LOG_FILE, log_event
 from ui.header import colorize_svg
 from ui.theme.manager import THEME, safe_repaint
 from ui.dialogs.messagebox import MessageBox as MB
+from utils.i18n import I18N, safe_retranslate, t
 
 
 class LogsSettingsPage(QWidget):
@@ -29,9 +30,9 @@ class LogsSettingsPage(QWidget):
         layout.setSpacing(16)
 
         # ─── Title ────────────────────────────────────
-        title = QLabel("Launcher Logs")
-        title.setStyleSheet("font-size: 20px; font-weight: 600;")
-        layout.addWidget(title)
+        self.title = QLabel()
+        self.title.setStyleSheet("font-size: 20px; font-weight: 600;")
+        layout.addWidget(self.title)
 
         # ─── Log text field ─────────────────────────
         self.text_edit = QPlainTextEdit()
@@ -102,9 +103,6 @@ class LogsSettingsPage(QWidget):
             )
             btn_layout.addWidget(btn)
 
-        self.btn_refresh.setToolTip("Refresh log")
-        self.btn_clear.setToolTip("Clear log")
-
         layout.addLayout(btn_layout)
 
         # ─── Signals ──────────────────────────────────────
@@ -112,10 +110,27 @@ class LogsSettingsPage(QWidget):
         self.btn_clear.clicked.connect(self.clear_logs)  # type: ignore
 
         # ─── Initial loading ───────────────────────────
+        # Key of the note shown instead of the log, or None while the log is.
+        self._note = None
         self.load_logs()
+        self._retranslate()
+        I18N.languageChanged.connect(self._retranslate)
 
         # ─── Reaction to a change of topic ───────────────
         THEME.themeChanged.connect(self._apply_theme)
+
+    @safe_retranslate
+    def _retranslate(self, *args):
+        self.title.setText(t("settings.menu.logs"))
+        self.btn_refresh.setToolTip(t("logs.refresh"))
+        self.btn_clear.setToolTip(t("logs.clear"))
+        if self._note:
+            self._show_note(self._note)
+
+    def _show_note(self, key):
+        """Show a note in place of the log (no file, empty, just cleared)."""
+        self._note = key
+        self.text_edit.setPlainText(t(key))
 
     # ─────────────────────────────────────────────────────
     def _build_textedit_style(self) -> str:
@@ -176,27 +191,29 @@ class LogsSettingsPage(QWidget):
     def load_logs(self):
         """Loads the log into a text field."""
         if not os.path.exists(LOG_FILE):
-            self.text_edit.setPlainText("No logs yet.")
+            self._show_note("logs.none")
             return
 
         try:
             with open(LOG_FILE, "r", encoding="utf-8") as f:
                 content = f.read()
-            self.text_edit.setPlainText(content or "Log file is empty.")
+            if content:
+                self._note = None
+                self.text_edit.setPlainText(content)
+            else:
+                self._show_note("logs.empty")
             self.text_edit.moveCursor(QTextCursor.MoveOperation.End)
             log_event("📖 Logs page refreshed.")
         except Exception as e:
-            MB.error(self.window(), "Error", f"Failed to read log file:\n{e}")
+            MB.error(self.window(), t("common.error"), t("logs.read_failed", error=e))
 
     def clear_logs(self):
         """Clears the log with confirmation."""
-        if not MB.ask_yes_no(
-            self.window(), "Clear logs", "Are you sure you want to clear the log file?"
-        ):
+        if not MB.ask_yes_no(self.window(), t("logs.clear"), t("logs.clear.ask")):
             return
         try:
             open(LOG_FILE, "w", encoding="utf-8").close()
             log_event("🧹 Log file cleared by user.")
-            self.text_edit.setPlainText("Log cleared.")
+            self._show_note("logs.cleared")
         except Exception as e:
-            MB.error(self.window(), "Error", f"Failed to clear logs:\n{e}")
+            MB.error(self.window(), t("common.error"), t("logs.clear_failed", error=e))
