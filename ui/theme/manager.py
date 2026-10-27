@@ -1,4 +1,5 @@
 import functools
+import gc
 import json
 import os
 import traceback
@@ -12,6 +13,23 @@ from config import USER_CONFIG_PATH as CONFIG_PATH, load_user_config
 from utils.logger import log_event
 
 _ = REGISTRY
+
+
+def _restyle(app: QApplication, qss: str) -> None:
+    """Set the application stylesheet with Python's garbage collector paused.
+
+    Qt restyles every live widget in one pass, and some of them call into
+    Python on the way (event filters). A collection triggered there can free
+    a widget tree that was waiting as cyclic garbage - while Qt still holds
+    pointers to it - and the process segfaults. Seen in CI on Linux.
+    """
+    was_enabled = gc.isenabled()
+    gc.disable()
+    try:
+        app.setStyleSheet(qss)
+    finally:
+        if was_enabled:
+            gc.enable()
 
 
 def safe_repaint(apply_theme):
@@ -143,7 +161,7 @@ class ThemeManager(QObject):
             padding: 3px 6px;
         }}
         """
-        app.setStyleSheet(qss)
+        _restyle(app, qss)
         self.themeChanged.emit(t)  # type: ignore
 
     # ─── Switching themes ──────────────────────────────
