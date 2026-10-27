@@ -1,1 +1,21 @@
-{}
+{
+  "common.apply": "Übernehmen",
+  "common.cancel": "Abbrechen",
+  "common.close": "Schließen",
+  "common.discard": "Verwerfen",
+
+  "settings.window_title": "Einstellungen",
+  "settings.menu.builds": "Builds",
+  "settings.menu.startup": "Start",
+  "settings.menu.exit": "Beim Beenden",
+  "settings.menu.themes": "Farbschemata",
+  "settings.menu.language": "Sprache",
+  "settings.menu.logs": "Launcher-Protokolle",
+  "settings.menu.about": "Über",
+  "settings.unsaved.title": "Ungespeicherte Änderungen",
+  "settings.unsaved.text": "Ungespeicherte Änderungen auf: {pages}.\n\nVor dem Schließen der Einstellungen übernehmen?",
+
+  "settings.language.description": "Wähle die Sprache der Launcher-Oberfläche. ComfyUI hat in seiner eigenen Oberfläche eine separate Spracheinstellung.",
+  "settings.language.label": "Sprache der Oberfläche:",
+  "settings.language.system": "Systemsprache ({language})"
+}

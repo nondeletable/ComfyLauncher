@@ -1,1 +1,21 @@
-{}
+{
+  "common.apply": "Применить",
+  "common.cancel": "Отмена",
+  "common.close": "Закрыть",
+  "common.discard": "Не применять",
+
+  "settings.window_title": "Настройки",
+  "settings.menu.builds": "Сборки",
+  "settings.menu.startup": "Запуск",
+  "settings.menu.exit": "Выход",
+  "settings.menu.themes": "Цветовые темы",
+  "settings.menu.language": "Язык",
+  "settings.menu.logs": "Логи лаунчера",
+  "settings.menu.about": "О программе",
+  "settings.unsaved.title": "Несохранённые изменения",
+  "settings.unsaved.text": "Есть несохранённые изменения: {pages}.\n\nПрименить их перед закрытием настроек?",
+
+  "settings.language.description": "Выберите язык интерфейса лаунчера. У ComfyUI своя настройка языка в его собственном интерфейсе.",
+  "settings.language.label": "Язык интерфейса:",
+  "settings.language.system": "Как в системе ({language})"
+}

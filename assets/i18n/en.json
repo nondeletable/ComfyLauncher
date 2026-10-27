@@ -1,1 +1,21 @@
-{}
+{
+  "common.apply": "Apply",
+  "common.cancel": "Cancel",
+  "common.close": "Close",
+  "common.discard": "Discard",
+
+  "settings.window_title": "Settings",
+  "settings.menu.builds": "Builds",
+  "settings.menu.startup": "Startup",
+  "settings.menu.exit": "Exit Options",
+  "settings.menu.themes": "Color Themes",
+  "settings.menu.language": "Language",
+  "settings.menu.logs": "Launcher Logs",
+  "settings.menu.about": "About",
+  "settings.unsaved.title": "Unsaved changes",
+  "settings.unsaved.text": "Unsaved changes on: {pages}.\n\nApply them before closing Settings?",
+
+  "settings.language.description": "Choose the language of the launcher interface. ComfyUI has its own language setting inside its interface.",
+  "settings.language.label": "Interface language:",
+  "settings.language.system": "System ({language})"
+}

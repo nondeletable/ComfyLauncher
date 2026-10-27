@@ -1,1 +1,21 @@
-{}
+{
+  "common.apply": "应用",
+  "common.cancel": "取消",
+  "common.close": "关闭",
+  "common.discard": "放弃",
+
+  "settings.window_title": "设置",
+  "settings.menu.builds": "整合包",
+  "settings.menu.startup": "启动",
+  "settings.menu.exit": "退出选项",
+  "settings.menu.themes": "配色主题",
+  "settings.menu.language": "语言",
+  "settings.menu.logs": "启动器日志",
+  "settings.menu.about": "关于",
+  "settings.unsaved.title": "未保存的更改",
+  "settings.unsaved.text": "以下页面有未保存的更改：{pages}。\n\n关闭设置前是否应用这些更改？",
+
+  "settings.language.description": "选择启动器界面的语言。ComfyUI 在自己的界面中有单独的语言设置。",
+  "settings.language.label": "界面语言：",
+  "settings.language.system": "跟随系统（{language}）"
+}

@@ -22,6 +22,7 @@ import ui.settings.page_logs as page_logs  # noqa: E402
 from ui.settings.page_about import AboutSettingsPage  # noqa: E402
 from ui.settings.page_behavior import BehaviorSettingsPage  # noqa: E402
 from ui.settings.page_colortheme import ColorThemesPage  # noqa: E402
+from ui.settings.page_language import LanguageSettingsPage  # noqa: E402
 from ui.settings.page_startapp import StartAppSettingsPage  # noqa: E402
 from ui.settings.settings_window import SettingsWindow  # noqa: E402
 from ui.theme.manager import THEME, THEMES  # noqa: E402
@@ -33,6 +34,7 @@ PAGE_CLASSES = (
     StartAppSettingsPage,
     BehaviorSettingsPage,
     ColorThemesPage,
+    LanguageSettingsPage,
     page_logs.LogsSettingsPage,
     AboutSettingsPage,
 )

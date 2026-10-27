@@ -1,1 +1,21 @@
-{}
+{
+  "common.apply": "Aplicar",
+  "common.cancel": "Cancelar",
+  "common.close": "Cerrar",
+  "common.discard": "Descartar",
+
+  "settings.window_title": "Configuración",
+  "settings.menu.builds": "Instalaciones",
+  "settings.menu.startup": "Inicio",
+  "settings.menu.exit": "Al salir",
+  "settings.menu.themes": "Temas de color",
+  "settings.menu.language": "Idioma",
+  "settings.menu.logs": "Registros del launcher",
+  "settings.menu.about": "Acerca de",
+  "settings.unsaved.title": "Cambios sin guardar",
+  "settings.unsaved.text": "Hay cambios sin guardar en: {pages}.\n\n¿Aplicarlos antes de cerrar la configuración?",
+
+  "settings.language.description": "Elige el idioma de la interfaz del launcher. ComfyUI tiene su propio ajuste de idioma dentro de su interfaz.",
+  "settings.language.label": "Idioma de la interfaz:",
+  "settings.language.system": "Idioma del sistema ({language})"
+}

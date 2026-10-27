@@ -15,13 +15,26 @@ from PyQt6.QtWidgets import QGraphicsDropShadowEffect
 from ui.settings.page_build import BuildSettingsPage
 from ui.settings.page_behavior import BehaviorSettingsPage
 from ui.settings.page_colortheme import ColorThemesPage
+from ui.settings.page_language import LanguageSettingsPage
 from ui.settings.page_about import AboutSettingsPage
 from ui.settings.page_logs import LogsSettingsPage
 from ui.settings.page_startapp import StartAppSettingsPage
 from ui.theme.manager import THEME, safe_repaint
 from ui.dialogs.messagebox import MessageBox as MB
 from config import ICON_PATH
+from utils.i18n import I18N, safe_retranslate, t
 from utils.logger import log_event
+
+# Menu entries, one per page in SettingsWindow._page_classes order.
+_MENU_KEYS = (
+    "settings.menu.builds",
+    "settings.menu.startup",
+    "settings.menu.exit",
+    "settings.menu.themes",
+    "settings.menu.language",
+    "settings.menu.logs",
+    "settings.menu.about",
+)
 
 
 # ──────────────────────────────────────────────
@@ -32,7 +45,6 @@ class SettingsWindow(QWidget):
         super().__init__(parent)
 
         # ─── Basic window parameters ─────────────────────────
-        self.setWindowTitle("Settings")
         self.setWindowIcon(QIcon(ICON_PATH))
         self.setFixedSize(1230, 730)
         self.setWindowFlag(Qt.WindowType.FramelessWindowHint)
@@ -59,16 +71,7 @@ class SettingsWindow(QWidget):
 
         # ─── Left menu panel ────────────────────────────────
         self.menu = QListWidget()
-        self.menu.addItems(
-            [
-                "Builds",
-                "Startup",
-                "Exit Options",
-                "Color Themes",
-                "Launcher Logs",
-                "About",
-            ]
-        )
+        self.menu.addItems(["" for _ in _MENU_KEYS])
         self.menu.setFixedWidth(200)
 
         # ─── Right content panel ───────────────────────────
@@ -81,8 +84,8 @@ class SettingsWindow(QWidget):
         footer_layout.setSpacing(12)
         footer_layout.setAlignment(Qt.AlignmentFlag.AlignRight)
 
-        self.btn_apply = QPushButton("Apply")
-        self.btn_close = QPushButton("Close")
+        self.btn_apply = QPushButton()
+        self.btn_close = QPushButton()
 
         for btn in (self.btn_apply, self.btn_close):
             btn.setFixedSize(110, 34)
@@ -117,6 +120,7 @@ class SettingsWindow(QWidget):
             StartAppSettingsPage,
             BehaviorSettingsPage,
             ColorThemesPage,
+            LanguageSettingsPage,
             LogsSettingsPage,
             AboutSettingsPage,
         ]
@@ -135,7 +139,17 @@ class SettingsWindow(QWidget):
         # ─── Formatting ──────────────────
         THEME.themeChanged.connect(self._apply_theme)
         self._apply_theme()
+        self._retranslate()
+        I18N.languageChanged.connect(self._retranslate)
         print("✅ Settings window initialized successfully")
+
+    @safe_retranslate
+    def _retranslate(self, *args):
+        self.setWindowTitle(t("settings.window_title"))
+        for row, key in enumerate(_MENU_KEYS):
+            self.menu.item(row).setText(t(key))
+        self.btn_apply.setText(t("common.apply"))
+        self.btn_close.setText(t("common.close"))
 
     # ─── Moving a window ────────────────────────────────────
     def mousePressEvent(self, event):
@@ -202,10 +216,14 @@ class SettingsWindow(QWidget):
             names = ", ".join(self.menu.item(i).text() for i in dirty)
             answer = MB.choose(
                 self.window(),
-                "Unsaved changes",
-                f"Unsaved changes on: {names}.\n\nApply them before closing Settings?",
+                t("settings.unsaved.title"),
+                t("settings.unsaved.text", pages=names),
                 "ask_yes_no",
-                [("Apply", "apply"), ("Discard", "discard"), ("Cancel", "cancel")],
+                [
+                    (t("common.apply"), "apply"),
+                    (t("common.discard"), "discard"),
+                    (t("common.cancel"), "cancel"),
+                ],
             )
             if answer == "apply":
                 # Every page is applied even if one fails; a failed page has
