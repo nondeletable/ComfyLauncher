@@ -30,6 +30,7 @@ from ui.webview import create_webview
 from ui.window_resize import EdgeResizer, RESIZE_MARGIN
 from ui.window_placement import center_over, is_off_screen
 from ui.theme.manager import THEME
+from utils.i18n import I18N, safe_retranslate, t
 from utils.logger import log_event
 from utils.platform_paths import open_in_file_manager
 from utils.update_checker import UpdateService
@@ -55,11 +56,17 @@ class StartingWidget(QWidget):
         layout = QVBoxLayout(self)
         layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        label = QLabel("🚀 Starting ComfyUI…")
-        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        label.setStyleSheet("font-size: 18px; color: #cccccc;")
+        self.label = QLabel()
+        self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.label.setStyleSheet("font-size: 18px; color: #cccccc;")
 
-        layout.addWidget(label)
+        layout.addWidget(self.label)
+        self._retranslate()
+        I18N.languageChanged.connect(self._retranslate)
+
+    @safe_retranslate
+    def _retranslate(self, *args):
+        self.label.setText(f"🚀 {t('main.starting')}")
 
 
 class ComfyBrowser(QMainWindow):
@@ -229,8 +236,8 @@ class ComfyBrowser(QMainWindow):
     def stop_comfy(self):
         reply = MB.ask_yes_no(
             self.window(),
-            "Stop confirmation",
-            "Completely stop ComfyUI and terminate the process?",
+            t("main.stop.title"),
+            t("main.stop.text"),
         )
         if not reply:
             return
@@ -376,8 +383,8 @@ class ComfyBrowser(QMainWindow):
         if ask:
             choice = MB.ask_exit(
                 self,
-                "Exit",
-                "Shut down ComfyUI server?",
+                t("main.exit.title"),
+                t("main.exit.text"),
             )
 
             # YES → stop server + exit
@@ -686,15 +693,11 @@ class ComfyBrowser(QMainWindow):
         self.update_thread.start()
 
     def on_update_available(self, latest_version, release_url):
-        title = "Update available"
-
-        message = (
-            f"A new version ({latest_version}) is available.\n\n"
-            f"Current version: {__version__}\n\n"
-            "Would you like to update now?"
+        user_wants_update = MB.update_available(
+            self.window(),
+            t("update.title"),
+            t("update.text", latest=latest_version, current=__version__),
         )
-
-        user_wants_update = MB.update_available(self.window(), title, message)
 
         if user_wants_update:
             webbrowser.open(release_url)

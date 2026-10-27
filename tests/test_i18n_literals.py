@@ -28,6 +28,8 @@ TRANSLATED = [
     "ui/dialogs/build_manager_dialog.py",
     "ui/dialogs/flags_picker_dialog.py",
     "ui/dialogs/webview2_setup.py",
+    "ui/header.py",
+    "ui/browser.py",
 ]
 
 # Shown as-is in every language.
@@ -52,7 +54,15 @@ _TEXT_METHODS = {
     "setItemText",
 }
 _TEXT_WIDGETS = {"QLabel", "QPushButton", "QCheckBox", "QRadioButton", "QGroupBox"}
-_MESSAGE_BOX = {"info", "warning", "error", "ask_yes_no", "choose"}
+_MESSAGE_BOX = {
+    "info",
+    "warning",
+    "error",
+    "ask_yes_no",
+    "choose",
+    "ask_exit",
+    "update_available",
+}
 _MESSAGE_BOX_CLASS = {"MB", "MessageBox"}  # MB(title, text, kind)
 _FILE_DIALOGS = {"getExistingDirectory", "getOpenFileName", "getSaveFileName"}
 
