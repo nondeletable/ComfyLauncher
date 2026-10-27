@@ -179,6 +179,21 @@ def test_summary_carries_the_diagnosis_fields(fake_env):
     assert summary["Launcher version"]
 
 
+def test_summary_names_the_interface_language(fake_env, monkeypatch):
+    from utils.i18n import I18N
+
+    try:
+        I18N.set_language("ru")
+        summary = dict(br.collect_report("manual", scrubber=fake_env).summary)
+        assert summary["Interface language"] == "ru"
+        monkeypatch.setattr("utils.i18n.detect_system_language", lambda: "de")
+        I18N.set_language("auto")
+        summary = dict(br.collect_report("manual", scrubber=fake_env).summary)
+        assert summary["Interface language"] == "de (auto)"
+    finally:
+        I18N.set_language("en")
+
+
 def test_log_is_cut_to_its_tail(fake_env):
     report = br.collect_report("manual", scrubber=fake_env)
     log = report.sections[br.SECTION_LOG]

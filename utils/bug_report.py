@@ -295,6 +295,13 @@ def _tail(path: str, lines: int) -> str:
     return "".join(content[-lines:])
 
 
+def _language_line(i18n) -> str:
+    """ "ru", or "ru (auto)" when it follows the system language."""
+    if i18n.preference == i18n.language:
+        return i18n.language
+    return f"{i18n.language} ({i18n.preference})"
+
+
 def collect_report(
     source: str,
     error_text: str = "",
@@ -304,6 +311,7 @@ def collect_report(
     """Gather everything for a report. Never raises on missing data."""
     from config import USER_CONFIG_PATH
     from utils.console_buffer import ConsoleBuffer
+    from utils.i18n import I18N
     from utils.logger import LOG_FILE
 
     scrub = scrubber or Scrubber.for_current_user()
@@ -327,6 +335,7 @@ def collect_report(
         ("Launch flags", " ".join(str(f) for f in flags) or "(none)"),
         ("Console", "external window" if show_cmd else "internal"),
         ("Theme", str(cfg_dict.get("theme") or "dark")),
+        ("Interface language", _language_line(I18N)),
         ("Where", SOURCES.get(source, source)),
         ("Error", error_text or "(none)"),
     ]
