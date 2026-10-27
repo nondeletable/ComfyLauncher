@@ -21,7 +21,7 @@
   "startup.splash.description": "Den Startbildschirm anzeigen, während ComfyUI lädt.\nWenn deaktiviert, lässt sich der Fortschritt im Task-Manager oder im CMD-Fenster verfolgen.",
   "startup.splash.label": "Startbildschirm beim Start anzeigen",
   "startup.stall.description": "Auf einem langsamen Rechner oder mit vielen Custom Nodes kann der Start von ComfyUI mehrere Minuten dauern.\nDer Launcher wartet, solange ComfyUI arbeitet. Stürzt ComfyUI ab, erscheint der Fehler sofort.",
-  "startup.stall.label": "Fehler anzeigen, wenn ComfyUI keine Aktivität zeigt seit:",
+  "startup.stall.label": "Fehler anzeigen, wenn ComfyUI so lange keine Aktivität zeigt:",
   "startup.stall.never": "Nie (warten, solange ComfyUI läuft)",
   "startup.stall.minutes": "{n} Min.",
   "startup.stall.seconds": "{n} Sek.",

@@ -232,6 +232,31 @@ def _error_screens(save):
         _shoot(save, f"error_{code.lower()}", screen)
 
 
+def _settings_details(save):
+    """What the page screenshots miss: the timeout list, update button states."""
+    from ui.settings.page_about import AboutSettingsPage
+    from ui.settings.page_startapp import StartAppSettingsPage
+
+    page = StartAppSettingsPage()
+    page.resize(760, 520)
+    page.show()
+    QApplication.processEvents()
+    page.cmb_stall.showPopup()
+    QApplication.processEvents()
+    save("settings_stall_list", page.cmb_stall.view().window())
+    page.cmb_stall.hidePopup()
+    page.close()
+
+    about = AboutSettingsPage()
+    about.resize(1000, 640)
+    about.show()
+    for state, enabled in (("checking", False), ("found", True), ("failed", True)):
+        about._set_update_state(state, enabled)
+        QApplication.processEvents()
+        save(f"settings_update_{state}", about.update_btn.parentWidget())
+    about.close()
+
+
 # Every i18n block registers the screens it translated.
 SCREENS = [
     _settings_window,
@@ -241,6 +266,7 @@ SCREENS = [
     _message_boxes,
     _main_window,
     _error_screens,
+    _settings_details,
 ]
 
 
