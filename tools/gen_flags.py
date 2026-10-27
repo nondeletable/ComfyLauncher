@@ -363,6 +363,33 @@ def main():
     )
     if missing:
         print(f"[WARN] curated flags not found in this cli_args.py: {missing}")
+    _report_translations(curated)
+
+
+def _report_translations(curated: dict) -> None:
+    """Name the descriptions the dictionaries lack or hold in an older wording.
+
+    The picker shows such a flag with its English text from flags.json, and
+    tests/test_i18n.py fails until assets/i18n/*.json catch up.
+    """
+    sys.path.insert(0, REPO_ROOT)
+    from ui.dialogs.flags_picker_dialog import flag_description_key
+
+    with open(
+        os.path.join(REPO_ROOT, "assets", "i18n", "en.json"), encoding="utf-8"
+    ) as f:
+        en = json.load(f)
+    stale = [
+        spec["flag"]
+        for group in curated["groups"]
+        for spec in group["flags"]
+        if en.get(flag_description_key(spec["flag"])) != spec["description"]
+    ]
+    if stale:
+        print(
+            "[i18n] add or update these descriptions in assets/i18n/*.json "
+            f"(flags.desc.*): {stale}"
+        )
 
 
 if __name__ == "__main__":
