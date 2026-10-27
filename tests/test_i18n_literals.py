@@ -42,6 +42,7 @@ TRANSLATED = [
     "ui/settings/page_logs.py",
     "ui/settings/page_colortheme.py",
     "ui/settings/page_about.py",
+    "ui/dialogs/bug_report_dialog.py",
 ]
 
 # Shown as-is in every language.

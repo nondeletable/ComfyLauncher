@@ -123,3 +123,16 @@ def test_failed_save_reports_and_stays_open(qapp, calls, monkeypatch):
     dlg._send("discord")
     assert calls["error"] and calls["open"] == []
     assert dlg.saved_path is None
+
+
+def test_window_follows_the_language_but_the_report_stays_english(qapp):
+    from utils.i18n import I18N
+
+    english = dlg_mod.BugReportDialog(report=make_report()).report_text()
+    try:
+        I18N.set_language("de")
+        dlg = dlg_mod.BugReportDialog(report=make_report())
+        assert dlg.save_btn.text() == "Nur Bericht speichern"
+        assert dlg.report_text() == english
+    finally:
+        I18N.set_language("en")
