@@ -20,6 +20,7 @@ from PyQt6.QtWidgets import QLabel, QPushButton, QVBoxLayout, QWidget
 
 from ui.theme.manager import THEME
 from ui.webview.base import WebViewBase
+from utils.i18n import I18N, safe_retranslate, t
 from utils.logger import log_event
 
 
@@ -32,6 +33,8 @@ class PlaceholderWebView(WebViewBase):
         self._build_ui()
         self._apply_theme()
         THEME.themeChanged.connect(self._apply_theme)
+        self._retranslate()
+        I18N.languageChanged.connect(self._retranslate)
         log_event(
             f"ℹ️ No embedded engine on this platform — placeholder shown for {url}"
         )
@@ -49,13 +52,10 @@ class PlaceholderWebView(WebViewBase):
         root.setSpacing(14)
         root.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        self._title = QLabel("No embedded engine on this platform")
+        self._title = QLabel()
         self._title.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        self._message = QLabel(
-            "ComfyUI is running and reachable, but no web engine is wired up "
-            "for this platform yet. Open the interface in your browser."
-        )
+        self._message = QLabel()
         self._message.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._message.setWordWrap(True)
 
@@ -65,7 +65,7 @@ class PlaceholderWebView(WebViewBase):
             Qt.TextInteractionFlag.TextSelectableByMouse
         )
 
-        self._open_button = QPushButton("Open in browser")
+        self._open_button = QPushButton()
         self._open_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self._open_button.clicked.connect(self._open_in_system_browser)
 
@@ -73,6 +73,12 @@ class PlaceholderWebView(WebViewBase):
         root.addWidget(self._message)
         root.addWidget(self._address)
         root.addWidget(self._open_button, 0, Qt.AlignmentFlag.AlignCenter)
+
+    @safe_retranslate
+    def _retranslate(self, *_args) -> None:
+        self._title.setText(t("placeholder.title"))
+        self._message.setText(t("placeholder.text"))
+        self._open_button.setText(t("placeholder.open"))
 
     def _apply_theme(self, *_args) -> None:
         """(Re)apply theme colors — also on a live theme switch."""

@@ -16,6 +16,7 @@
   "settings.language.description": "Elige el idioma de la interfaz del launcher. ComfyUI tiene su propio ajuste de idioma dentro de su interfaz.",
   "settings.language.label": "Idioma de la interfaz:",
   "settings.language.system": "Idioma del sistema ({language})",
+  "settings.startup.show_cmd": "Mostrar la ventana CMD al iniciar",
   "common.ok": "Aceptar",
   "common.yes": "Sí",
   "common.no": "No",
@@ -92,5 +93,15 @@
   "main.stop.title": "¿Detener ComfyUI?",
   "main.stop.text": "¿Detener ComfyUI por completo y terminar el proceso?",
   "main.exit.title": "Salir",
-  "main.exit.text": "¿Apagar el servidor de ComfyUI?"
+  "main.exit.text": "¿Apagar el servidor de ComfyUI?",
+  "slow_start.title": "ComfyUI está tardando más de lo normal",
+  "slow_start.text": "Todavía se está cargando; es normal con muchos nodos personalizados o un disco lento. Puedes seguir esperando o detener el inicio.",
+  "slow_start.stop": "Detener",
+  "slow_start.wait": "Esperar",
+  "console.title": "Consola de ComfyUI",
+  "console.hint": "Solo lectura. Para escribir en la consola, activa «{setting}» en la Configuración.",
+  "placeholder.title": "No hay motor integrado en esta plataforma",
+  "placeholder.text": "ComfyUI está en marcha y accesible, pero todavía no hay un motor web integrado para esta plataforma. Abre la interfaz en tu navegador.",
+  "placeholder.open": "Abrir en el navegador",
+  "webview2.saved": "Guardado: {name}"
 }

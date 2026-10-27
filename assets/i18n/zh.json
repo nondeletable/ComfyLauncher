@@ -16,6 +16,7 @@
   "settings.language.description": "选择启动器界面的语言。ComfyUI 在自己的界面中有单独的语言设置。",
   "settings.language.label": "界面语言：",
   "settings.language.system": "跟随系统（{language}）",
+  "settings.startup.show_cmd": "启动时显示 CMD 窗口",
   "common.ok": "确定",
   "common.yes": "是",
   "common.no": "否",
@@ -92,5 +93,15 @@
   "main.stop.title": "停止 ComfyUI？",
   "main.stop.text": "完全停止 ComfyUI 并结束进程吗？",
   "main.exit.title": "退出",
-  "main.exit.text": "关闭 ComfyUI 服务器吗？"
+  "main.exit.text": "关闭 ComfyUI 服务器吗？",
+  "slow_start.title": "ComfyUI 启动时间比平时长",
+  "slow_start.text": "仍在加载中——自定义节点较多或磁盘较慢时这很正常。你可以继续等待，或停止启动。",
+  "slow_start.stop": "停止",
+  "slow_start.wait": "等待",
+  "console.title": "ComfyUI 控制台",
+  "console.hint": "仅供查看。如需在控制台中输入，请在设置中启用“{setting}”。",
+  "placeholder.title": "此平台没有内嵌引擎",
+  "placeholder.text": "ComfyUI 正在运行且可以访问，但此平台尚未接入网页引擎。请在浏览器中打开界面。",
+  "placeholder.open": "在浏览器中打开",
+  "webview2.saved": "已保存：{name}"
 }

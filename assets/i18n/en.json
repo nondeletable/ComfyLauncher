@@ -16,6 +16,7 @@
   "settings.language.description": "Choose the language of the launcher interface. ComfyUI has its own language setting inside its interface.",
   "settings.language.label": "Interface language:",
   "settings.language.system": "System ({language})",
+  "settings.startup.show_cmd": "Show CMD window on launch",
   "common.ok": "OK",
   "common.yes": "Yes",
   "common.no": "No",
@@ -92,5 +93,15 @@
   "main.stop.title": "Stop ComfyUI?",
   "main.stop.text": "Completely stop ComfyUI and terminate the process?",
   "main.exit.title": "Exit",
-  "main.exit.text": "Shut down ComfyUI server?"
+  "main.exit.text": "Shut down ComfyUI server?",
+  "slow_start.title": "ComfyUI is taking longer than usual",
+  "slow_start.text": "It is still loading - this is normal with many custom nodes or a slow disk. You can keep waiting or stop the start.",
+  "slow_start.stop": "Stop",
+  "slow_start.wait": "Wait",
+  "console.title": "ComfyUI Console",
+  "console.hint": "View-only. To type into the console, enable “{setting}” in Settings.",
+  "placeholder.title": "No embedded engine on this platform",
+  "placeholder.text": "ComfyUI is running and reachable, but no web engine is wired up for this platform yet. Open the interface in your browser.",
+  "placeholder.open": "Open in browser",
+  "webview2.saved": "Saved: {name}"
 }

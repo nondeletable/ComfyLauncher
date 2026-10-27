@@ -30,6 +30,10 @@ TRANSLATED = [
     "ui/dialogs/webview2_setup.py",
     "ui/header.py",
     "ui/browser.py",
+    "ui/dialogs/slow_start_notice.py",
+    "ui/dialogs/console_window.py",
+    "ui/webview/placeholder.py",
+    "ui/webview2_widget.py",
 ]
 
 # Shown as-is in every language.

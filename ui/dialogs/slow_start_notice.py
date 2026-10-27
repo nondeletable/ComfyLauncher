@@ -24,6 +24,7 @@ from PyQt6.QtWidgets import (
 )
 
 from ui.theme.manager import THEME, safe_repaint
+from utils.i18n import I18N, safe_retranslate, t
 
 _GAP = 8  # px between the splash and the card
 _DEFAULT_WIDTH = 460
@@ -58,7 +59,7 @@ class SlowStartNotice(QWidget):
         root.setSpacing(8)
 
         head = QHBoxLayout()
-        self.title = QLabel("ComfyUI is taking longer than usual")
+        self.title = QLabel()
         self.title.setObjectName("title")
         self.elapsed = QLabel()
         self.elapsed.setObjectName("elapsed")
@@ -66,10 +67,7 @@ class SlowStartNotice(QWidget):
         head.addWidget(self.elapsed)
         root.addLayout(head)
 
-        self.body = QLabel(
-            "It is still loading - this is normal with many custom nodes "
-            "or a slow disk. You can keep waiting or stop the start."
-        )
+        self.body = QLabel()
         self.body.setObjectName("body")
         self.body.setWordWrap(True)
         root.addWidget(self.body)
@@ -77,9 +75,9 @@ class SlowStartNotice(QWidget):
         buttons = QHBoxLayout()
         buttons.setSpacing(8)
         buttons.addStretch()
-        self.btn_stop = QPushButton("Stop")
+        self.btn_stop = QPushButton()
         self.btn_stop.setObjectName("secondary")
-        self.btn_wait = QPushButton("Wait")
+        self.btn_wait = QPushButton()
         self.btn_wait.setObjectName("primary")
         buttons.addWidget(self.btn_stop)
         buttons.addWidget(self.btn_wait)
@@ -96,6 +94,15 @@ class SlowStartNotice(QWidget):
 
         self._apply_theme()
         THEME.themeChanged.connect(self._apply_theme)
+        self._retranslate()
+        I18N.languageChanged.connect(self._retranslate)
+
+    @safe_retranslate
+    def _retranslate(self, *args):
+        self.title.setText(t("slow_start.title"))
+        self.body.setText(t("slow_start.text"))
+        self.btn_stop.setText(t("slow_start.stop"))
+        self.btn_wait.setText(t("slow_start.wait"))
 
     # ── placement ────────────────────────────────────────────────────────
 

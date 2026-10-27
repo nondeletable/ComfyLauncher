@@ -20,6 +20,7 @@ from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel  # noqa: E402
 
 from ui.theme.manager import THEME  # noqa: E402
 from ui.webview.base import WebViewBase  # noqa: E402
+from utils.i18n import t  # noqa: E402
 from utils.webview2_runtime import DLL_DIR  # noqa: E402
 
 
@@ -78,15 +79,20 @@ class _DownloadToast(QWidget):
         )
 
     def show_saved(self, name: str, full_path: str, anchor: QWidget):
-        """Show '✔ Saved: <name>' anchored to the bottom-center of ``anchor``."""
+        """Show '✔ Saved: <name>' anchored to the bottom-center of ``anchor``.
+
+        A toast lives for seconds: its text is taken at show time, it does not
+        follow a language switch.
+        """
         self._restyle()
         c = THEME.colors
         safe = name.replace("<", "&lt;").replace(">", "&gt;")
-        self._label.setText(
+        name_html = f'<span style="color:{c["text_secondary"]};">{safe}</span>'
+        html = (
             f'<span style="color:{c["success"]};font-weight:bold;">✔</span>'
-            f"&nbsp;&nbsp;Saved: "
-            f'<span style="color:{c["text_secondary"]};">{safe}</span>'
+            f"&nbsp;&nbsp;{t('webview2.saved', name=name_html)}"
         )
+        self._label.setText(html)
         self._label.setToolTip(full_path)
 
         self._fade.stop()

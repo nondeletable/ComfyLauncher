@@ -16,6 +16,7 @@
   "settings.language.description": "Выберите язык интерфейса лаунчера. У ComfyUI своя настройка языка в его собственном интерфейсе.",
   "settings.language.label": "Язык интерфейса:",
   "settings.language.system": "Как в системе ({language})",
+  "settings.startup.show_cmd": "Показывать окно CMD при запуске",
   "common.ok": "ОК",
   "common.yes": "Да",
   "common.no": "Нет",
@@ -92,5 +93,15 @@
   "main.stop.title": "Остановить ComfyUI?",
   "main.stop.text": "Полностью остановить ComfyUI и завершить процесс?",
   "main.exit.title": "Выход",
-  "main.exit.text": "Остановить сервер ComfyUI?"
+  "main.exit.text": "Остановить сервер ComfyUI?",
+  "slow_start.title": "ComfyUI запускается дольше обычного",
+  "slow_start.text": "Загрузка ещё идёт — это нормально, если много custom nodes или медленный диск. Можно подождать или остановить запуск.",
+  "slow_start.stop": "Остановить",
+  "slow_start.wait": "Ждать",
+  "console.title": "Консоль ComfyUI",
+  "console.hint": "Только просмотр. Чтобы вводить команды в консоль, включите «{setting}» в Настройках.",
+  "placeholder.title": "На этой платформе нет встроенного движка",
+  "placeholder.text": "ComfyUI запущен и доступен, но для этой платформы веб-движок пока не подключён. Откройте интерфейс в браузере.",
+  "placeholder.open": "Открыть в браузере",
+  "webview2.saved": "Сохранено: {name}"
 }
