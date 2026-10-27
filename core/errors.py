@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from enum import Enum, auto
 
+from config import COMFYUI_PORT
+
 
 class ErrorLevel(Enum):
     STARTUP = auto()
@@ -49,7 +51,7 @@ ERRORS = {
     "PORT_ALREADY_IN_USE": ErrorInfo(
         level=ErrorLevel.STARTUP,
         title="The port is occupied",
-        message="The ComfyUI port (8088) is already in use by another process.",
-        hint="Close the conflicting application or change the port.",
+        message=f"The ComfyUI port ({COMFYUI_PORT}) is already in use by another process.",
+        hint="Close the program that is using this port - often another ComfyUI.",
     ),
 }
