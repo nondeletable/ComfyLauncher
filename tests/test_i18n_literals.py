@@ -36,6 +36,8 @@ TRANSLATED = [
     "ui/webview2_widget.py",
     "core/errors.py",
     "ui/error_page.py",
+    "ui/settings/page_startapp.py",
+    "ui/settings/page_behavior.py",
 ]
 
 # Shown as-is in every language.

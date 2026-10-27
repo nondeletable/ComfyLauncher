@@ -10,6 +10,7 @@ from PyQt6.QtWidgets import (
 from config import load_user_config, save_user_config
 from ui.theme.manager import THEME, safe_repaint
 from ui.dialogs.messagebox import MessageBox as MB
+from utils.i18n import I18N, safe_retranslate, t
 
 
 class BehaviorSettingsPage(QWidget):
@@ -26,21 +27,18 @@ class BehaviorSettingsPage(QWidget):
         layout.setContentsMargins(30, 30, 30, 30)
         layout.setSpacing(16)
 
-        title = QLabel("Exit Options")
-        title.setStyleSheet("font-size: 20px; font-weight: 600;")
-        layout.addWidget(title)
+        self.title = QLabel()
+        self.title.setStyleSheet("font-size: 20px; font-weight: 600;")
+        layout.addWidget(self.title)
 
-        self.desc = QLabel(
-            "Do you want to always confirm when exiting ComfyLauncher?\n"
-            "You can choose a default action."
-        )
+        self.desc = QLabel()
         self.desc.setWordWrap(True)
         layout.addWidget(self.desc)
 
         # --- 3 exclusive options (radio group) ---
-        self.rb_ask = QRadioButton("Ask on exit")
-        self.rb_always = QRadioButton("Always stop server on exit")
-        self.rb_never = QRadioButton("Never stop server on exit")
+        self.rb_ask = QRadioButton()
+        self.rb_always = QRadioButton()
+        self.rb_never = QRadioButton()
 
         self.group = QButtonGroup(self)
         self.group.setExclusive(True)
@@ -71,6 +69,16 @@ class BehaviorSettingsPage(QWidget):
         self.rb_always.toggled.connect(self._on_any_change)  # type: ignore
         self.rb_never.toggled.connect(self._on_any_change)  # type: ignore
         THEME.themeChanged.connect(self._apply_theme)
+        self._retranslate()
+        I18N.languageChanged.connect(self._retranslate)
+
+    @safe_retranslate
+    def _retranslate(self, *args):
+        self.title.setText(t("settings.menu.exit"))
+        self.desc.setText(t("exit.description"))
+        self.rb_ask.setText(t("exit.ask"))
+        self.rb_always.setText(t("exit.always_stop"))
+        self.rb_never.setText(t("exit.never_stop"))
 
     @safe_repaint
     def _apply_theme(self, *args):
@@ -124,8 +132,8 @@ class BehaviorSettingsPage(QWidget):
 
         MB.info(
             self.window(),
-            "Settings saved",
-            "Exit behavior settings have been saved successfully.",
+            t("exit.saved.title"),
+            t("exit.saved.text"),
         )
         return True
 
