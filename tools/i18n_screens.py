@@ -141,8 +141,91 @@ def _message_boxes(save):
         _shoot(save, name, box)
 
 
+def _main_window(save):
+    """The main window's own parts: it needs a live ComfyUI to show whole."""
+    import time
+
+    from PyQt6.QtWidgets import QMainWindow, QWidget
+
+    from ui.browser import StartingWidget
+    from ui.dialogs.console_window import ConsoleWindow
+    from ui.dialogs.messagebox import MessageBox
+    from ui.dialogs.slow_start_notice import SlowStartNotice
+    from ui.header import STATUSES, HeaderBar
+    from ui.webview.placeholder import PlaceholderWebView
+    from utils.i18n import t
+
+    win = QMainWindow()
+    win.resize(1100, 46)
+    header = HeaderBar(win)
+    win.setMenuWidget(header)
+    win.show()
+    for status in STATUSES:
+        header.set_status(status)
+        QApplication.processEvents()
+        save(f"header_{status}", header)
+    win.close()
+
+    starting = StartingWidget()
+    starting.resize(600, 200)
+    _shoot(save, "starting", starting)
+    _shoot(save, "slow_start", SlowStartNotice(time.monotonic() - 95))
+    _shoot(save, "console", ConsoleWindow())
+    placeholder = PlaceholderWebView("http://127.0.0.1:8188")
+    placeholder.resize(700, 400)
+    _shoot(save, "placeholder", placeholder)
+
+    if sys.platform == "win32":
+        from ui.webview2_widget import _DownloadToast
+
+        anchor = QWidget()
+        anchor.resize(700, 300)
+        anchor.show()
+        toast = _DownloadToast()
+        toast.show_saved(
+            "ComfyUI_00042_.png", "D:/Downloads/ComfyUI_00042_.png", anchor
+        )
+        QApplication.processEvents()
+        save("toast_saved", toast)
+        toast.close()
+        anchor.close()
+
+    boxes = {
+        "box_stop": (
+            "main.stop.title",
+            t("main.stop.text"),
+            "ask_yes_no",
+            ["common.yes", "common.no"],
+        ),
+        "box_exit": (
+            "main.exit.title",
+            t("main.exit.text"),
+            "ask_yes_no",
+            ["common.yes", "common.no", "common.cancel"],
+        ),
+        "box_update": (
+            "update.title",
+            t("update.text", latest="1.11.0", current="1.10.1"),
+            "info",
+            ["update.button.update", "update.button.postpone"],
+        ),
+    }
+    for name, (title, text, kind, buttons) in boxes.items():
+        box = MessageBox(t(title), text, kind)
+        for key in buttons:
+            box._add_button(t(key), "accept")
+        _shoot(save, name, box)
+
+
 # Every i18n block registers the screens it translated.
-SCREENS = [_settings_window, _first_run, _build_manager, _flags_picker, _message_boxes]
+SCREENS = [
+    _settings_window,
+    _first_run,
+    _build_manager,
+    _flags_picker,
+    _message_boxes,
+    _main_window,
+]
 
 
 def main(languages: list[str]) -> None:
