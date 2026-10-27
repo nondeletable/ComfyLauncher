@@ -19,6 +19,7 @@ DATA_DIR = os.path.join(ASSETS_DIR, "data")
 SPLASH_DIR = os.path.join(ASSETS_DIR, "splash")
 INTERFACE_DIR = os.path.join(ASSETS_DIR, "interface")
 DOODLES_DIR = os.path.join(ICONS_DIR, "doodles")
+I18N_DIR = os.path.join(ASSETS_DIR, "i18n")
 
 COMFYUI_PORT = 8188
 
