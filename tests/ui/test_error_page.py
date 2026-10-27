@@ -64,3 +64,16 @@ def test_report_button_appears_only_with_a_handler(qapp):
     widget.report_button.click()
     assert clicked == [1]
     assert not hasattr(ErrorWidget("Title", "Message"), "report_button")
+
+
+def test_texts_can_be_replaced(qapp):
+    """A language switch while the screen is up swaps its texts in place."""
+    widget = ErrorWidget("Title", "Message", "Hint", on_report=lambda: None)
+    widget.set_texts("Titel", "Nachricht", None, "Melden")
+    assert widget.title_label.text() == "Titel"
+    assert widget.message_label.text() == "Nachricht"
+    assert widget.hint_label.isHidden()
+    assert widget.report_button.text() == "Melden"
+    widget.set_texts("Titel", "Nachricht", "Tipp")
+    assert not widget.hint_label.isHidden()
+    assert widget.hint_label.text() == "Tipp"
