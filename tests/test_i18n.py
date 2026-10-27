@@ -135,3 +135,18 @@ def test_same_placeholders_as_english(code):
 def test_keys_are_dotted_lowercase(code):
     for key in _shipped(code):
         assert re.fullmatch(r"[a-z0-9_]+(\.[a-z0-9_]+)+", key), key
+
+
+def test_english_is_for_logs(tables):
+    tr = I18n(tables)
+    tr.set_language("de")
+    assert tr.english("greet", name="Sasha") == "Hi, Sasha"
+    assert tr.has("hello") and not tr.has("no.such.key")
+
+
+def test_every_flag_group_has_a_title():
+    from utils.flags_catalog import load_flags_catalog
+
+    en = _shipped("en")
+    for group in load_flags_catalog()["groups"]:
+        assert f"flags.group.{group['id']}" in en, group["id"]

@@ -17,54 +17,42 @@ from PyQt6.QtWidgets import QPushButton
 
 from ui.dialogs.messagebox import MessageBox as MB
 from utils import webview2_runtime as runtime
+from utils.i18n import I18N, t
 from utils.logger import log_event
-
-TITLE = "Missing component"
-ASK_TEXT = (
-    "Comfy Launcher couldn't find Microsoft Edge WebView2 Runtime on this "
-    "computer. The launcher needs it to show the ComfyUI interface.<br><br>"
-    "Download and install it now? Windows may ask for permission."
-)
-INSTALLING_TEXT = "Installing WebView2 Runtime...<br>Please don't close this window."
-DONE_TEXT = "Done. Comfy Launcher will now start."
-FOUND_TITLE = "WebView2 Runtime installed"
-FOUND_TEXT = (
-    "Microsoft Edge WebView2 Runtime is now installed. "
-    "Continue launching Comfy Launcher?"
-)
-FAILED_TEXT = (
-    "Installation failed: {reason}<br><br>"
-    'You can install it manually: <a href="{url}">{url}</a>'
-)
 
 POLL_MS = 5000
 
+# Why an install failed: an i18n key and its placeholders. The box shows it in
+# the interface language, the log in English.
+Reason = tuple[str, dict]
 
-def _install() -> str | None:
-    """Download and run the bootstrapper. Returns an error reason, or None."""
+
+def _install() -> Reason | None:
+    """Download and run the bootstrapper. Returns the error reason, or None."""
     try:
         code = runtime.run_bootstrapper(runtime.download_bootstrapper())
     except (requests.ConnectionError, requests.Timeout):
-        return "couldn't download the installer. Check your internet connection."
+        return "webview2.reason.offline", {}
     except subprocess.TimeoutExpired:
-        minutes = runtime.INSTALL_TIMEOUT_S // 60
-        return f"the installer didn't finish in {minutes} minutes."
+        return "webview2.reason.timeout", {"minutes": runtime.INSTALL_TIMEOUT_S // 60}
     except requests.HTTPError as e:
         status = e.response.status_code if e.response is not None else "?"
-        return f"the download server returned an error (HTTP {status})."
+        return "webview2.reason.http", {"status": status}
     except Exception as e:
-        return str(e) or e.__class__.__name__
+        return "webview2.reason.other", {"error": str(e) or e.__class__.__name__}
     if runtime.installed_version() is None:
-        return (
-            f"the installer finished (code {code}), "
-            "but WebView2 Runtime still wasn't found."
-        )
+        return "webview2.reason.still_missing", {"code": code}
     return None
 
 
-def _install_with_progress() -> str | None:
+def _reason_text(reason: Reason) -> str:
+    key, params = reason
+    return t(key, **params)
+
+
+def _install_with_progress() -> Reason | None:
     """Run ``_install`` off the UI thread behind a box that cannot be closed."""
-    box = MB(TITLE, INSTALLING_TEXT, "info")
+    box = MB(t("webview2.title"), t("webview2.installing"), "info")
     box.reject = lambda: None  # Esc / close must not abandon a running install
     box.show()
 
@@ -92,7 +80,7 @@ def _ask(text: str, kind: str, buttons) -> str | None:
     does not end with the launcher gone. While the box is open the runtime is
     re-checked every few seconds; if it shows up, returns "found".
     """
-    box = MB(TITLE, text, kind)
+    box = MB(t("webview2.title"), text, kind)
     box.body.setOpenExternalLinks(True)
     answer: dict = {"key": None}
 
@@ -129,34 +117,39 @@ def ensure_webview2_runtime() -> bool:
         return True
 
     log_event("⚠️ WebView2 Runtime not found.")
+    page = (t("webview2.button.page"), "page")
+    quit_ = (t("webview2.button.quit"), "quit")
     answer = _ask(
-        ASK_TEXT,
+        t("webview2.ask"),
         "warning",
-        [("Install", "install"), ("Open download page", "page"), ("Quit", "quit")],
+        [(t("webview2.button.install"), "install"), page, quit_],
     )
     if answer == "install":
         error = _install_with_progress()
         if error is None:
             log_event("✅ WebView2 Runtime installed.")
-            MB.info(None, TITLE, DONE_TEXT)
+            MB.info(None, t("webview2.title"), t("webview2.done"))
             return True
-        log_event(f"❌ WebView2 Runtime install failed: {error}")
+        key, params = error
+        log_event(f"❌ WebView2 Runtime install failed: {I18N.english(key, **params)}")
         answer = _ask(
-            FAILED_TEXT.format(
-                reason=html.escape(error), url=runtime.DOWNLOAD_PAGE_URL
+            t(
+                "webview2.failed",
+                reason=html.escape(_reason_text(error)),
+                url=runtime.DOWNLOAD_PAGE_URL,
             ),
             "error",
-            [("Open download page", "page"), ("Quit", "quit")],
+            [page, quit_],
         )
 
     if answer == "found":
         log_event("✅ WebView2 Runtime installed manually.")
         choice = MB.choose(
             None,
-            FOUND_TITLE,
-            FOUND_TEXT,
+            t("webview2.found.title"),
+            t("webview2.found.text"),
             "info",
-            [("Continue", "continue"), ("Quit", "quit")],
+            [(t("webview2.button.continue"), "continue"), quit_],
         )
         return choice == "continue"
     return False

@@ -37,6 +37,7 @@ from config import ICON_PATH
 from ui.theme.manager import THEME
 from ui.widgets.combo_box import ThemedComboBox
 from utils.flags_catalog import load_flags_catalog, iter_flags
+from utils.i18n import I18N, safe_retranslate, t
 
 
 # argparse reads a negative number after an option as its value, not a flag.
@@ -123,6 +124,14 @@ class FlowLayout(QLayout):
         return y + line_h - rect.y() + m.bottom()
 
 
+def _group_title(group: dict) -> str:
+    """Translated group title; a group added to flags.json later keeps its own."""
+    key = f"flags.group.{group.get('id', '')}"
+    if I18N.has(key):
+        return t(key)
+    return str(group.get("title") or group.get("id", ""))
+
+
 class FlagsPickerDialog(QDialog):
     """Modal flags picker. Emits ``flagsChanged`` with the rebuilt flag string."""
 
@@ -145,9 +154,9 @@ class FlagsPickerDialog(QDialog):
         self._chips: dict[str, QPushButton] = {}
         self._editors: dict[str, QWidget] = {}
         self._flows: list[FlowLayout] = []
+        self._group_headers: list[tuple[QLabel, dict]] = []
         self._loading = False
 
-        self.setWindowTitle("Startup flags")
         self.setWindowIcon(QIcon(ICON_PATH))
         self.setModal(True)
         self.setFixedSize(self.WINDOW_WIDTH, self.WINDOW_HEIGHT)
@@ -157,6 +166,19 @@ class FlagsPickerDialog(QDialog):
 
         self._build_ui()
         self._refresh()
+        self._retranslate()
+        I18N.languageChanged.connect(self._retranslate)
+
+    @safe_retranslate
+    def _retranslate(self, *args):
+        self.setWindowTitle(t("setup.flags_label"))
+        self.title.setText(t("setup.flags_label"))
+        self.presets_label.setText(t("flags.presets"))
+        self.close_btn.setText(t("common.close"))
+        if self.empty is not None:
+            self.empty.setText(t("flags.no_catalog"))
+        for header, group in self._group_headers:
+            header.setText(_group_title(group))
 
     # ── parsing / building the flag string ──────────────────────────────
 
@@ -328,7 +350,7 @@ class FlagsPickerDialog(QDialog):
         layout.setContentsMargins(24, 20, 24, 18)
         layout.setSpacing(14)
 
-        title = QLabel("Startup flags")
+        self.title = title = QLabel()
         title.setStyleSheet(
             f"QLabel {{ font-size: 16px; font-weight: 600; "
             f"color: {THEME.colors['text_primary']}; }}"
@@ -338,7 +360,7 @@ class FlagsPickerDialog(QDialog):
         # quick presets
         presets_row = QHBoxLayout()
         presets_row.setSpacing(8)
-        presets_label = QLabel("Presets:")
+        self.presets_label = presets_label = QLabel()
         presets_label.setStyleSheet(
             f"QLabel {{ font-size: 12px; color: {THEME.colors['text_secondary']}; }}"
         )
@@ -364,8 +386,9 @@ class FlagsPickerDialog(QDialog):
         content_layout.setContentsMargins(0, 0, 6, 0)
         content_layout.setSpacing(16)
 
+        self.empty = None
         if not self.catalog.get("groups"):
-            empty = QLabel("No flags catalog found. You can still type flags manually.")
+            self.empty = empty = QLabel()
             empty.setStyleSheet(
                 f"QLabel {{ color: {THEME.colors['text_secondary']}; }}"
             )
@@ -382,7 +405,7 @@ class FlagsPickerDialog(QDialog):
         # footer
         footer = QHBoxLayout()
         footer.addStretch(1)
-        close_btn = QPushButton("Close")
+        self.close_btn = close_btn = QPushButton()
         close_btn.setFixedSize(110, 34)
         close_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         close_btn.setStyleSheet(self._preset_style())
@@ -397,7 +420,8 @@ class FlagsPickerDialog(QDialog):
         vbox.setContentsMargins(0, 0, 0, 0)
         vbox.setSpacing(8)
 
-        header = QLabel(group.get("title", group.get("id", "")))
+        header = QLabel()
+        self._group_headers.append((header, group))
         header.setStyleSheet(
             f"QLabel {{ font-size: 12px; font-weight: 600; "
             f"color: {THEME.colors['text_secondary']}; }}"

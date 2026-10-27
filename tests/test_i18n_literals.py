@@ -18,7 +18,13 @@ TRANSLATED = [
     "ui/dialogs/setup_window.py",
     "ui/dialogs/messagebox.py",
     "main.py",
+    "ui/dialogs/build_manager_dialog.py",
+    "ui/dialogs/flags_picker_dialog.py",
+    "ui/dialogs/webview2_setup.py",
 ]
+
+# Shown as-is in every language.
+_PRODUCT_NAMES = {"ComfyLauncher"}
 
 # Calls whose text arguments reach the screen.
 _TEXT_METHODS = {
@@ -38,6 +44,8 @@ _MESSAGE_BOX = {"info", "warning", "error", "ask_yes_no", "choose"}
 def _has_text(node) -> bool:
     """A literal (or f-string, or list of them) a user would read."""
     if isinstance(node, ast.Constant) and isinstance(node.value, str):
+        if node.value in _PRODUCT_NAMES:
+            return False
         return any(ch.isalpha() for ch in node.value)
     if isinstance(node, ast.JoinedStr):
         return any(_has_text(v) for v in node.values)

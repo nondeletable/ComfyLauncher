@@ -8,6 +8,9 @@ import pytest  # noqa: E402
 import requests  # noqa: E402
 
 import ui.dialogs.webview2_setup as setup  # noqa: E402
+from utils.i18n import t  # noqa: E402
+
+NO_NETWORK = ("webview2.reason.other", {"error": "no network"})
 
 
 @pytest.fixture
@@ -52,7 +55,7 @@ def test_successful_install_continues_the_launch(monkeypatch, ui):
 
 
 def test_failed_install_shows_the_reason_and_stops(monkeypatch, ui):
-    monkeypatch.setattr(setup, "_install_with_progress", lambda: "no network")
+    monkeypatch.setattr(setup, "_install_with_progress", lambda: NO_NETWORK)
     ui["answers"] = ["install", "quit"]
     assert setup.ensure_webview2_runtime() is False
     assert ui["asked"] == ["warning", "error"]
@@ -63,11 +66,11 @@ def test_runtime_installed_by_hand_asks_to_continue(ui, choice, launches):
     ui["answers"] = ["found"]
     ui["choices"] = [choice]
     assert setup.ensure_webview2_runtime() is launches
-    assert ui["chosen"] == [setup.FOUND_TITLE]
+    assert ui["chosen"] == [t("webview2.found.title")]
 
 
 def test_manual_install_after_a_failed_one_is_noticed_too(monkeypatch, ui):
-    monkeypatch.setattr(setup, "_install_with_progress", lambda: "no network")
+    monkeypatch.setattr(setup, "_install_with_progress", lambda: NO_NETWORK)
     ui["answers"] = ["install", "found"]
     ui["choices"] = ["continue"]
     assert setup.ensure_webview2_runtime() is True
@@ -95,14 +98,14 @@ def _fail_download(exc):
 )
 def test_install_explains_a_failed_download(monkeypatch, exc, reason):
     monkeypatch.setattr(setup.runtime, "download_bootstrapper", _fail_download(exc))
-    assert reason in setup._install()
+    assert reason in setup._reason_text(setup._install())
 
 
 def test_install_reports_a_runtime_still_missing_after_the_installer(monkeypatch):
     monkeypatch.setattr(setup.runtime, "download_bootstrapper", lambda: "x.exe")
     monkeypatch.setattr(setup.runtime, "run_bootstrapper", lambda path: 1603)
     monkeypatch.setattr(setup.runtime, "installed_version", lambda: None)
-    assert "code 1603" in setup._install()
+    assert "code 1603" in setup._reason_text(setup._install())
 
 
 def test_ask_notices_a_runtime_installed_while_it_is_open(monkeypatch, qapp):
@@ -136,7 +139,11 @@ def test_download_page_keeps_the_box_open(monkeypatch, qapp):
 
 def test_failure_reason_is_escaped_for_the_rich_text_box(monkeypatch, ui):
     texts = []
-    monkeypatch.setattr(setup, "_install_with_progress", lambda: "<urllib3> & co")
+    monkeypatch.setattr(
+        setup,
+        "_install_with_progress",
+        lambda: ("webview2.reason.other", {"error": "<urllib3> & co"}),
+    )
     monkeypatch.setattr(
         setup,
         "_ask",

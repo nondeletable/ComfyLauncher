@@ -23,6 +23,7 @@ from config import load_user_config, save_user_config, ICON_PATH, ICON_PATHS
 from ui.dialogs.setup_window import SetupMode, SetupWindow
 from ui.header import colorize_svg
 from ui.window_resize import EdgeResizer
+from utils.i18n import I18N, safe_retranslate, t
 
 try:
     from config import DOODLE_ICON_PATHS, DEFAULT_DOODLE_ID
@@ -103,7 +104,7 @@ class BuildManagerDialog(QDialog):
             """
         )
 
-        title = QLabel("Select a build to launch")
+        self.title = title = QLabel()
         title.setStyleSheet(
             f"font-size: 16px; "
             f"font-weight: 600; "
@@ -155,14 +156,6 @@ class BuildManagerDialog(QDialog):
         self.list_layout.setContentsMargins(0, 0, 0, 0)
         self.list_layout.setSpacing(8)
 
-        if not self.builds:
-            empty = QLabel("No builds found. Please run initial setup.")
-            empty.setStyleSheet(f"color: {THEME.colors['text_secondary']};")
-            self.list_layout.addWidget(empty)
-        else:
-            for b in self.builds:
-                self.list_layout.addWidget(self._build_row(b))
-
         self.scroll.setWidget(container)
         # Let the scroll area flex to the space between title and the bottom bar
         # instead of a hard-coded height that overran the frame and pushed the
@@ -170,14 +163,11 @@ class BuildManagerDialog(QDialog):
 
         layout.addWidget(self.scroll, 1)
 
-        self.list_layout.addWidget(self._build_add_row())
-        self.list_layout.addStretch(1)
-
         # --- Bottom buttons ---
         bottom = QHBoxLayout()
         bottom.addStretch(1)
 
-        self.btn_close = QPushButton("Close")
+        self.btn_close = QPushButton()
         self.btn_close.setFixedSize(110, 34)
         self.btn_close.setStyleSheet(
             f"""
@@ -196,9 +186,19 @@ class BuildManagerDialog(QDialog):
         bottom.addWidget(self.btn_close)
         layout.addLayout(bottom)
 
+        self._retranslate()
+        I18N.languageChanged.connect(self._retranslate)
+
+    @safe_retranslate
+    def _retranslate(self, *args):
+        self.title.setText(t("manager.title"))
+        self.btn_close.setText(t("common.close"))
+        # Rows carry their texts from the moment they are built.
+        self._fill_list()
+
     def _build_row(self, build: dict) -> QWidget:
         build_id = str(build.get("id", ""))
-        name = str(build.get("name", "Unnamed"))
+        name = str(build.get("name") or t("manager.unnamed"))
         path = str(build.get("path", ""))
         icon_id = str(build.get("icon_id", DEFAULT_DOODLE_ID))
 
@@ -246,7 +246,7 @@ class BuildManagerDialog(QDialog):
         text_box = QVBoxLayout()
         text_box.setSpacing(2)
 
-        name_lbl = QLabel(name + ("  (last used)" if is_last else ""))
+        name_lbl = QLabel(t("manager.last_used", name=name) if is_last else name)
         name_lbl.setStyleSheet(
             f"font-size: 14px; "
             f"font-weight: 600; "
@@ -275,7 +275,7 @@ class BuildManagerDialog(QDialog):
             )
         )
         btn_edit.setIconSize(QSize(18, 18))
-        btn_edit.setToolTip("Edit build")
+        btn_edit.setToolTip(t("manager.edit"))
         btn_edit.setStyleSheet(
             f"""
             QToolButton {{
@@ -294,7 +294,7 @@ class BuildManagerDialog(QDialog):
         h.addWidget(btn_edit)
 
         # Launch button
-        btn = QPushButton("Launch")
+        btn = QPushButton(t("manager.launch"))
         btn.setFixedSize(110, 34)
         btn.setStyleSheet(
             f"""
@@ -390,7 +390,7 @@ class BuildManagerDialog(QDialog):
             """
         )
         btn_add.clicked.connect(self._add_build)  # type: ignore
-        lbl_add = QLabel("Add Build")
+        lbl_add = QLabel(t("manager.add"))
         lbl_add.setStyleSheet(f"color: {THEME.colors['text_secondary']};")
 
         add_row.addWidget(btn_add, 0, Qt.AlignmentFlag.AlignLeft)
@@ -422,8 +422,10 @@ class BuildManagerDialog(QDialog):
         data = load_user_config()
         self.builds = data.get("builds", []) or []
         self.last_used_id = data.get("last_used_build_id", "")
+        self._fill_list()
 
-        # очистить list_layout (кроме stretch)
+    def _fill_list(self):
+        """(Re)build the rows from self.builds, plus the Add row at the end."""
         while self.list_layout.count():
             item = self.list_layout.takeAt(0)
             w = item.widget()
@@ -431,7 +433,7 @@ class BuildManagerDialog(QDialog):
                 w.setParent(None)
 
         if not self.builds:
-            empty = QLabel("No builds found. Please run initial setup.")
+            empty = QLabel(t("manager.empty"))
             empty.setStyleSheet(f"color: {THEME.colors['text_secondary']};")
             self.list_layout.addWidget(empty)
         else:

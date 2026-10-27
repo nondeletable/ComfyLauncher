@@ -133,6 +133,15 @@ class I18n(QObject):
         log_event(f"🌐 Interface language: {code} (preference: {preference})")
         self.languageChanged.emit(code)
 
+    def has(self, key: str) -> bool:
+        """Whether English (the reference) knows ``key``; for data-driven keys."""
+        return key in self._fallback
+
+    def english(self, key: str, **kwargs) -> str:
+        """The English text of ``key``, for logs: they stay English for Sasha."""
+        text = self._fallback.get(key, key)
+        return text.format(**kwargs) if kwargs else text
+
     def t(self, key: str, **kwargs) -> str:
         text = self._strings.get(key)
         if text is None:
