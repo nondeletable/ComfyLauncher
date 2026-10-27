@@ -40,6 +40,8 @@ TRANSLATED = [
     "ui/settings/page_behavior.py",
     "ui/settings/page_build.py",
     "ui/settings/page_logs.py",
+    "ui/settings/page_colortheme.py",
+    "ui/settings/page_about.py",
 ]
 
 # Shown as-is in every language.

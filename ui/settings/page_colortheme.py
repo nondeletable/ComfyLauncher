@@ -15,6 +15,7 @@ from ui.theme.manager import THEME, THEMES, safe_repaint
 from ui.theme.theme_importer import ThemeImporter, ThemeImportError
 from ui.theme.theme_registry import REGISTRY
 from ui.dialogs.messagebox import MessageBox as MB
+from utils.i18n import I18N, safe_retranslate, t
 from utils.logger import log_event
 import os
 import webbrowser
@@ -76,7 +77,7 @@ class ColorThemesPage(QWidget):
         content_layout.setContentsMargins(30, 30, 30, 30)
         content_layout.setSpacing(16)
 
-        self.title = QLabel("Color Themes")
+        self.title = QLabel()
         content_layout.addWidget(self.title)
 
         self.grid = QGridLayout()
@@ -99,10 +100,7 @@ class ColorThemesPage(QWidget):
         grid_container.setLayout(self.grid)
         content_layout.addWidget(grid_container)
 
-        self.desc = QLabel(
-            "Here you can select a launcher theme from a .json file.\n"
-            "Or download a theme from https://www.comfyui-themes.com."
-        )
+        self.desc = QLabel()
         self.desc.setWordWrap(True)
         content_layout.addStretch()
         content_layout.addWidget(self.desc)
@@ -117,12 +115,12 @@ class ColorThemesPage(QWidget):
         # default sans on Linux. A minimum keeps the Windows look identical
         # (the hint stays under 80 there) and lets the button grow where the
         # font needs it.
-        self.btn_select = QPushButton("Select")
+        self.btn_select = QPushButton()
         self.btn_select.setFixedHeight(35)
         self.btn_select.setMinimumWidth(80)
         self.btn_select.clicked.connect(self._load_custom_theme)  # type: ignore
 
-        self.btn_download = QPushButton("Download")
+        self.btn_download = QPushButton()
         self.btn_download.setFixedHeight(35)
         self.btn_download.setMinimumWidth(80)
         self.btn_download.clicked.connect(self._open_comfyui_themes)  # type: ignore
@@ -130,15 +128,14 @@ class ColorThemesPage(QWidget):
         for btn in (self.btn_select, self.btn_download):
             btn_layout.addWidget(btn)
 
-        self.btn_select.setToolTip("Select file")
-        self.btn_download.setToolTip("Download from the website")
-
         content_layout.addLayout(btn_layout)
         scroll.setWidget(content)
         layout.addWidget(scroll)
 
         self._apply_theme()
         THEME.themeChanged.connect(self._apply_theme)
+        self._retranslate()
+        I18N.languageChanged.connect(self._retranslate)
 
     @safe_repaint
     def _apply_theme(self, *args):
@@ -260,13 +257,22 @@ class ColorThemesPage(QWidget):
             if checkpoint:
                 checkpoint.setText("●" if is_selected else "○")
 
+    @safe_retranslate
+    def _retranslate(self, *args):
+        self.title.setText(t("settings.menu.themes"))
+        self.desc.setText(t("themes.description", url="https://www.comfyui-themes.com"))
+        self.btn_select.setText(t("themes.select"))
+        self.btn_select.setToolTip(t("themes.select.tip"))
+        self.btn_download.setText(t("themes.download"))
+        self.btn_download.setToolTip(t("themes.download.tip"))
+
     def is_dirty(self) -> bool:
         """Are there any unsaved changes"""
         return self.selected_theme != self._original_theme
 
     def _load_custom_theme(self):
         path, _ = QFileDialog.getOpenFileName(
-            self, "Select ComfyUI theme JSON", "", "JSON Files (*.json)"
+            self, t("themes.select.title"), "", t("themes.select.filter")
         )
         if not path:
             return
@@ -288,8 +294,8 @@ class ColorThemesPage(QWidget):
             log_event(f"Theme import failed for {path}: {e}")
             MB.warning(
                 self,
-                "Theme not imported",
-                f"{os.path.basename(path)} was not imported.\n\n{e}",
+                t("themes.import_failed.title"),
+                t("themes.import_failed.text", file=os.path.basename(path), error=e),
             )
             return
 
@@ -314,7 +320,7 @@ class ColorThemesPage(QWidget):
 
         except Exception as e:
             log_event(f"Theme switch failed: {e}")
-            MB.warning(self, "Theme not applied", str(e))
+            MB.warning(self, t("themes.apply_failed"), str(e))
             return False
 
     def reset(self):

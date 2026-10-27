@@ -44,3 +44,22 @@ def test_emphasis_follows_a_theme_change_and_is_never_stacked(page, monkeypatch)
     assert "color: #123456;" in btn.styleSheet()
     assert "#654321" in page.report_btn.styleSheet()
     assert "font-weight: bold" not in page.report_btn.styleSheet()
+
+
+def test_failed_check_does_not_claim_the_latest_version(page):
+    """No network used to read as "Latest version", with the button disabled."""
+    page._on_manual_update_failed("timeout")
+    assert page.update_btn.text() == "Check failed - retry"
+    assert page.update_btn.isEnabled()  # a click tries again
+
+
+def test_button_label_follows_the_language_in_its_current_state(page):
+    from utils.i18n import I18N
+
+    page._on_manual_update_none()
+    try:
+        I18N.set_language("de")
+        assert page.update_btn.text() == "Neueste Version"
+    finally:
+        I18N.set_language("en")
+    assert page.update_btn.text() == "Latest version"

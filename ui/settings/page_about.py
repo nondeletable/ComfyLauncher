@@ -19,6 +19,7 @@ from config import (
 import webbrowser
 from utils.update_checker import UpdateService
 from ui.dialogs.bug_report_dialog import open_bug_report
+from utils.i18n import I18N, safe_retranslate, t
 from utils.logger import log_event
 
 
@@ -92,17 +93,7 @@ class AboutSettingsPage(QWidget):
         # layout.addWidget(div1)
 
         # ─── ABOUT THE PROJECT ───────────────────────────────
-        self.about_project = QLabel(
-            "ComfyLauncher is designed to make launching and configuring ComfyUI simple and intuitive.\n"
-            "It brings together everything you need - from build selection and path validation to theme customization.\n"
-            "The core idea is comfort, clarity, and an easy start.\n\n"
-            "ComfyLauncher was developed by Alexandra 'nondeletable'. I am a programmer who creates complete, ready-to-use applications.\n"
-            "In my projects, I focus not only on functionality but also on visual harmony, high usability, and a cohesive interface.\n"
-            "I want every tool to work out of the box and bring a sense of ease and enjoyment to its users.\n\n"
-            "I’m open to collaborations and new opportunities. If you have an idea or need a Python developer to bring it to life, feel free to reach out.\n"
-            "If you enjoy using ComfyLauncher, you can also support me with a tip - I would greatly appreciate it.\n"
-            "Your support inspires me to continue creating helpful tools and improving my applications."
-        )
+        self.about_project = QLabel()
         self.about_project.setAlignment(Qt.AlignmentFlag.AlignHCenter)
         self.about_project.setWordWrap(True)
         self.about_project.setStyleSheet(
@@ -163,9 +154,7 @@ class AboutSettingsPage(QWidget):
         footer_layout.addWidget(left_spacer, 1)
 
         # Центральная часть (занимает 1 часть пространства)
-        self.footer_label = QLabel(
-            f"Developed by nondeletable · v{__version__} · PyQt6 · 2026"
-        )
+        self.footer_label = QLabel()
         self.footer_label.setAlignment(Qt.AlignmentFlag.AlignCenter)  # Строго по центру
         self.footer_label.setStyleSheet(
             f"color: {self.colors['text_secondary']}; font-size: 12px;"
@@ -178,7 +167,7 @@ class AboutSettingsPage(QWidget):
         right_layout.setContentsMargins(0, 0, 0, 0)
         right_layout.setAlignment(Qt.AlignmentFlag.AlignRight)  # Кнопка прижата вправо
 
-        self.report_btn = QPushButton("Report a problem")
+        self.report_btn = QPushButton()
         self.report_btn.setMinimumWidth(130)
         self.report_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.report_btn.clicked.connect(  # type: ignore
@@ -186,7 +175,9 @@ class AboutSettingsPage(QWidget):
         )
         right_layout.addWidget(self.report_btn)
 
-        self.update_btn = QPushButton("Check for updates")
+        self.update_btn = QPushButton()
+        # idle / checking / found / latest / failed: the label follows it.
+        self._update_state = "idle"
         # Рекомендую все же добавить минимальную ширину, чтобы кнопка не была слишком узкой
         self.update_btn.setMinimumWidth(130)
         self.update_btn.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -197,6 +188,27 @@ class AboutSettingsPage(QWidget):
 
         layout.addWidget(footer_container)
         THEME.themeChanged.connect(self._apply_theme)
+        self._retranslate()
+        I18N.languageChanged.connect(self._retranslate)
+
+    @safe_retranslate
+    def _retranslate(self, *args):
+        self.about_project.setText(t("about.text"))
+        self.footer_label.setText(t("about.footer", version=__version__))
+        self.report_btn.setText(t("about.report"))
+        self.update_btn.setText(t(f"about.update.{self._update_state}"))
+        self._fit_footer_buttons()
+
+    def _set_update_state(self, state: str, enabled: bool) -> None:
+        self._update_state = state
+        self.update_btn.setText(t(f"about.update.{state}"))
+        self.update_btn.setEnabled(enabled)
+        self._fit_footer_buttons()
+
+    def _fit_footer_buttons(self):
+        """Never narrower than the label: the footer's thirds would clip it."""
+        for btn in (self.report_btn, self.update_btn):
+            btn.setMinimumWidth(max(130, btn.sizeHint().width()))
 
     # ─── Opening a link (stub) ─────────────────
     def _open_link(self, url: str):
@@ -263,8 +275,7 @@ class AboutSettingsPage(QWidget):
             webbrowser.open(self._release_url)
             return
 
-        self.update_btn.setText("Checking...")
-        self.update_btn.setEnabled(False)
+        self._set_update_state("checking", False)
 
         # Создаем поток и сервис
         self.update_thread = QThread()
@@ -275,7 +286,7 @@ class AboutSettingsPage(QWidget):
         self.update_thread.started.connect(self.update_service.check_for_updates)  # type: ignore
         self.update_service.update_available.connect(self._on_manual_update_found)
         self.update_service.update_not_found.connect(self._on_manual_update_none)
-        self.update_service.error_occurred.connect(self._on_manual_update_none)
+        self.update_service.error_occurred.connect(self._on_manual_update_failed)
 
         # Важно: завершаем поток корректно
         self.update_service.update_available.connect(self.update_thread.quit)
@@ -290,10 +301,12 @@ class AboutSettingsPage(QWidget):
 
     def _on_manual_update_found(self, version, url):
         self._release_url = url  # Сохраняем ссылку для повторного нажатия
-        self.update_btn.setText("Open Release Page")
-        self.update_btn.setEnabled(True)
+        self._set_update_state("found", True)
         self._style_footer_buttons()
 
     def _on_manual_update_none(self, *args):
-        self.update_btn.setText("Latest version")
-        self.update_btn.setEnabled(False)
+        self._set_update_state("latest", False)
+
+    def _on_manual_update_failed(self, *args):
+        # Not "Latest version": nothing is known. A click tries again.
+        self._set_update_state("failed", True)
