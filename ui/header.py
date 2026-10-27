@@ -31,6 +31,14 @@ def colorize_svg(svg_path, color=THEME.colors["icon_color_window"], size=QSize(2
     return QIcon(pixmap)
 
 
+# Server state -> (icon, text, theme color), set by ``HeaderBar.set_status``.
+STATUSES = {
+    "online": ("🟢", "Online", "success"),
+    "offline": ("🔴", "Offline", "error"),
+    "restarting": ("🟠", "Restarting...", "warning"),
+}
+
+
 class HeaderBar(QWidget):
     """Custom window header that combines toolbar and control buttons."""
 
@@ -119,16 +127,8 @@ class HeaderBar(QWidget):
         # ── Right side ───────────────────────────────
 
         # indicator online
-        self.status_label = QLabel("Online")
-        self.status_label.setStyleSheet(
-            f"""
-            color: {THEME.colors['success']};
-            background-color: rgba(60,60,60,0.7);
-            border-radius: 6px;
-            padding: 3px 8px;
-            font-weight: bold;
-        """
-        )
+        self.status_label = QLabel()
+        self._status = "online"
         layout.addWidget(self.status_label)
 
         layout.addSpacerItem(
@@ -203,6 +203,25 @@ class HeaderBar(QWidget):
         self._apply_theme()
         THEME.themeChanged.connect(self._apply_theme)
 
+    # ── Server status ───────────────────────────
+    def set_status(self, status: str) -> None:
+        """Show the ComfyUI server state: one of ``STATUSES``."""
+        self._status = status
+        self._show_status()
+
+    def _show_status(self):
+        icon, text, color = STATUSES[self._status]
+        self.status_label.setText(f"{icon} {text}")
+        self.status_label.setStyleSheet(
+            f"""
+            color: {THEME.colors[color]};
+            background-color: rgba(60,60,60,0.7);
+            border-radius: 6px;
+            padding: 3px 8px;
+            font-weight: bold;
+        """
+        )
+
     def _on_reload_clicked(self):
         if hasattr(self.parent, "browser") and self.parent.browser:
             self.parent.browser.reload()
@@ -274,15 +293,7 @@ class HeaderBar(QWidget):
         self.title.setStyleSheet(
             f"color: {c['app_title_color']}; font-weight: bold; font-size: 15px;"
         )
-        self.status_label.setStyleSheet(
-            f"""
-            color: {c['success']};
-            background-color: rgba(60,60,60,0.7);
-            border-radius: 6px;
-            padding: 3px 8px;
-            font-weight: bold;
-        """
-        )
+        self._show_status()
 
         for btn in [self.btn_min, self.btn_max, self.btn_close]:
             btn.setStyleSheet(

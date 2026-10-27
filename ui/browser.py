@@ -117,7 +117,6 @@ class ComfyBrowser(QMainWindow):
         self._set_central(central)
         THEME.themeChanged.connect(self._paint_resize_border)
 
-        self.status_label = self.header.status_label
         # A bound method, not a lambda: PyQt drops the connection when this
         # window is destroyed, while a lambda capturing self keeps firing into
         # a deleted C++ object and aborts the process.
@@ -180,8 +179,7 @@ class ComfyBrowser(QMainWindow):
             pass
 
         # Status and design
-        self.status_label.setText("🟠 Restarting...")
-        self.status_label.setStyleSheet("color: orange; font-weight: bold;")
+        self.header.set_status("restarting")
 
         def do_restart():
             # If the server is running, we soft-stop it.
@@ -216,13 +214,7 @@ class ComfyBrowser(QMainWindow):
                 log_event("⚠️ ComfyUI did not respond after restart.")
 
             # We return the status and unlock the button
-            QTimer.singleShot(0, lambda: self.status_label.setText("🟢 Online"))
-            QTimer.singleShot(
-                0,
-                lambda: self.status_label.setStyleSheet(
-                    "color: lightgreen; font-weight: bold;"
-                ),
-            )
+            QTimer.singleShot(0, lambda: self.header.set_status("online"))
 
             try:
                 self.header.btn_restart.setEnabled(True)
@@ -244,8 +236,7 @@ class ComfyBrowser(QMainWindow):
             return
 
         stop_comfyui_hard(self.comfyui_path)
-        self.header.status_label.setText("Offline")
-        self.header.status_label.setStyleSheet("color: red; font-weight: bold;")
+        self.header.set_status("offline")
         log_event("🟥 ComfyUI completely stopped by the user.")
 
     def open_folder(self):
@@ -330,12 +321,9 @@ class ComfyBrowser(QMainWindow):
                 # Don't touch the status during the restart.
                 return
 
-            if is_port_open(COMFYUI_PORT):
-                self.status_label.setText("🟢 Online")
-                self.status_label.setStyleSheet("color: lightgreen; font-weight: bold;")
-            else:
-                self.status_label.setText("🔴 Offline")
-                self.status_label.setStyleSheet("color: red; font-weight: bold;")
+            self.header.set_status(
+                "online" if is_port_open(COMFYUI_PORT) else "offline"
+            )
         except Exception as e:
             log_event(f"⚠️ Error in check_server_status: {e}")
 
