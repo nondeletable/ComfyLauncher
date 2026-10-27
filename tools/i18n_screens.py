@@ -217,6 +217,21 @@ def _main_window(save):
         _shoot(save, name, box)
 
 
+def _error_screens(save):
+    """Every startup error screen, at the size of a small main window."""
+    from core.errors import ERRORS, error_texts
+    from ui.error_page import ErrorScreen, ErrorWidget
+    from utils.i18n import t
+
+    for code in ERRORS:
+        widget = ErrorWidget(
+            *error_texts(code), on_report=lambda: None, report_text=t("error.report")
+        )
+        screen = ErrorScreen(widget)
+        screen.resize(900, 500)
+        _shoot(save, f"error_{code.lower()}", screen)
+
+
 # Every i18n block registers the screens it translated.
 SCREENS = [
     _settings_window,
@@ -225,6 +240,7 @@ SCREENS = [
     _flags_picker,
     _message_boxes,
     _main_window,
+    _error_screens,
 ]
 
 
