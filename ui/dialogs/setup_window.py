@@ -15,6 +15,7 @@ from PyQt6.QtCore import Qt, QSize, QPoint
 from PyQt6.QtGui import QIcon, QColor
 
 from config import (
+    get_language_preference,
     load_user_config,
     save_user_config,
     ICON_PATH,
@@ -27,7 +28,9 @@ from ui.theme.manager import THEME
 from utils.build_validation import is_valid_comfyui_build, detect_build_type
 from ui.dialogs.messagebox import MessageBox as MB
 from ui.dialogs.flags_picker_dialog import FlagsPickerDialog
+from ui.widgets.language_combo import LanguageComboBox
 from utils.i18n import I18N, safe_retranslate, t
+from utils.logger import log_event
 
 import os
 import sys
@@ -314,7 +317,18 @@ class SetupWindow(QDialog):
 
         # action buttons
         btn_row = QHBoxLayout()
-        btn_row.setAlignment(Qt.AlignmentFlag.AlignRight)
+        # Only the first-run window picks the language: over the build manager
+        # or Settings it is already chosen, and Settings is where it changes.
+        self.language_combo = None
+        if parent is None:
+            self.language_combo = LanguageComboBox(font_size=13)
+            self.language_combo.setFixedHeight(34)
+            self.language_combo.set_preference(get_language_preference())
+            self.language_combo.currentIndexChanged.connect(  # type: ignore
+                self._on_language_picked
+            )
+            btn_row.addWidget(self.language_combo)
+        btn_row.addStretch(1)
         self.ok_btn = QPushButton()
         self.cancel_btn = QPushButton()
         for btn in (self.ok_btn, self.cancel_btn):
@@ -363,6 +377,17 @@ class SetupWindow(QDialog):
         self.add_btn.setToolTip(t("setup.add_flags"))
         self.ok_btn.setText(t("common.ok"))
         self.cancel_btn.setText(t("common.cancel"))
+
+    def _on_language_picked(self):
+        """Switch at once and remember it, even if the setup is then cancelled."""
+        choice = self.language_combo.preference()
+        cfg = load_user_config()
+        cfg["language"] = choice
+        if not save_user_config(cfg):
+            # The window is already in the new language; only the next start
+            # would forget it, which is not worth a modal box on first run.
+            log_event("⚠️ Setup: could not save the language choice")
+        I18N.set_language(choice)
 
     # ── Dragging the window by any empty spot ──────
     def mousePressEvent(self, event):
