@@ -8,8 +8,23 @@ import string
 import pytest
 
 import utils.i18n as i18n
-from config import I18N_DIR
+from config import I18N_DIR, get_language_preference
 from utils.i18n import AUTO, LANGUAGES, I18n, match_language
+
+
+@pytest.mark.parametrize(
+    "cfg, expected",
+    [
+        ({}, AUTO),  # configs from before i18n
+        ({"language": "de"}, "de"),
+        ({"language": "auto"}, AUTO),
+        ({"language": ""}, AUTO),
+        ({"language": None}, AUTO),
+        ({"language": 7}, AUTO),
+    ],
+)
+def test_language_preference_from_config(cfg, expected):
+    assert get_language_preference(cfg) == expected
 
 
 @pytest.mark.parametrize(

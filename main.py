@@ -20,8 +20,10 @@ from ui.dialogs.webview2_setup import ensure_webview2_runtime
 from ui.theme.manager import THEME
 from ui.exception_hook import install_exception_hooks, enable_report_window
 from launcher import comfy_exists
+from utils.i18n import I18N
 from config import (
     get_comfyui_path,
+    get_language_preference,
     ICON_PATH,
     load_user_config,
     save_user_config,
@@ -54,6 +56,7 @@ def offer_config_restore():
     if restore_user_config(backup):
         THEME.reload()
         THEME.apply()
+        I18N.set_language(get_language_preference())
     else:
         MessageBox.warning(
             None,
@@ -86,6 +89,8 @@ def launch_app():
     app.setDesktopFileName("comfylauncher")
     app.setWindowIcon(QIcon(ICON_PATH))
     THEME.apply()
+    # Before the first window, the WebView2 installer prompt included.
+    I18N.set_language(get_language_preference())
     enable_report_window()
 
     QToolTip.setFont(QFont("Segoe UI", 9))

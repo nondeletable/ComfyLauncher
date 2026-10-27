@@ -474,6 +474,18 @@ def get_startup_stall_timeout(cfg: dict | None = None) -> int:
     return max(int(val), STARTUP_STALL_MIN)
 
 
+def get_language_preference(cfg: dict | None = None) -> str:
+    """Interface language the user picked: a language code or "auto".
+
+    Hand-editable like the rest of the file; anything that is not a string means
+    "auto", and an unknown code is caught by utils.i18n, which owns the list.
+    """
+    if cfg is None:
+        cfg = load_user_config()
+    val = cfg.get("language")
+    return val if isinstance(val, str) and val else "auto"
+
+
 def get_comfyui_path() -> str:
     """Returns the current path to ComfyUI (from user_config.json or default)."""
     data = load_user_config()
