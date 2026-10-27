@@ -257,6 +257,29 @@ def _settings_details(save):
     about.close()
 
 
+def _report_window(save):
+    """The report window in both kinds, and the box that follows a route."""
+    from ui.dialogs.bug_report_dialog import BugReportDialog
+    from ui.dialogs.messagebox import MessageBox
+    from utils import bug_report as br
+    from utils.i18n import t
+
+    report = br.BugReport(
+        source="manual",
+        summary=[("Launcher version", "1.10.1"), ("Error", "(none)")],
+        sections={br.SECTION_LOG: "log line\n", br.SECTION_CONFIG: "{}"},
+    )
+    for source in ("manual", "exception"):
+        _shoot(save, f"report_{source}", BugReportDialog(source, report=report))
+
+    path = "C:/Users/<user>/Desktop/comfylauncher-report-20261027-1200.txt"
+    box = MessageBox(
+        t("report.done.title"), t("report.done.discord", path=path), "info"
+    )
+    box._add_button(t("common.ok"), "accept")
+    _shoot(save, "report_done", box)
+
+
 # Every i18n block registers the screens it translated.
 SCREENS = [
     _settings_window,
@@ -267,6 +290,7 @@ SCREENS = [
     _main_window,
     _error_screens,
     _settings_details,
+    _report_window,
 ]
 
 
