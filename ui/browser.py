@@ -22,7 +22,7 @@ from ui.dialogs.messagebox import MessageBox as MB
 from ui.dialogs.console_window import ConsoleWindow
 from ui.dialogs.bug_report_dialog import open_bug_report
 from ui.error_page import ErrorWidget, ErrorScreen
-from core.errors import ERRORS
+from core.errors import error_texts
 from version import __version__
 from ui.splash_video import LauncherSplashVideo
 from ui.dialogs.slow_start_notice import SlowStartNotice
@@ -137,6 +137,8 @@ class ComfyBrowser(QMainWindow):
         self.header.settings_clicked.connect(self.open_settings)
         self.header.output_clicked.connect(self.open_output)
         self.header.report_clicked.connect(self.open_bug_report)
+
+        I18N.languageChanged.connect(self._retranslate_error)
 
         self.ui_state = "STARTING_COMFY"
         self._start_comfyui()
@@ -622,15 +624,17 @@ class ComfyBrowser(QMainWindow):
         self._close_slow_notice()
         self.ui_state = "ERROR_STARTUP"
 
-        error = ERRORS[error_code]
-        self._startup_error = f"{error_code}: {error.title} - {error.message}"
+        # The bug report stays English, whatever the interface language.
+        title, message, _hint = error_texts(error_code, I18N.english)
+        self._startup_error = f"{error_code}: {title} - {message}"
 
+        self._error_code = error_code
         error_widget = ErrorWidget(
-            title=error.title,
-            message=error.message,
-            hint=error.hint,
+            *error_texts(error_code),
             on_report=self._report_startup_error,
+            report_text=t("error.report"),
         )
+        self._error_widget = error_widget
 
         error_screen = ErrorScreen(error_widget)
 
@@ -652,6 +656,13 @@ class ComfyBrowser(QMainWindow):
         if hasattr(self, "thread"):
             self.thread.quit()
             self.thread.wait()
+
+    @safe_retranslate
+    def _retranslate_error(self, *args):
+        if self.ui_state == "ERROR_STARTUP":
+            self._error_widget.set_texts(
+                *error_texts(self._error_code), t("error.report")
+            )
 
     def _on_comfy_error(self, message: str):
         if self.ui_state == "STARTING_COMFY":

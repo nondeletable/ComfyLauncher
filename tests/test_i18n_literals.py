@@ -34,6 +34,8 @@ TRANSLATED = [
     "ui/dialogs/console_window.py",
     "ui/webview/placeholder.py",
     "ui/webview2_widget.py",
+    "core/errors.py",
+    "ui/error_page.py",
 ]
 
 # Shown as-is in every language.
