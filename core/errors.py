@@ -1,6 +1,9 @@
 from dataclasses import dataclass
 from enum import Enum, auto
 
+from config import COMFYUI_PORT
+from utils.i18n import I18N, t
+
 
 class ErrorLevel(Enum):
     STARTUP = auto()
@@ -9,47 +12,48 @@ class ErrorLevel(Enum):
 
 @dataclass(frozen=True)
 class ErrorInfo:
+    """What kind of failure a code is; its texts live in the dictionaries.
+
+    Keys: ``error.<code in lowercase>.title`` / ``.message`` / ``.hint``.
+    """
+
     level: ErrorLevel
-    title: str
-    message: str
-    hint: str | None = None
 
 
 ERRORS = {
-    "COMFY_PATH_INVALID": ErrorInfo(
-        level=ErrorLevel.STARTUP,
-        title="Incorrect path to ComfyUI",
-        message="The specified directory does not contain ComfyUI or is corrupted.",
-        hint="In the application header, find Settings -> Paths, select the correct path to the folder with ComfyUI and try again.",
-    ),
-    "PROCESS_START_FAILED": ErrorInfo(
-        level=ErrorLevel.STARTUP,
-        title="Failed to start ComfyUI",
-        message="The ComfyUI process did not start.",
-        hint="In the app header, go to Settings -> Application Logs and check for any issues. Also, check for proper installation.",
-    ),
-    "COMFY_START_TIMEOUT": ErrorInfo(
-        level=ErrorLevel.STARTUP,
-        title="ComfyUI is not responding",
-        message="ComfyUI stopped showing any activity before its server came up.",
-        hint="Check that the path to the ComfyUI folder is correct. Try restarting the app or check the Settings -> Application Logs section in the app header.",
-    ),
-    "COMFY_PROCESS_EXITED": ErrorInfo(
-        level=ErrorLevel.STARTUP,
-        title="ComfyUI stopped during startup",
-        message="The ComfyUI process exited before its server came up.",
-        hint="The reason is usually in the ComfyUI console output: check the console window or Settings -> Application Logs in the app header.",
-    ),
-    "COMFY_START_STOPPED": ErrorInfo(
-        level=ErrorLevel.STARTUP,
-        title="Startup stopped",
-        message="You stopped ComfyUI while it was still loading.",
-        hint="Press Restart in the app header to start it again. If it is always slow to start, you can raise the limit in Settings -> Startup.",
-    ),
-    "PORT_ALREADY_IN_USE": ErrorInfo(
-        level=ErrorLevel.STARTUP,
-        title="The port is occupied",
-        message="The ComfyUI port (8088) is already in use by another process.",
-        hint="Close the conflicting application or change the port.",
-    ),
+    "COMFY_PATH_INVALID": ErrorInfo(ErrorLevel.STARTUP),
+    "PROCESS_START_FAILED": ErrorInfo(ErrorLevel.STARTUP),
+    "COMFY_START_TIMEOUT": ErrorInfo(ErrorLevel.STARTUP),
+    "COMFY_PROCESS_EXITED": ErrorInfo(ErrorLevel.STARTUP),
+    "COMFY_START_STOPPED": ErrorInfo(ErrorLevel.STARTUP),
+    "PORT_ALREADY_IN_USE": ErrorInfo(ErrorLevel.STARTUP),
 }
+
+
+def _params(translate) -> dict:
+    """Values the texts may name: the port and Settings pages by their menu
+    labels, so a hint always matches the menu in any language."""
+
+    def page(menu_key):
+        return f"{translate('settings.window_title')} → {translate(menu_key)}"
+
+    return {
+        "port": COMFYUI_PORT,
+        "builds": page("settings.menu.builds"),
+        "startup": page("settings.menu.startup"),
+        "logs": page("settings.menu.logs"),
+    }
+
+
+def error_texts(code: str, translate=t) -> tuple[str, str, str | None]:
+    """(title, message, hint) of an error; ``I18N.english`` for logs/reports."""
+    if code not in ERRORS:
+        raise KeyError(code)
+    key = f"error.{code.lower()}"
+    params = _params(translate)
+    hint = translate(f"{key}.hint", **params) if I18N.has(f"{key}.hint") else None
+    return (
+        translate(f"{key}.title", **params),
+        translate(f"{key}.message", **params),
+        hint,
+    )

@@ -20,8 +20,10 @@ from ui.dialogs.webview2_setup import ensure_webview2_runtime
 from ui.theme.manager import THEME
 from ui.exception_hook import install_exception_hooks, enable_report_window
 from launcher import comfy_exists
+from utils.i18n import I18N, t
 from config import (
     get_comfyui_path,
+    get_language_preference,
     ICON_PATH,
     load_user_config,
     save_user_config,
@@ -45,21 +47,20 @@ def offer_config_restore():
         return
     if not MessageBox.ask_yes_no(
         None,
-        "Restore settings?",
-        f"No saved builds were found, but there is a backup:\n{backup}\n\n"
-        "Restore your builds and settings from it?",
+        t("restore.ask.title"),
+        t("restore.ask.text", path=backup),
     ):
         set_aside_user_config_backup(backup)
         return
     if restore_user_config(backup):
         THEME.reload()
         THEME.apply()
+        I18N.set_language(get_language_preference())
     else:
         MessageBox.warning(
             None,
-            "Restore failed",
-            "Could not restore settings from the backup. "
-            "The launcher will start with default settings.",
+            t("restore.failed.title"),
+            t("restore.failed.text"),
         )
 
 
@@ -86,6 +87,8 @@ def launch_app():
     app.setDesktopFileName("comfylauncher")
     app.setWindowIcon(QIcon(ICON_PATH))
     THEME.apply()
+    # Before the first window, the WebView2 installer prompt included.
+    I18N.set_language(get_language_preference())
     enable_report_window()
 
     QToolTip.setFont(QFont("Segoe UI", 9))

@@ -13,6 +13,7 @@ from PyQt6.QtGui import QIcon, QPainter, QPixmap, QColor
 
 from config import ICON_PATH, ICON_PATHS, HEAD_ICON_PATHS, load_user_config
 from ui.theme.manager import THEME
+from utils.i18n import I18N, safe_retranslate, t
 from utils.process_launch import external_console_supported
 
 
@@ -29,6 +30,14 @@ def colorize_svg(svg_path, color=THEME.colors["icon_color_window"], size=QSize(2
     painter.end()
 
     return QIcon(pixmap)
+
+
+# Server state -> (icon, text key, theme color), set by ``HeaderBar.set_status``.
+STATUSES = {
+    "online": ("🟢", "header.status.online", "success"),
+    "offline": ("🔴", "header.status.offline", "error"),
+    "restarting": ("🟠", "header.status.restarting", "warning"),
+}
 
 
 class HeaderBar(QWidget):
@@ -119,16 +128,8 @@ class HeaderBar(QWidget):
         # ── Right side ───────────────────────────────
 
         # indicator online
-        self.status_label = QLabel("Online")
-        self.status_label.setStyleSheet(
-            f"""
-            color: {THEME.colors['success']};
-            background-color: rgba(60,60,60,0.7);
-            border-radius: 6px;
-            padding: 3px 8px;
-            font-weight: bold;
-        """
-        )
+        self.status_label = QLabel()
+        self._status = "online"
         layout.addWidget(self.status_label)
 
         layout.addSpacerItem(
@@ -176,15 +177,6 @@ class HeaderBar(QWidget):
             btn.setIconSize(QSize(20, 20))
             layout.addWidget(btn)
 
-        self.btn_restart.setToolTip("Restart ComfyUI")
-        self.btn_stop.setToolTip("Stop ComfyUI")
-        self.btn_settings.setToolTip("Settings")
-        self.btn_folder.setToolTip("Open ComfyUI folder")
-        self.btn_output.setToolTip("Open output")
-        self.btn_reload.setToolTip("Refresh UI")
-        # self.btn_report.setToolTip("Report a problem")
-        self.btn_console.setToolTip("Command Prompt")
-
         # ── Signals ───────────────────────────────────
         self.btn_restart.clicked.connect(self.restart_clicked.emit)  # type: ignore
         self.btn_stop.clicked.connect(self.stop_clicked.emit)  # type: ignore
@@ -202,6 +194,38 @@ class HeaderBar(QWidget):
 
         self._apply_theme()
         THEME.themeChanged.connect(self._apply_theme)
+        self._retranslate()
+        I18N.languageChanged.connect(self._retranslate)
+
+    @safe_retranslate
+    def _retranslate(self, *args):
+        self.btn_restart.setToolTip(t("header.tip.restart"))
+        self.btn_stop.setToolTip(t("header.tip.stop"))
+        self.btn_settings.setToolTip(t("header.tip.settings"))
+        self.btn_folder.setToolTip(t("header.tip.folder"))
+        self.btn_output.setToolTip(t("header.tip.output"))
+        self.btn_reload.setToolTip(t("header.tip.reload"))
+        self.btn_console.setToolTip(t("header.tip.console"))
+        self._show_status()
+
+    # ── Server status ───────────────────────────
+    def set_status(self, status: str) -> None:
+        """Show the ComfyUI server state: one of ``STATUSES``."""
+        self._status = status
+        self._show_status()
+
+    def _show_status(self):
+        icon, key, color = STATUSES[self._status]
+        self.status_label.setText(f"{icon} {t(key)}")
+        self.status_label.setStyleSheet(
+            f"""
+            color: {THEME.colors[color]};
+            background-color: rgba(60,60,60,0.7);
+            border-radius: 6px;
+            padding: 3px 8px;
+            font-weight: bold;
+        """
+        )
 
     def _on_reload_clicked(self):
         if hasattr(self.parent, "browser") and self.parent.browser:
@@ -274,15 +298,7 @@ class HeaderBar(QWidget):
         self.title.setStyleSheet(
             f"color: {c['app_title_color']}; font-weight: bold; font-size: 15px;"
         )
-        self.status_label.setStyleSheet(
-            f"""
-            color: {c['success']};
-            background-color: rgba(60,60,60,0.7);
-            border-radius: 6px;
-            padding: 3px 8px;
-            font-weight: bold;
-        """
-        )
+        self._show_status()
 
         for btn in [self.btn_min, self.btn_max, self.btn_close]:
             btn.setStyleSheet(

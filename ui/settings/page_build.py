@@ -22,6 +22,7 @@ from ui.header import colorize_svg
 from ui.theme.manager import THEME, safe_repaint
 from ui.dialogs.messagebox import MessageBox as MB
 from ui.dialogs.setup_window import SetupWindow, SetupMode
+from utils.i18n import I18N, safe_retranslate, t
 
 import webbrowser
 import os
@@ -84,14 +85,11 @@ class BuildSettingsPage(QWidget):
         content_layout.setSpacing(16)
 
         # ─── Headline ───────────────────────────────
-        title = QLabel("Builds")
-        title.setStyleSheet("font-size: 20px; font-weight: 600;")
-        content_layout.addWidget(title)
+        self.title = QLabel()
+        self.title.setStyleSheet("font-size: 20px; font-weight: 600;")
+        content_layout.addWidget(self.title)
 
-        self.desc = QLabel(
-            "This section is entirely dedicated to ComfyUI builds.\n"
-            "Here you can see all saved builds, edit the name or icon, and delete a build."
-        )
+        self.desc = QLabel()
         self.desc.setWordWrap(True)
         content_layout.addWidget(self.desc)
 
@@ -110,9 +108,7 @@ class BuildSettingsPage(QWidget):
         content_layout.addStretch()
 
         # ---
-        self.info_label = QLabel(
-            "Check for ComfyUI updates and download the new version:"
-        )
+        self.info_label = QLabel()
         self.info_label.setWordWrap(True)
         content_layout.addWidget(self.info_label)
 
@@ -136,6 +132,16 @@ class BuildSettingsPage(QWidget):
 
         self._apply_theme()
         THEME.themeChanged.connect(self._apply_theme)
+        self._retranslate()
+        I18N.languageChanged.connect(self._retranslate)
+
+    @safe_retranslate
+    def _retranslate(self, *args):
+        self.title.setText(t("settings.menu.builds"))
+        self.desc.setText(t("builds.description"))
+        self.info_label.setText(t("builds.comfy_download"))
+        # Rows take their texts when built, so they are built again.
+        self._refresh_builds_list()
 
     @safe_repaint
     def _apply_theme(self, *args):
@@ -218,7 +224,7 @@ class BuildSettingsPage(QWidget):
         self._clear_layout(self.builds_layout)
 
         if not builds:
-            empty = QLabel("No builds saved yet.")
+            empty = QLabel(t("builds.empty"))
             empty.setStyleSheet(
                 f"color: {THEME.colors['text_secondary']}; font-size: 13px;"
             )
@@ -239,7 +245,7 @@ class BuildSettingsPage(QWidget):
 
     def _build_row_widget(self, build: dict, last_used_id: str) -> QWidget:
         build_id = str(build.get("id", ""))
-        name = str(build.get("name", "Unnamed"))
+        name = str(build.get("name") or t("manager.unnamed"))
         path = str(build.get("path", ""))
         icon_id = str(build.get("icon_id", DEFAULT_DOODLE_ID))
 
@@ -279,7 +285,7 @@ class BuildSettingsPage(QWidget):
         text_box.setSpacing(2)
 
         is_last = build_id == str(last_used_id)
-        name_lbl = QLabel(name + ("  (last used)" if is_last else ""))
+        name_lbl = QLabel(t("manager.last_used", name=name) if is_last else name)
         name_lbl.setStyleSheet(
             f"""
             QLabel {{
@@ -319,7 +325,7 @@ class BuildSettingsPage(QWidget):
             )
         )
         btn_edit.setIconSize(QSize(18, 18))
-        btn_edit.setToolTip("Edit build")
+        btn_edit.setToolTip(t("manager.edit"))
         btn_edit.setStyleSheet(self._tool_icon_btn_style())
         btn_edit.clicked.connect(lambda checked=False, b=build: self._on_edit_build(b))  # type: ignore
 
@@ -329,7 +335,7 @@ class BuildSettingsPage(QWidget):
             QIcon(colorize_svg(ICON_PATHS["delete"], THEME.colors["icon_color_window"]))
         )
         btn_del.setIconSize(QSize(18, 18))
-        btn_del.setToolTip("Delete build")
+        btn_del.setToolTip(t("builds.delete.title"))
         btn_del.setStyleSheet(self._tool_icon_btn_style())
         btn_del.clicked.connect(lambda checked=False, b=build: self._on_delete_build(b))  # type: ignore
 
@@ -369,7 +375,7 @@ class BuildSettingsPage(QWidget):
         )
         btn_add.clicked.connect(self._on_add_build)  # type: ignore
 
-        lbl = QLabel("Add Build")
+        lbl = QLabel(t("manager.add"))
         lbl.setStyleSheet(f"color: {THEME.colors['text_secondary']}; font-size: 13px;")
 
         h.addWidget(btn_add, 0, Qt.AlignmentFlag.AlignLeft)
@@ -393,13 +399,17 @@ class BuildSettingsPage(QWidget):
 
     def _on_delete_build(self, build: dict):
         build_id = str(build.get("id", ""))
-        name = str(build.get("name", "Unnamed"))
+        name = str(build.get("name") or t("manager.unnamed"))
 
         if not build_id:
-            MB.warning(self.window(), "Delete build", "Build ID is missing.")
+            MB.warning(
+                self.window(), t("builds.delete.title"), t("builds.delete.no_id")
+            )
             return
 
-        if not MB.ask_yes_no(self.window(), "Delete build", f"Delete build “{name}”?"):
+        if not MB.ask_yes_no(
+            self.window(), t("builds.delete.title"), t("builds.delete.ask", name=name)
+        ):
             return
 
         cfg = load_user_config()

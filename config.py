@@ -19,6 +19,7 @@ DATA_DIR = os.path.join(ASSETS_DIR, "data")
 SPLASH_DIR = os.path.join(ASSETS_DIR, "splash")
 INTERFACE_DIR = os.path.join(ASSETS_DIR, "interface")
 DOODLES_DIR = os.path.join(ICONS_DIR, "doodles")
+I18N_DIR = os.path.join(ASSETS_DIR, "i18n")
 
 COMFYUI_PORT = 8188
 
@@ -471,6 +472,18 @@ def get_startup_stall_timeout(cfg: dict | None = None) -> int:
     if val == 0:
         return 0
     return max(int(val), STARTUP_STALL_MIN)
+
+
+def get_language_preference(cfg: dict | None = None) -> str:
+    """Interface language the user picked: a language code or "auto".
+
+    Hand-editable like the rest of the file; anything that is not a string means
+    "auto", and an unknown code is caught by utils.i18n, which owns the list.
+    """
+    if cfg is None:
+        cfg = load_user_config()
+    val = cfg.get("language")
+    return val if isinstance(val, str) and val else "auto"
 
 
 def get_comfyui_path() -> str:

@@ -8,6 +8,8 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt
 
+TEXT_MIN_WIDTH = 380
+
 
 class ErrorScreen(QWidget):
     def __init__(self, error_widget: QWidget, parent=None):
@@ -39,6 +41,9 @@ class ErrorWidget(QWidget):
     Sterile inline error screen.
     No themes, no icons, no config, no side effects on import.
     Safe to create even in partially damaged Python runtime.
+
+    The caller supplies every text, already translated, and may replace them
+    later with ``set_texts`` (a language switch while the screen is up).
     """
 
     def __init__(
@@ -48,18 +53,30 @@ class ErrorWidget(QWidget):
         hint: str | None = None,
         parent: QWidget | None = None,
         on_report: Callable[[], None] | None = None,
+        report_text: str = "Report this problem",
     ):
         super().__init__(parent)
 
-        self._build_ui(title, message, hint, on_report)
+        self._build_ui(on_report)
+        self.set_texts(title, message, hint, report_text)
 
-    def _build_ui(
+    def set_texts(
         self,
         title: str,
         message: str,
-        hint: str | None,
-        on_report: Callable[[], None] | None,
-    ):
+        hint: str | None = None,
+        report_text: str | None = None,
+    ) -> None:
+        """Show these texts; no hint hides the hint line."""
+        self.title_label.setText(title)
+        self.message_label.setText(message)
+        self.hint_label.setText(hint or "")
+        self.hint_label.setVisible(bool(hint))
+        # Present only when the caller passed on_report.
+        if hasattr(self, "report_button") and report_text:
+            self.report_button.setText(report_text)
+
+    def _build_ui(self, on_report: Callable[[], None] | None):
         root = QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(0)
@@ -75,7 +92,7 @@ class ErrorWidget(QWidget):
         card_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         # ─── Title ───────────────────────────────────────────────
-        title_label = QLabel(title)
+        self.title_label = title_label = QLabel()
         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         title_label.setStyleSheet(
             """
@@ -86,9 +103,12 @@ class ErrorWidget(QWidget):
         )
 
         # ─── Message ─────────────────────────────────────────────
-        message_label = QLabel(message)
+        self.message_label = message_label = QLabel()
         message_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         message_label.setWordWrap(True)
+        # Without a floor the card shrinks to its title, and text with no
+        # spaces (Chinese) wraps into a narrow column of a few characters.
+        message_label.setMinimumWidth(TEXT_MIN_WIDTH)
         message_label.setStyleSheet(
             """
             font-size: 15px;
@@ -96,31 +116,28 @@ class ErrorWidget(QWidget):
             """
         )
 
-        # ─── Hint (optional) ─────────────────────────────────────
-        if hint:
-            hint_label = QLabel(hint)
-            hint_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            hint_label.setWordWrap(True)
-            hint_label.setStyleSheet(
-                """
-                font-size: 14px;
-                color: #9a9a9a;
-                """
-            )
-        else:
-            hint_label = None
+        # ─── Hint (hidden while empty) ───────────────────────────
+        self.hint_label = hint_label = QLabel()
+        hint_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        hint_label.setWordWrap(True)
+        hint_label.setMinimumWidth(TEXT_MIN_WIDTH)
+        hint_label.setStyleSheet(
+            """
+            font-size: 14px;
+            color: #9a9a9a;
+            """
+        )
 
         # Assemble card
         card_layout.addWidget(title_label)
         card_layout.addSpacing(4)
         card_layout.addWidget(message_label)
 
-        if hint_label:
-            card_layout.addSpacing(6)
-            card_layout.addWidget(hint_label)
+        card_layout.addSpacing(6)
+        card_layout.addWidget(hint_label)
 
         if on_report is not None:
-            self.report_button = QPushButton("Report this problem")
+            self.report_button = QPushButton()
             self.report_button.setCursor(Qt.CursorShape.PointingHandCursor)
             self.report_button.setStyleSheet(
                 """

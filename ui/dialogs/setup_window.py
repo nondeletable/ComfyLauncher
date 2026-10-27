@@ -15,6 +15,7 @@ from PyQt6.QtCore import Qt, QSize, QPoint
 from PyQt6.QtGui import QIcon, QColor
 
 from config import (
+    get_language_preference,
     load_user_config,
     save_user_config,
     ICON_PATH,
@@ -27,6 +28,9 @@ from ui.theme.manager import THEME
 from utils.build_validation import is_valid_comfyui_build, detect_build_type
 from ui.dialogs.messagebox import MessageBox as MB
 from ui.dialogs.flags_picker_dialog import FlagsPickerDialog
+from ui.widgets.language_combo import LanguageComboBox
+from utils.i18n import I18N, safe_retranslate, t
+from utils.logger import log_event
 
 import os
 import sys
@@ -60,7 +64,6 @@ class SetupWindow(QDialog):
         self.mode = mode
         self.edit_build_id = str(build.get("id", "")) if build else ""
 
-        self.setWindowTitle("ComfyLauncher Setup")
         self.setWindowIcon(QIcon(ICON_PATH))
         self.setModal(True)
         self.setFixedSize(self.WINDOW_WIDTH, self.WINDOW_HEIGHT)
@@ -110,11 +113,7 @@ class SetupWindow(QDialog):
         """
         )
 
-        info = QLabel(
-            "Specify the folder where ComfyUI is located (folder with main.py).<br>"
-            "For example: <code>D:/Portable/ComfyUI</code>. "
-            "Be sure to give the build a name and select an icon."
-        )
+        self.info = info = QLabel()
         info.setStyleSheet(
             f"""
             QLabel {{
@@ -158,7 +157,6 @@ class SetupWindow(QDialog):
         row.setSpacing(8)
 
         self.path_edit = QLineEdit()
-        self.path_edit.setPlaceholderText("Path to ComfyUI… (Folder with main.py)")
         self.path_edit.setFixedHeight(36)
         self.path_edit.setStyleSheet(self._line_edit_style())
         self.path_edit.textChanged.connect(self._on_path_changed)  # type: ignore
@@ -171,7 +169,6 @@ class SetupWindow(QDialog):
         name_row.setSpacing(8)
 
         self.name_edit = QLineEdit()
-        self.name_edit.setPlaceholderText("Build name")
         self.name_edit.setFixedHeight(36)
         self.name_edit.setStyleSheet(self._line_edit_style())
 
@@ -235,7 +232,7 @@ class SetupWindow(QDialog):
         layout.addLayout(doodle_row)
 
         # ── Startup flags ────────────────────────────────────────────────────
-        flags_label = QLabel("Startup flags")
+        self.flags_label = flags_label = QLabel()
         flags_label.setStyleSheet(
             f"""
             QLabel {{
@@ -258,7 +255,7 @@ class SetupWindow(QDialog):
         self.flags_edit.setFixedHeight(36)
         self.flags_edit.setStyleSheet(self._line_edit_style())
 
-        add_btn = QPushButton()
+        self.add_btn = add_btn = QPushButton()
         add_btn.setIcon(
             QIcon(
                 colorize_svg(
@@ -269,7 +266,6 @@ class SetupWindow(QDialog):
         )
         add_btn.setIconSize(QSize(20, 20))
         add_btn.setFixedSize(38, 36)
-        add_btn.setToolTip("Add flags")
         add_btn.setStyleSheet(
             f"""
             QPushButton {{
@@ -321,9 +317,20 @@ class SetupWindow(QDialog):
 
         # action buttons
         btn_row = QHBoxLayout()
-        btn_row.setAlignment(Qt.AlignmentFlag.AlignRight)
-        self.ok_btn = QPushButton("OK")
-        self.cancel_btn = QPushButton("Cancel")
+        # Only the first-run window picks the language: over the build manager
+        # or Settings it is already chosen, and Settings is where it changes.
+        self.language_combo = None
+        if parent is None:
+            self.language_combo = LanguageComboBox(font_size=13)
+            self.language_combo.setFixedHeight(34)
+            self.language_combo.set_preference(get_language_preference())
+            self.language_combo.currentIndexChanged.connect(  # type: ignore
+                self._on_language_picked
+            )
+            btn_row.addWidget(self.language_combo)
+        btn_row.addStretch(1)
+        self.ok_btn = QPushButton()
+        self.cancel_btn = QPushButton()
         for btn in (self.ok_btn, self.cancel_btn):
             btn.setFixedSize(100, 34)
             btn.setStyleSheet(
@@ -350,12 +357,37 @@ class SetupWindow(QDialog):
         btn_row.addWidget(self.cancel_btn)
         layout.addLayout(btn_row)
 
+        self._retranslate()
+        I18N.languageChanged.connect(self._retranslate)
+
         # Now that ok_btn exists, reflect the (possibly pre-filled) fields. In
         # edit mode name and path are already valid, so Save must be enabled at
         # once; the earlier call in the prefill block ran before ok_btn was
         # created and was a no-op, which left edit mode with Save disabled until
         # the user touched a field.
         self._update_ok_state()
+
+    @safe_retranslate
+    def _retranslate(self, *args):
+        self.setWindowTitle(t("setup.window_title"))
+        self.info.setText(t("setup.info", example="<code>D:/Portable/ComfyUI</code>"))
+        self.path_edit.setPlaceholderText(t("setup.path_placeholder"))
+        self.name_edit.setPlaceholderText(t("setup.name_placeholder"))
+        self.flags_label.setText(t("setup.flags_label"))
+        self.add_btn.setToolTip(t("setup.add_flags"))
+        self.ok_btn.setText(t("common.ok"))
+        self.cancel_btn.setText(t("common.cancel"))
+
+    def _on_language_picked(self):
+        """Switch at once and remember it, even if the setup is then cancelled."""
+        choice = self.language_combo.preference()
+        cfg = load_user_config()
+        cfg["language"] = choice
+        if not save_user_config(cfg):
+            # The window is already in the new language; only the next start
+            # would forget it, which is not worth a modal box on first run.
+            log_event("⚠️ Setup: could not save the language choice")
+        I18N.set_language(choice)
 
     # ── Dragging the window by any empty spot ──────
     def mousePressEvent(self, event):
@@ -378,14 +410,14 @@ class SetupWindow(QDialog):
         self._drag_pos = None
 
     def _browse(self):
-        directory = QFileDialog.getExistingDirectory(self, "Select ComfyUI folder")
+        directory = QFileDialog.getExistingDirectory(self, t("setup.browse_title"))
         if not directory:
             return
 
         self.path_edit.setText(directory)
         if not self.name_edit.text().strip():
             self.name_edit.setText(
-                os.path.basename(directory.rstrip("/\\")) or "My Build"
+                os.path.basename(directory.rstrip("/\\")) or t("setup.default_name")
             )
 
     def _on_path_changed(self):
@@ -396,33 +428,27 @@ class SetupWindow(QDialog):
         name = self.name_edit.text().strip()
 
         if not is_valid_comfyui_build(path):
-            MB.warning(self, "Invalid path", "This folder does not contain main.py")
+            MB.warning(self, t("setup.invalid.title"), t("setup.invalid.text"))
             return
 
         if detect_build_type(path) == "standalone":
-            if sys.platform == "win32":
-                reason = (
-                    "No embedded Python was found next to this folder, so it looks "
-                    "like a non-portable or third-party ComfyUI install "
-                    "(e.g. system Python or Stability Matrix)."
-                )
-            else:
-                reason = (
-                    "No virtual environment (.venv or venv) was found in or next "
-                    "to this folder."
-                )
+            reason = t(
+                "setup.nonportable.reason_windows"
+                if sys.platform == "win32"
+                else "setup.nonportable.reason_posix"
+            )
             proceed = MB.ask_yes_no(
                 self,
-                "Non-portable build",
-                f"{reason}\n\n"
-                "ComfyLauncher will launch it using the system Python. "
-                "Add this build anyway?",
+                t("setup.nonportable.title"),
+                t("setup.nonportable.text", reason=reason),
             )
             if not proceed:
                 return
 
         if not name:
-            MB.warning(self, "Missing name", "Please enter a build name.")
+            MB.warning(
+                self, t("setup.missing_name.title"), t("setup.missing_name.text")
+            )
             return
 
         data = load_user_config()
@@ -486,12 +512,7 @@ class SetupWindow(QDialog):
         self.accept()
 
     def _warn_save_failed(self):
-        MB.warning(
-            self,
-            "Could not save",
-            "Failed to save the settings. Make sure the app can write to your "
-            "AppData folder, then try again.",
-        )
+        MB.save_failed(self)
 
     def _on_doodle_selected(self):
         btn = self.sender()

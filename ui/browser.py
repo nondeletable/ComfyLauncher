@@ -22,7 +22,7 @@ from ui.dialogs.messagebox import MessageBox as MB
 from ui.dialogs.console_window import ConsoleWindow
 from ui.dialogs.bug_report_dialog import open_bug_report
 from ui.error_page import ErrorWidget, ErrorScreen
-from core.errors import ERRORS
+from core.errors import error_texts
 from version import __version__
 from ui.splash_video import LauncherSplashVideo
 from ui.dialogs.slow_start_notice import SlowStartNotice
@@ -30,6 +30,7 @@ from ui.webview import create_webview
 from ui.window_resize import EdgeResizer, RESIZE_MARGIN
 from ui.window_placement import center_over, is_off_screen
 from ui.theme.manager import THEME
+from utils.i18n import I18N, safe_retranslate, t
 from utils.logger import log_event
 from utils.platform_paths import open_in_file_manager
 from utils.update_checker import UpdateService
@@ -55,11 +56,17 @@ class StartingWidget(QWidget):
         layout = QVBoxLayout(self)
         layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        label = QLabel("🚀 Starting ComfyUI…")
-        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        label.setStyleSheet("font-size: 18px; color: #cccccc;")
+        self.label = QLabel()
+        self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.label.setStyleSheet("font-size: 18px; color: #cccccc;")
 
-        layout.addWidget(label)
+        layout.addWidget(self.label)
+        self._retranslate()
+        I18N.languageChanged.connect(self._retranslate)
+
+    @safe_retranslate
+    def _retranslate(self, *args):
+        self.label.setText(f"🚀 {t('main.starting')}")
 
 
 class ComfyBrowser(QMainWindow):
@@ -117,7 +124,6 @@ class ComfyBrowser(QMainWindow):
         self._set_central(central)
         THEME.themeChanged.connect(self._paint_resize_border)
 
-        self.status_label = self.header.status_label
         # A bound method, not a lambda: PyQt drops the connection when this
         # window is destroyed, while a lambda capturing self keeps firing into
         # a deleted C++ object and aborts the process.
@@ -131,6 +137,8 @@ class ComfyBrowser(QMainWindow):
         self.header.settings_clicked.connect(self.open_settings)
         self.header.output_clicked.connect(self.open_output)
         self.header.report_clicked.connect(self.open_bug_report)
+
+        I18N.languageChanged.connect(self._retranslate_error)
 
         self.ui_state = "STARTING_COMFY"
         self._start_comfyui()
@@ -180,8 +188,7 @@ class ComfyBrowser(QMainWindow):
             pass
 
         # Status and design
-        self.status_label.setText("🟠 Restarting...")
-        self.status_label.setStyleSheet("color: orange; font-weight: bold;")
+        self.header.set_status("restarting")
 
         def do_restart():
             # If the server is running, we soft-stop it.
@@ -216,13 +223,7 @@ class ComfyBrowser(QMainWindow):
                 log_event("⚠️ ComfyUI did not respond after restart.")
 
             # We return the status and unlock the button
-            QTimer.singleShot(0, lambda: self.status_label.setText("🟢 Online"))
-            QTimer.singleShot(
-                0,
-                lambda: self.status_label.setStyleSheet(
-                    "color: lightgreen; font-weight: bold;"
-                ),
-            )
+            QTimer.singleShot(0, lambda: self.header.set_status("online"))
 
             try:
                 self.header.btn_restart.setEnabled(True)
@@ -237,15 +238,14 @@ class ComfyBrowser(QMainWindow):
     def stop_comfy(self):
         reply = MB.ask_yes_no(
             self.window(),
-            "Stop confirmation",
-            "Completely stop ComfyUI and terminate the process?",
+            t("main.stop.title"),
+            t("main.stop.text"),
         )
         if not reply:
             return
 
         stop_comfyui_hard(self.comfyui_path)
-        self.header.status_label.setText("Offline")
-        self.header.status_label.setStyleSheet("color: red; font-weight: bold;")
+        self.header.set_status("offline")
         log_event("🟥 ComfyUI completely stopped by the user.")
 
     def open_folder(self):
@@ -330,12 +330,9 @@ class ComfyBrowser(QMainWindow):
                 # Don't touch the status during the restart.
                 return
 
-            if is_port_open(COMFYUI_PORT):
-                self.status_label.setText("🟢 Online")
-                self.status_label.setStyleSheet("color: lightgreen; font-weight: bold;")
-            else:
-                self.status_label.setText("🔴 Offline")
-                self.status_label.setStyleSheet("color: red; font-weight: bold;")
+            self.header.set_status(
+                "online" if is_port_open(COMFYUI_PORT) else "offline"
+            )
         except Exception as e:
             log_event(f"⚠️ Error in check_server_status: {e}")
 
@@ -388,8 +385,8 @@ class ComfyBrowser(QMainWindow):
         if ask:
             choice = MB.ask_exit(
                 self,
-                "Exit",
-                "Shut down ComfyUI server?",
+                t("main.exit.title"),
+                t("main.exit.text"),
             )
 
             # YES → stop server + exit
@@ -627,15 +624,17 @@ class ComfyBrowser(QMainWindow):
         self._close_slow_notice()
         self.ui_state = "ERROR_STARTUP"
 
-        error = ERRORS[error_code]
-        self._startup_error = f"{error_code}: {error.title} - {error.message}"
+        # The bug report stays English, whatever the interface language.
+        title, message, _hint = error_texts(error_code, I18N.english)
+        self._startup_error = f"{error_code}: {title} - {message}"
 
+        self._error_code = error_code
         error_widget = ErrorWidget(
-            title=error.title,
-            message=error.message,
-            hint=error.hint,
+            *error_texts(error_code),
             on_report=self._report_startup_error,
+            report_text=t("error.report"),
         )
+        self._error_widget = error_widget
 
         error_screen = ErrorScreen(error_widget)
 
@@ -657,6 +656,13 @@ class ComfyBrowser(QMainWindow):
         if hasattr(self, "thread"):
             self.thread.quit()
             self.thread.wait()
+
+    @safe_retranslate
+    def _retranslate_error(self, *args):
+        if self.ui_state == "ERROR_STARTUP":
+            self._error_widget.set_texts(
+                *error_texts(self._error_code), t("error.report")
+            )
 
     def _on_comfy_error(self, message: str):
         if self.ui_state == "STARTING_COMFY":
@@ -698,15 +704,11 @@ class ComfyBrowser(QMainWindow):
         self.update_thread.start()
 
     def on_update_available(self, latest_version, release_url):
-        title = "Update available"
-
-        message = (
-            f"A new version ({latest_version}) is available.\n\n"
-            f"Current version: {__version__}\n\n"
-            "Would you like to update now?"
+        user_wants_update = MB.update_available(
+            self.window(),
+            t("update.title"),
+            t("update.text", latest=latest_version, current=__version__),
         )
-
-        user_wants_update = MB.update_available(self.window(), title, message)
 
         if user_wants_update:
             webbrowser.open(release_url)

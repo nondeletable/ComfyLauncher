@@ -7,6 +7,7 @@ C++ object with it — every later test touching a Qt signal on THEME then dies
 with "wrapped C/C++ object of type ThemeManager has been deleted".
 """
 
+import gc
 import os
 import sys
 import tempfile
@@ -90,3 +91,16 @@ def qapp():
         # "the program name is not passed to QCoreApplication".
         _APP = QApplication.instance() or QApplication(sys.argv[:1])
     return _APP
+
+
+@pytest.fixture(autouse=True)
+def collect_leftover_widgets():
+    """Free each test's unreachable widgets right after it, at a safe point.
+
+    Tests leave widgets behind in reference cycles. Left to chance, the
+    garbage collector frees them whenever it runs - possibly inside a Python
+    callback in the middle of a Qt pass over all widgets (a restyle), which
+    then reads freed memory. Segfaulted CI on Linux.
+    """
+    yield
+    gc.collect()

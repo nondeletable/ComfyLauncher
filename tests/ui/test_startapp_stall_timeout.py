@@ -7,6 +7,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 import pytest  # noqa: E402
 
 import ui.settings.page_startapp as startapp  # noqa: E402
+from utils.i18n import I18N  # noqa: E402
 
 
 @pytest.fixture
@@ -43,7 +44,7 @@ def test_presets_with_default_selected(page_with):
 def test_hand_edited_value_is_kept_as_custom(page_with):
     page = page_with({"startup_stall_timeout": 900})
     assert items(page) == [120, 300, 600, 900, 0]  # "Never" stays last
-    assert page.cmb_stall.currentText() == "15 minutes (custom)"
+    assert page.cmb_stall.currentText() == "15 min (custom)"
     assert not page.is_dirty()
 
 
@@ -79,3 +80,16 @@ def test_reset_restores_saved_choice(page_with):
     page.reset()
     assert page.cmb_stall.currentData() == 600
     assert not page.is_dirty()
+
+
+def test_language_switch_relabels_without_touching_the_choice(page_with):
+    page = page_with({"startup_stall_timeout": 900})
+    page.cmb_stall.setCurrentIndex(1)  # 5 min, unsaved
+    try:
+        I18N.set_language("ru")
+        assert items(page) == [120, 300, 600, 900, 0]  # custom value kept
+        assert page.cmb_stall.currentData() == 300
+        assert page.cmb_stall.itemText(3) == "15 мин (своё значение)"
+        assert page.is_dirty()
+    finally:
+        I18N.set_language("en")

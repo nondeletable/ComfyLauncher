@@ -15,6 +15,8 @@ from ui.settings.page_logs import LogsSettingsPage  # noqa: E402
 from ui.settings.page_startapp import StartAppSettingsPage  # noqa: E402
 from ui.settings.settings_window import SettingsWindow  # noqa: E402
 
+LOGS = 5
+
 
 @pytest.fixture
 def window(qapp):
@@ -25,21 +27,21 @@ def window(qapp):
 
 
 def test_only_the_first_page_is_built_on_open(window):
-    assert window.pages.count() == 6
+    assert window.pages.count() == 7
     assert isinstance(window.pages.widget(0), BuildSettingsPage)
     assert window._built_pages == {0}
     assert window.pages.currentIndex() == 0
 
 
 def test_a_page_is_built_on_its_first_visit_and_kept(window):
-    window.menu.setCurrentRow(4)
+    window.menu.setCurrentRow(LOGS)
     logs = window.pages.currentWidget()
     assert isinstance(logs, LogsSettingsPage)
-    assert window.pages.indexOf(logs) == 4
-    assert window.pages.count() == 6
+    assert window.pages.indexOf(logs) == LOGS
+    assert window.pages.count() == 7
 
     window.menu.setCurrentRow(0)
-    window.menu.setCurrentRow(4)
+    window.menu.setCurrentRow(LOGS)
     assert window.pages.currentWidget() is logs
 
 
@@ -70,4 +72,4 @@ def test_a_page_that_failed_to_build_is_retried_on_the_next_visit(window):
     window._page_classes[2] = real
     window._show_page(2)
     assert isinstance(window.pages.widget(2), real)
-    assert window.pages.count() == 6
+    assert window.pages.count() == 7

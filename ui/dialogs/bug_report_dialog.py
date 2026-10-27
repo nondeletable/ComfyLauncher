@@ -5,6 +5,10 @@ The user sees the exact text in an editable box, can drop the log, console or
 config sections and add a comment. Nothing leaves the machine on its own: every
 route is a button press, and the GitHub and Discord routes only save the file
 and open a page - the user attaches the file there.
+
+The window speaks the interface language, the report itself stays English (we
+read and search it). The window is modal, so the language cannot change while
+it is open: texts are set once, there is no _retranslate.
 """
 
 from __future__ import annotations
@@ -31,33 +35,19 @@ from config import ICON_PATH
 from ui.dialogs.messagebox import MessageBox
 from ui.theme.manager import THEME
 from utils import bug_report as br
+from utils.i18n import t
 from utils.logger import log_event
 from utils.platform_paths import reveal_in_file_manager
 
+# Section -> i18n key of its checkbox label.
 SECTION_LABELS = {
-    br.SECTION_LOG: "Launcher log",
-    br.SECTION_CONSOLE: "ComfyUI console",
-    br.SECTION_CONFIG: "Settings",
+    br.SECTION_LOG: "report.section.log",
+    br.SECTION_CONSOLE: "report.section.console",
+    br.SECTION_CONFIG: "report.section.config",
 }
 
-ROUTES = (
-    (
-        "github",
-        "GitHub Issue",
-        "Public. Needs a GitHub account. You attach the file yourself.",
-    ),
-    (
-        "automatic",
-        "Automatic",
-        "Private. One click, no account. Not available yet - the report server "
-        "is still being built.",
-    ),
-    (
-        "discord",
-        "Discord",
-        "Talk to us directly. Needs a Discord account. You attach the file yourself.",
-    ),
-)
+# Route ids; the button label and caption are report.route.<id>[.caption].
+ROUTES = ("github", "automatic", "discord")
 
 
 class BugReportDialog(QDialog):
@@ -83,11 +73,7 @@ class BugReportDialog(QDialog):
         self._checks: dict[str, QCheckBox] = {}
         self._drag_pos = None
 
-        title = (
-            "Comfy Launcher hit an unexpected error"
-            if source == "exception"
-            else "Report a problem"
-        )
+        title = t("report.title.exception" if source == "exception" else "about.report")
         self.setWindowTitle(title)
         self.setWindowIcon(QIcon(ICON_PATH))
         self.setModal(True)
@@ -123,19 +109,13 @@ class BugReportDialog(QDialog):
         title.setObjectName("title")
         layout.addWidget(title)
 
-        intro = QLabel(
-            "Nothing is sent until you choose where it goes. Below is the exact "
-            "text of the report - personal folder, user and computer names are "
-            "already hidden. You can edit or delete anything in it."
-        )
+        intro = QLabel(t("report.intro"))
         intro.setObjectName("muted")
         intro.setWordWrap(True)
         layout.addWidget(intro)
 
         self.comment = QPlainTextEdit()
-        self.comment.setPlaceholderText(
-            "What were you doing, and what did you expect to happen? (optional)"
-        )
+        self.comment.setPlaceholderText(t("report.comment"))
         self.comment.setFixedHeight(60)
         # Re-rendering ~130 KB of text on every keystroke makes typing lag.
         self._rebuild_timer = QTimer(self)
@@ -147,14 +127,14 @@ class BugReportDialog(QDialog):
 
         checks = QHBoxLayout()
         checks.setSpacing(16)
-        include_label = QLabel("Include:")
+        include_label = QLabel(t("report.include"))
         include_label.setObjectName("muted")
         checks.addWidget(include_label)
         for name in br.OPTIONAL_SECTIONS:
-            box = QCheckBox(SECTION_LABELS[name])
+            box = QCheckBox(t(SECTION_LABELS[name]))
             box.setChecked(True)
             if name == br.SECTION_CONSOLE and not self.report.sections.get(name):
-                box.setText(f"{SECTION_LABELS[name]} (empty)")
+                box.setText(t("report.section.empty", section=t(SECTION_LABELS[name])))
             box.toggled.connect(self._rebuild_preview)  # type: ignore
             self._checks[name] = box
             checks.addWidget(box)
@@ -170,32 +150,29 @@ class BugReportDialog(QDialog):
         self.preview.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
         layout.addWidget(self.preview, 1)
 
-        note = QLabel(
-            "Changing the comment or the boxes above rebuilds the text and drops "
-            "your edits in it."
-        )
+        note = QLabel(t("report.note"))
         note.setObjectName("muted")
         note.setWordWrap(True)
         layout.addWidget(note)
 
         layout.addSpacing(4)
-        send_label = QLabel("Send it")
+        send_label = QLabel(t("report.send"))
         send_label.setObjectName("section")
         layout.addWidget(send_label)
 
         self.route_buttons: dict[str, QPushButton] = {}
-        for key, name, caption in ROUTES:
+        for key in ROUTES:
             row = QHBoxLayout()
             row.setSpacing(12)
-            btn = QPushButton(name)
+            btn = QPushButton(t(f"report.route.{key}"))
             btn.setFixedSize(140, 32)
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
-            cap = QLabel(caption)
+            cap = QLabel(t(f"report.route.{key}.caption"))
             cap.setObjectName("muted")
             cap.setWordWrap(True)
             if key == "automatic":
                 btn.setEnabled(False)
-                btn.setToolTip("Coming later, together with the report server.")
+                btn.setToolTip(t("report.route.automatic.tip"))
             else:
                 btn.clicked.connect(  # type: ignore
                     lambda _=False, k=key: self._send(k)
@@ -207,13 +184,13 @@ class BugReportDialog(QDialog):
 
         layout.addSpacing(6)
         footer = QHBoxLayout()
-        self.save_btn = QPushButton("Save report only")
+        self.save_btn = QPushButton(t("report.save_only"))
         self.save_btn.setFixedHeight(32)
         self.save_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.save_btn.clicked.connect(lambda: self._send("save"))  # type: ignore
         footer.addWidget(self.save_btn)
         footer.addStretch(1)
-        close_btn = QPushButton("Close")
+        close_btn = QPushButton(t("common.close"))
         close_btn.setFixedSize(110, 32)
         close_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         close_btn.clicked.connect(self.reject)  # type: ignore
@@ -286,7 +263,7 @@ class BugReportDialog(QDialog):
             path = br.save_report(text)
         except OSError as e:
             log_event(f"❌ Bug report could not be saved: {e}")
-            MessageBox.error(self, "Could not save the report", str(e))
+            MessageBox.error(self, t("report.save_failed"), str(e))
             return
         self.saved_path = path
         log_event(f"📝 Bug report saved ({route})")
@@ -297,19 +274,13 @@ class BugReportDialog(QDialog):
             webbrowser.open(url)
             reveal_in_file_manager(path)
             MessageBox.info(
-                self,
-                "Almost done",
-                f"The report is saved to:\n{path}\n\n"
-                "Drag the file into the issue, then press Submit.",
+                self, t("report.done.title"), t("report.done.github", path=path)
             )
         elif route == "discord":
             webbrowser.open(br.DISCORD_INVITE)
             reveal_in_file_manager(path)
             MessageBox.info(
-                self,
-                "Almost done",
-                f"The report is saved to:\n{path}\n\n"
-                "Post the file in the #bug-report channel of our Discord server.",
+                self, t("report.done.title"), t("report.done.discord", path=path)
             )
         else:
             reveal_in_file_manager(path)

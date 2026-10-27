@@ -15,6 +15,7 @@ from ui.theme.manager import THEME
 from ui.header import colorize_svg
 from config import HEAD_ICON_PATHS
 from utils.console_buffer import ConsoleBuffer
+from utils.i18n import I18N, safe_retranslate, t
 
 
 class ConsoleWindow(QWidget):
@@ -23,7 +24,6 @@ class ConsoleWindow(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._drag_pos = None
-        self.setWindowTitle("ComfyUI Console")
         self.setFixedSize(930, 630)
         self.setWindowFlags(
             Qt.WindowType.Window
@@ -60,7 +60,7 @@ class ConsoleWindow(QWidget):
         hbox.setContentsMargins(12, 6, 12, 6)
         hbox.setSpacing(8)
 
-        self._title = QLabel("ComfyUI Console")
+        self._title = QLabel()
 
         hbox.addWidget(self._title)
         hbox.addStretch()
@@ -101,10 +101,7 @@ class ConsoleWindow(QWidget):
         # CREATE_NO_WINDOW and its stdin is a pipe, not a real console, so
         # keystrokes (Esc, arrows, …) cannot be delivered to it. Point users
         # to the external CMD window when they need interactive input.
-        self.hint_label = QLabel(
-            "View-only. To type into the console, enable "
-            "“Show CMD window on launch” in Settings."
-        )
+        self.hint_label = QLabel()
         self.hint_label.setWordWrap(True)
         hint_container = QHBoxLayout()
         hint_container.setContentsMargins(16, 0, 16, 12)
@@ -121,8 +118,19 @@ class ConsoleWindow(QWidget):
 
         self._apply_theme()
         THEME.themeChanged.connect(self._apply_theme)
+        self._retranslate()
+        I18N.languageChanged.connect(self._retranslate)
 
         self._refresh_logs()
+
+    @safe_retranslate
+    def _retranslate(self, *args):
+        self.setWindowTitle(t("console.title"))
+        self._title.setText(t("console.title"))
+        # Names the Startup checkbox by its own key, so the two never disagree.
+        self.hint_label.setText(
+            t("console.hint", setting=t("settings.startup.show_cmd"))
+        )
 
     # ─────────────────────────────────────────────────
     def _build_text_style(self) -> str:
