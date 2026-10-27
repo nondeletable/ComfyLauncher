@@ -15,6 +15,9 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TRANSLATED = [
     "ui/settings/settings_window.py",
     "ui/settings/page_language.py",
+    "ui/dialogs/setup_window.py",
+    "ui/dialogs/messagebox.py",
+    "main.py",
 ]
 
 # Calls whose text arguments reach the screen.

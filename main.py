@@ -20,7 +20,7 @@ from ui.dialogs.webview2_setup import ensure_webview2_runtime
 from ui.theme.manager import THEME
 from ui.exception_hook import install_exception_hooks, enable_report_window
 from launcher import comfy_exists
-from utils.i18n import I18N
+from utils.i18n import I18N, t
 from config import (
     get_comfyui_path,
     get_language_preference,
@@ -47,9 +47,8 @@ def offer_config_restore():
         return
     if not MessageBox.ask_yes_no(
         None,
-        "Restore settings?",
-        f"No saved builds were found, but there is a backup:\n{backup}\n\n"
-        "Restore your builds and settings from it?",
+        t("restore.ask.title"),
+        t("restore.ask.text", path=backup),
     ):
         set_aside_user_config_backup(backup)
         return
@@ -60,9 +59,8 @@ def offer_config_restore():
     else:
         MessageBox.warning(
             None,
-            "Restore failed",
-            "Could not restore settings from the backup. "
-            "The launcher will start with default settings.",
+            t("restore.failed.title"),
+            t("restore.failed.text"),
         )
 
 

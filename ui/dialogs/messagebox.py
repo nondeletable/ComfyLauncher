@@ -14,6 +14,7 @@ from PyQt6.QtWidgets import (
 from ui.header import colorize_svg
 from ui.theme.manager import THEME
 from config import MESSAGEBOX_ICONS
+from utils.i18n import t
 
 
 class _Badge(QLabel):
@@ -38,6 +39,9 @@ class MessageBox(QDialog):
     Returns:
         .exec() -> int (Accepted / Rejected)
         ask_yes_no -> bool
+
+    Callers pass already translated text. A box is modal and lives for one
+    question, so the language cannot change under it: no _retranslate().
     """
 
     def __init__(self, title: str, text: str, kind: str = "info", parent=None):
@@ -135,26 +139,26 @@ class MessageBox(QDialog):
     @staticmethod
     def info(parent, title: str, text: str):
         dlg = MessageBox(title, text, "info", parent)
-        dlg._add_button("OK", "accept")
+        dlg._add_button(t("common.ok"), "accept")
         return dlg.exec()
 
     @staticmethod
     def warning(parent, title: str, text: str):
         dlg = MessageBox(title, text, "warning", parent)
-        dlg._add_button("OK", "accept")
+        dlg._add_button(t("common.ok"), "accept")
         return dlg.exec()
 
     @staticmethod
     def error(parent, title: str, text: str):
         dlg = MessageBox(title, text, "error", parent)
-        dlg._add_button("OK", "accept")
+        dlg._add_button(t("common.ok"), "accept")
         return dlg.exec()
 
     @staticmethod
     def ask_yes_no(parent, title: str, text: str) -> bool:
         dlg = MessageBox(title, text, "ask_yes_no", parent)
-        dlg._add_button("Yes", "accept")
-        dlg._add_button("No", "reject")
+        dlg._add_button(t("common.yes"), "accept")
+        dlg._add_button(t("common.no"), "reject")
         return dlg.exec() == QDialog.DialogCode.Accepted
 
     @staticmethod
@@ -185,9 +189,9 @@ class MessageBox(QDialog):
             dlg.reject()
 
         for text_label, handler in (
-            ("Yes", on_yes),
-            ("No", on_no),
-            ("Cancel", on_cancel),
+            (t("common.yes"), on_yes),
+            (t("common.no"), on_no),
+            (t("common.cancel"), on_cancel),
         ):
             btn = QPushButton(text_label)
             btn.clicked.connect(handler)  # type: ignore
@@ -201,9 +205,8 @@ class MessageBox(QDialog):
         """The settings file could not be written (save_user_config() is False)."""
         return MessageBox.warning(
             parent,
-            "Could not save",
-            "Failed to save the settings. Make sure the app can write to your "
-            "AppData folder, then try again.",
+            t("dialog.save_failed.title"),
+            t("dialog.save_failed.text"),
         )
 
     @staticmethod
@@ -235,8 +238,8 @@ class MessageBox(QDialog):
         False if Postpone.
         """
         dlg = MessageBox(title, message, "info", parent)
-        dlg._add_button("Update", "accept")
-        dlg._add_button("Postpone", "reject")
+        dlg._add_button(t("update.button.update"), "accept")
+        dlg._add_button(t("update.button.postpone"), "reject")
         return dlg.exec() == QDialog.DialogCode.Accepted
 
     def _apply_theme(self, *args):
