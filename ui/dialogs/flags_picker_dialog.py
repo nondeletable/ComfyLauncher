@@ -132,6 +132,19 @@ def _group_title(group: dict) -> str:
     return str(group.get("title") or group.get("id", ""))
 
 
+def flag_description_key(flag: str) -> str:
+    """``--cuda-device`` -> ``flags.desc.cuda_device``."""
+    return "flags.desc." + flag.lstrip("-").lower().replace("-", "_")
+
+
+def _flag_description(spec: dict) -> str:
+    """Translated description; a flag added to flags.json later keeps its own."""
+    key = flag_description_key(spec["flag"])
+    if I18N.has(key):
+        return t(key)
+    return str(spec.get("description", ""))
+
+
 class FlagsPickerDialog(QDialog):
     """Modal flags picker. Emits ``flagsChanged`` with the rebuilt flag string."""
 
@@ -152,6 +165,7 @@ class FlagsPickerDialog(QDialog):
 
         # widget registries, filled while building the UI
         self._chips: dict[str, QPushButton] = {}
+        self._specs: dict[str, dict] = {}
         self._editors: dict[str, QWidget] = {}
         self._flows: list[FlowLayout] = []
         self._group_headers: list[tuple[QLabel, dict]] = []
@@ -179,6 +193,8 @@ class FlagsPickerDialog(QDialog):
             self.empty.setText(t("flags.no_catalog"))
         for header, group in self._group_headers:
             header.setText(_group_title(group))
+        for flag, chip in self._chips.items():
+            chip.setToolTip(_flag_description(self._specs[flag]))
 
     # ── parsing / building the flag string ──────────────────────────────
 
@@ -443,11 +459,12 @@ class FlagsPickerDialog(QDialog):
         chip = QPushButton(flag)
         chip.setCheckable(True)
         chip.setCursor(Qt.CursorShape.PointingHandCursor)
-        chip.setToolTip(spec.get("description", ""))
+        chip.setToolTip(_flag_description(spec))
         chip.setFixedHeight(26)
         chip.setStyleSheet(self._chip_style())
         chip.clicked.connect(lambda _=False, f=flag: self._toggle(f))  # type: ignore
         self._chips[flag] = chip
+        self._specs[flag] = spec
         flow.addWidget(chip)
 
         ftype = spec.get("type")

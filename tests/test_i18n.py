@@ -150,3 +150,22 @@ def test_every_flag_group_has_a_title():
     en = _shipped("en")
     for group in load_flags_catalog()["groups"]:
         assert f"flags.group.{group['id']}" in en, group["id"]
+
+
+def test_every_flag_description_is_in_english_as_in_the_catalog():
+    """en.json repeats flags.json; a regenerated catalog must not drift from it."""
+    from ui.dialogs.flags_picker_dialog import flag_description_key
+    from utils.flags_catalog import load_flags_catalog
+
+    en = _shipped("en")
+    for group in load_flags_catalog()["groups"]:
+        for spec in group["flags"]:
+            key = flag_description_key(spec["flag"])
+            assert en.get(key) == spec["description"], spec["flag"]
+
+
+def test_flag_without_a_translation_keeps_its_own_description():
+    from ui.dialogs.flags_picker_dialog import _flag_description
+
+    spec = {"flag": "--from-a-newer-catalog", "description": "Own text."}
+    assert _flag_description(spec) == "Own text."
