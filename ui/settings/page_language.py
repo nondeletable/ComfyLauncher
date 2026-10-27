@@ -4,21 +4,12 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QLabel,
     QHBoxLayout,
-    QComboBox,
-    QSizePolicy,
 )
 from config import load_user_config, save_user_config, get_language_preference
 from ui.theme.manager import THEME, safe_repaint
 from ui.dialogs.messagebox import MessageBox as MB
-from ui.widgets.combo_box import ThemedComboBox
-from utils.i18n import (
-    AUTO,
-    I18N,
-    LANGUAGES,
-    detect_system_language,
-    safe_retranslate,
-    t,
-)
+from ui.widgets.language_combo import LanguageComboBox
+from utils.i18n import I18N, safe_retranslate, t
 
 
 class LanguageSettingsPage(QWidget):
@@ -44,19 +35,8 @@ class LanguageSettingsPage(QWidget):
         layout.addWidget(self.desc)
 
         self.lbl_language = QLabel()
-        # "System (…)" first, then every language under its own name, which
-        # stays the same whatever language the interface is in.
-        self.cmb_language = ThemedComboBox()
-        self.cmb_language.addItem("", AUTO)
-        for code, name in LANGUAGES.items():
-            self.cmb_language.addItem(name, code)
+        self.cmb_language = LanguageComboBox()
         self.cmb_language.setFixedHeight(28)
-        self.cmb_language.setSizeAdjustPolicy(
-            QComboBox.SizeAdjustPolicy.AdjustToContents
-        )
-        self.cmb_language.setSizePolicy(
-            QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed
-        )
         row = QHBoxLayout()
         row.setContentsMargins(14, 0, 0, 0)
         row.setSpacing(10)
@@ -88,8 +68,6 @@ class LanguageSettingsPage(QWidget):
         self.title.setText(t("settings.menu.language"))
         self.desc.setText(t("settings.language.description"))
         self.lbl_language.setText(t("settings.language.label"))
-        system = LANGUAGES[detect_system_language()]
-        self.cmb_language.setItemText(0, t("settings.language.system", language=system))
 
     # ───────────────────── PUBLIC API ─────────────────────────
 
@@ -97,7 +75,7 @@ class LanguageSettingsPage(QWidget):
         return self._dirty
 
     def apply(self):
-        choice = self.cmb_language.currentData()
+        choice = self.cmb_language.preference()
         cfg = load_user_config()
         cfg["language"] = choice
         if not save_user_config(cfg):
@@ -110,16 +88,13 @@ class LanguageSettingsPage(QWidget):
         return True
 
     def reset(self):
-        self.cmb_language.blockSignals(True)
-        index = self.cmb_language.findData(self._saved)
-        self.cmb_language.setCurrentIndex(max(index, 0))  # unknown code -> System
-        self.cmb_language.blockSignals(False)
+        self.cmb_language.set_preference(self._saved)
         self._set_dirty(False)
 
     # ───────────────────── INTERNAL LOGIC ─────────────────────────
 
     def _on_change(self):
-        self._set_dirty(self.cmb_language.currentData() != self._saved)
+        self._set_dirty(self.cmb_language.preference() != self._saved)
 
     def _set_dirty(self, val):
         if self._dirty != val:

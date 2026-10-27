@@ -8,6 +8,7 @@ import pytest  # noqa: E402
 from PyQt6 import sip  # noqa: E402
 
 import ui.settings.page_language as page_language  # noqa: E402
+import ui.widgets.language_combo as language_combo  # noqa: E402
 import utils.i18n as i18n  # noqa: E402
 from ui.settings.settings_window import SettingsWindow  # noqa: E402
 from utils.i18n import AUTO, I18N  # noqa: E402
@@ -30,7 +31,7 @@ def saved(monkeypatch):
 @pytest.fixture
 def window(qapp, saved, monkeypatch):
     # The tests must not depend on the language of the machine running them.
-    for module in (i18n, page_language):
+    for module in (i18n, language_combo):
         monkeypatch.setattr(module, "detect_system_language", lambda: "en")
     monkeypatch.setattr(page_language, "get_language_preference", lambda: AUTO)
     I18N.set_language(AUTO)
