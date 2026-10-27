@@ -45,9 +45,24 @@ DEMO_CONFIG = {
             "path": "D:/Portable/ComfyUI",
             "icon_id": "default",
             "extra_flags": ["--windows-standalone-build"],
-        }
+        },
+        {
+            "id": "demo2",
+            "name": "SDXL test",
+            "path": "E:/AI/ComfyUI_sdxl",
+            "icon_id": "default",
+            "extra_flags": [],
+        },
     ],
+    "last_used_build_id": "demo",
 }
+
+
+def _shoot(save, name, widget):
+    widget.show()
+    QApplication.processEvents()
+    save(name, widget)
+    widget.close()
 
 
 def _settings_window(save):
@@ -64,8 +79,70 @@ def _settings_window(save):
     w.close()
 
 
+def _first_run(save):
+    """The setup window as on first run (with the language list), list open too."""
+    from ui.dialogs.setup_window import SetupWindow
+
+    w = SetupWindow()
+    w.show()
+    QApplication.processEvents()
+    save("setup_first_run", w)
+    w.language_combo.showPopup()
+    QApplication.processEvents()
+    save("setup_language_list", w.language_combo.view().window())
+    w.language_combo.hidePopup()
+    w.close()
+
+
+def _build_manager(save):
+    from ui.dialogs.build_manager_dialog import BuildManagerDialog
+
+    _shoot(save, "build_manager", BuildManagerDialog())
+
+
+def _flags_picker(save):
+    from ui.dialogs.flags_picker_dialog import FlagsPickerDialog
+
+    _shoot(save, "flags_picker", FlagsPickerDialog(flags_text="--lowvram --listen"))
+
+
+def _message_boxes(save):
+    """The longest first-run boxes, buttons as their real callers add them."""
+    from ui.dialogs.messagebox import MessageBox
+    from utils.i18n import t
+
+    boxes = {
+        "box_nonportable": (
+            "setup.nonportable.title",
+            t(
+                "setup.nonportable.text",
+                reason=t("setup.nonportable.reason_windows"),
+            ),
+            "ask_yes_no",
+            ["common.yes", "common.no"],
+        ),
+        "box_restore": (
+            "restore.ask.title",
+            t("restore.ask.text", path="D:/Documents/ComfyLauncher/backup"),
+            "ask_yes_no",
+            ["common.yes", "common.no"],
+        ),
+        "box_webview2": (
+            "webview2.title",
+            t("webview2.ask"),
+            "warning",
+            ["webview2.button.install", "webview2.button.page", "webview2.button.quit"],
+        ),
+    }
+    for name, (title, text, kind, buttons) in boxes.items():
+        box = MessageBox(t(title), text, kind)
+        for key in buttons:
+            box._add_button(t(key), "accept")
+        _shoot(save, name, box)
+
+
 # Every i18n block registers the screens it translated.
-SCREENS = [_settings_window]
+SCREENS = [_settings_window, _first_run, _build_manager, _flags_picker, _message_boxes]
 
 
 def main(languages: list[str]) -> None:
