@@ -8,6 +8,8 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt
 
+TEXT_MIN_WIDTH = 380
+
 
 class ErrorScreen(QWidget):
     def __init__(self, error_widget: QWidget, parent=None):
@@ -104,6 +106,9 @@ class ErrorWidget(QWidget):
         self.message_label = message_label = QLabel()
         message_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         message_label.setWordWrap(True)
+        # Without a floor the card shrinks to its title, and text with no
+        # spaces (Chinese) wraps into a narrow column of a few characters.
+        message_label.setMinimumWidth(TEXT_MIN_WIDTH)
         message_label.setStyleSheet(
             """
             font-size: 15px;
@@ -115,6 +120,7 @@ class ErrorWidget(QWidget):
         self.hint_label = hint_label = QLabel()
         hint_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         hint_label.setWordWrap(True)
+        hint_label.setMinimumWidth(TEXT_MIN_WIDTH)
         hint_label.setStyleSheet(
             """
             font-size: 14px;
