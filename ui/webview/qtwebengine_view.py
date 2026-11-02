@@ -25,6 +25,7 @@ from PyQt6.QtCore import QUrl
 from PyQt6.QtWebEngineCore import (
     QWebEngineDownloadRequest,
     QWebEnginePage,
+    QWebEnginePermission,
     QWebEngineProfile,
 )
 from PyQt6.QtWebEngineWidgets import QWebEngineView
@@ -33,6 +34,7 @@ from PyQt6.QtWidgets import QVBoxLayout, QWidget
 from ui.webview.base import WebViewBase
 from utils.logger import log_event
 from utils.platform_paths import APP_NAME, app_dir
+from utils.web_permissions import is_local_origin
 
 
 class QtWebEngineView(WebViewBase):
@@ -62,6 +64,7 @@ class QtWebEngineView(WebViewBase):
         self._profile.downloadRequested.connect(self._on_download_requested)
 
         self._page = QWebEnginePage(self._profile, self)
+        self._page.permissionRequested.connect(self._on_permission_requested)
         self._view = QWebEngineView(self)
         self._view.setPage(self._page)
         self._view.loadFinished.connect(self._on_load_finished)
@@ -76,6 +79,17 @@ class QtWebEngineView(WebViewBase):
     # ─── internals ───────────────────────────────────────
     def _on_load_finished(self, ok: bool) -> None:
         self.loaded.emit(ok)  # type: ignore[attr-defined]
+
+    def _on_permission_requested(self, permission: QWebEnginePermission) -> None:
+        """Grant notifications to the local server; leave everything else.
+
+        Unanswered, the request is denied, and nodes that check
+        Notification.permission show a "blocked" alert on every creation.
+        """
+        if permission.permissionType() == (
+            QWebEnginePermission.PermissionType.Notifications
+        ) and is_local_origin(permission.origin().toString()):
+            permission.grant()
 
     def _on_download_requested(self, item: QWebEngineDownloadRequest) -> None:
         """Save downloads silently, then announce the finished file.

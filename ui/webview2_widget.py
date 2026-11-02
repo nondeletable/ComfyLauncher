@@ -21,6 +21,7 @@ from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel  # noqa: E402
 from ui.theme.manager import THEME  # noqa: E402
 from ui.webview.base import WebViewBase  # noqa: E402
 from utils.i18n import t  # noqa: E402
+from utils.web_permissions import is_local_origin, origin_of  # noqa: E402
 from utils.webview2_runtime import DLL_DIR  # noqa: E402
 
 
@@ -391,6 +392,42 @@ class WebView2Widget(WebViewBase):
         except Exception:
             pass
 
+    # ── Permissions (notifications for the local ComfyUI page) ──
+    def _on_permission_requested(self, sender, args):
+        """Allow notifications for the local server. Without an answer
+        WebView2 denies the request and remembers it, and nodes that check
+        Notification.permission then show a "blocked" alert every time."""
+        try:
+            from Microsoft.Web.WebView2.Core import (  # type: ignore
+                CoreWebView2PermissionKind,
+                CoreWebView2PermissionState,
+            )
+
+            if args.PermissionKind == CoreWebView2PermissionKind.Notifications and (
+                is_local_origin(args.Uri)
+            ):
+                args.State = CoreWebView2PermissionState.Allow
+        except Exception:
+            pass
+
+    def _allow_stored_notifications(self):
+        """Overwrite a "Deny" saved by earlier versions: a remembered answer
+        is applied without raising PermissionRequested, so the handler alone
+        would never get the chance to fix it."""
+        try:
+            from Microsoft.Web.WebView2.Core import (  # type: ignore
+                CoreWebView2PermissionKind,
+                CoreWebView2PermissionState,
+            )
+
+            self._webview.CoreWebView2.Profile.SetPermissionStateAsync(
+                CoreWebView2PermissionKind.Notifications,
+                origin_of(self._url),
+                CoreWebView2PermissionState.Allow,
+            )
+        except Exception:
+            pass
+
     def _show_download_toast(self, name: str, full_path: str):
         if self._toast is None:
             self._toast = _DownloadToast()
@@ -421,6 +458,10 @@ class WebView2Widget(WebViewBase):
                     self._webview.CoreWebView2.DownloadStarting += (
                         self._on_download_starting
                     )
+                    self._webview.CoreWebView2.PermissionRequested += (
+                        self._on_permission_requested
+                    )
+                    self._allow_stored_notifications()
                     self.navigate(self._url)
                 self.loaded.emit(ok)  # type: ignore
 
