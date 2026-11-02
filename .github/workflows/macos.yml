@@ -1,0 +1,54 @@
+name: macOS
+
+# Builds ComfyLauncher.app and the arm64 .dmg the same way
+# packaging/macos/BUILD.md does locally. PyInstaller follows the interpreter's
+# architecture, so this must run on Apple Silicon; macos-latest is arm64.
+# The build is ad-hoc signed: the repo has no Developer ID certificate, so a
+# downloadable image still needs Gatekeeper's "Open Anyway" step.
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: ["master", "main"]
+    paths:
+      - "packaging/macos/**"
+      - ".github/workflows/macos.yml"
+      - "requirements.txt"
+
+jobs:
+  dmg:
+    runs-on: macos-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install -U pip
+          pip install -r requirements.txt
+
+      # The script carries the checks itself: arm64 interpreter, the four
+      # QtWebEngine paths Qt actually queries, codesign --verify --deep --strict,
+      # and a remount of the written image. A failure here fails the job.
+      - name: Build the app and the dmg
+        shell: bash
+        run: bash packaging/macos/build_macos.sh
+
+      - name: Report artifact sizes
+        if: always()
+        shell: bash
+        run: |
+          du -sh dist/ComfyLauncher.app 2>/dev/null || true
+          ls -lh packaging/macos/*.dmg 2>/dev/null || true
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ComfyLauncher-macOS-arm64
+          path: packaging/macos/*.dmg
+          if-no-files-found: error
