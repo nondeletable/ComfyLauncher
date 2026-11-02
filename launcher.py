@@ -11,7 +11,11 @@ from datetime import datetime
 from utils.console_buffer import ConsoleBuffer
 from utils.logger import log_event
 from utils.python_resolver import resolve_interpreter, build_env
-from utils.process_launch import spawn_comfy, external_console_supported
+from utils.process_launch import (
+    COMFY_LOG_FILE,
+    spawn_comfy,
+    external_console_supported,
+)
 from utils.startup_watch import is_alive
 from config import (
     COMFYUI_PORT,
@@ -219,18 +223,29 @@ def ensure_comfyui_running(comfy_path: str, port: int = 8188):
             "ℹ️ External console not supported on this OS — using internal console."
         )
 
-    _comfy_process, piped = spawn_comfy(
-        args, comfy_path, env, external_console=show_cmd
-    )
-    _comfy_wrapped = not piped
+    launch = spawn_comfy(args, comfy_path, env, external_console=show_cmd)
+    _comfy_process = launch.proc
+    # Only the Windows ``cmd.exe /k`` wrapper is "wrapped": a posix launch
+    # reports a log offset and the hidden-console launch a pipe, so neither of
+    # them can be mistaken for the wrapper.
+    _comfy_wrapped = not launch.piped and launch.log_offset is None
 
-    # --- Drain stdout whenever we own the pipe -----------------------
-    # Piped means the internal console is in use (always on posix; the
-    # hidden-window mode on Windows). The external cmd.exe console is not piped.
-    if piped and _comfy_process:
-        threading.Thread(
-            target=_read_process_output, args=(_comfy_process,), daemon=True
-        ).start()
+    # --- Follow ComfyUI's output into the internal console ------------
+    # Windows hidden-console mode hands us a pipe to drain. Everywhere else
+    # (posix) ComfyUI appends to COMFY_LOG_FILE and we tail it from the offset
+    # recorded at launch — a pipe there would make the launcher's exit kill a
+    # server the user asked to leave running (exit dialog → No).
+    if _comfy_process:
+        if launch.piped:
+            threading.Thread(
+                target=_read_process_output, args=(_comfy_process,), daemon=True
+            ).start()
+        elif launch.log_offset is not None:
+            threading.Thread(
+                target=_tail_comfy_log,
+                args=(_comfy_process, launch.log_offset),
+                daemon=True,
+            ).start()
 
     log_event(f"🟢 ComfyUI started (PID {_comfy_process.pid}).")
 
@@ -374,7 +389,7 @@ def stop_comfyui_hard(comfy_path: str, _grace_period=5):
 
 
 def _read_process_output(proc: subprocess.Popen):
-    """Drain the child's stdout into ConsoleBuffer.
+    """Drain the child's stdout into ConsoleBuffer (Windows hidden console).
 
     This loop must never stop while the process is alive: if it dies, the OS
     pipe buffer fills up, the child blocks on write, and ComfyUI hangs on
@@ -392,6 +407,34 @@ def _read_process_output(proc: subprocess.Popen):
             except Exception:
                 # Never let a buffering error stop us draining the pipe.
                 pass
+    except Exception as e:
+        ConsoleBuffer.add(f"[Console reader error] {e}\n")
+
+
+def _tail_comfy_log(proc: subprocess.Popen, offset: int):
+    """Follow COMFY_LOG_FILE into ConsoleBuffer until ComfyUI exits.
+
+    Reading starts at the offset recorded at launch because the file is shared
+    with the launcher's own log directory and may still be appended to by an
+    earlier ComfyUI left running. Bytes are decoded per line with replacement,
+    for the same reason the pipe reader does: a custom node's output is not
+    guaranteed to be valid UTF-8.
+    """
+    try:
+        with open(COMFY_LOG_FILE, "rb") as fh:
+            fh.seek(offset)
+            while True:
+                line = fh.readline()
+                if line:
+                    try:
+                        ConsoleBuffer.add(line.decode("utf-8", errors="replace"))
+                    except Exception:
+                        # Never let a buffering error stop us reading.
+                        pass
+                    continue
+                if proc.poll() is not None:
+                    return
+                time.sleep(0.2)
     except Exception as e:
         ConsoleBuffer.add(f"[Console reader error] {e}\n")
 

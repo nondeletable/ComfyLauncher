@@ -8,7 +8,10 @@ ComfyUI hung on startup ("ComfyUI is not responding").
 """
 
 import io
+import threading
+import time
 
+import launcher as launcher_mod
 from launcher import _read_process_output
 from utils.console_buffer import ConsoleBuffer
 
@@ -18,6 +21,16 @@ class _FakeProc:
 
     def __init__(self, stdout):
         self.stdout = stdout
+
+
+class _FakeLiveProc:
+    """Stand-in for a running ComfyUI: stays alive until told otherwise."""
+
+    def __init__(self):
+        self.returncode = None
+
+    def poll(self):
+        return self.returncode
 
 
 def setup_function(_):
@@ -60,3 +73,43 @@ def test_reader_keeps_draining_after_buffer_error(monkeypatch):
 def test_reader_handles_missing_stdout():
     _read_process_output(_FakeProc(None))  # must not raise
     assert ConsoleBuffer.get_all() == ""
+
+
+# ── the posix log tailer (the pipe would die with the launcher) ───────
+
+
+def _wait_until(predicate, timeout=5.0):
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        if predicate():
+            return True
+        time.sleep(0.05)
+    return False
+
+
+def test_tail_skips_earlier_sessions_and_follows_new_output(monkeypatch, tmp_path):
+    path = tmp_path / "comfyui.log"
+    path.write_bytes(b"previous session\n")
+    monkeypatch.setattr(launcher_mod, "COMFY_LOG_FILE", str(path))
+
+    proc = _FakeLiveProc()
+    offset = len(b"previous session\n")
+    tailer = threading.Thread(
+        target=launcher_mod._tail_comfy_log, args=(proc, offset), daemon=True
+    )
+    tailer.start()
+
+    # The child keeps appending, including a byte no UTF-8 decoder accepts.
+    with open(path, "ab") as fh:
+        fh.write("🔵 Total VRAM 15204 MB\n".encode("utf-8") + b"bad \x98 byte\n")
+
+    assert _wait_until(lambda: "Total VRAM" in ConsoleBuffer.get_all())
+
+    proc.returncode = 0
+    tailer.join(timeout=5)
+    assert not tailer.is_alive()  # exits once ComfyUI is gone
+
+    out = ConsoleBuffer.get_all()
+    assert "Total VRAM 15204 MB" in out
+    assert "bad \ufffd byte" in out  # replacement char, reader survived
+    assert "previous session" not in out  # earlier output is not replayed
