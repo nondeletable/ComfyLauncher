@@ -11,6 +11,7 @@ import os
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import pytest  # noqa: E402
+from PyQt6.QtCore import QUrl  # noqa: E402
 from PyQt6.QtTest import QSignalSpy  # noqa: E402
 
 from ui.webview.base import WebViewBase  # noqa: E402
@@ -18,6 +19,8 @@ from ui.webview.base import WebViewBase  # noqa: E402
 pytest.importorskip(
     "PyQt6.QtWebEngineWidgets", reason="PyQt6-WebEngine is not installed"
 )
+
+from PyQt6.QtWebEngineCore import QWebEnginePermission  # noqa: E402
 
 from ui.webview.qtwebengine_view import QtWebEngineView  # noqa: E402
 
@@ -66,3 +69,35 @@ def test_it_reports_a_finished_load(view):
     view.navigate(URL)
     assert spy.wait(10_000), "loadFinished never arrived"
     assert seen == [True]
+
+
+# ── permissions: notifications for the local server only ──────────────
+
+
+class _FakePermission:
+    def __init__(self, kind, origin):
+        self._kind, self._origin, self.granted = kind, origin, False
+
+    def permissionType(self):
+        return self._kind
+
+    def origin(self):
+        return QUrl(self._origin)
+
+    def grant(self):
+        self.granted = True
+
+
+@pytest.mark.parametrize(
+    "kind_name, origin, granted",
+    [
+        ("Notifications", "http://127.0.0.1:8188/", True),
+        ("Notifications", "https://example.com/", False),
+        ("Geolocation", "http://127.0.0.1:8188/", False),
+    ],
+)
+def test_only_local_notifications_are_granted(view, kind_name, origin, granted):
+    kind = getattr(QWebEnginePermission.PermissionType, kind_name)
+    permission = _FakePermission(kind, origin)
+    view._on_permission_requested(permission)
+    assert permission.granted is granted
